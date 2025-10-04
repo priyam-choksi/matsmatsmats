@@ -1,0 +1,23 @@
+### Run Everything
+```bash
+python orchestrator_agent.py AAPL --agents technical news fundamental macro --output report.txt
+```
+
+### Individual Agents
+```bash
+python technical_agent.py AAPL --days 7
+python news_agent.py AAPL --sources yahoo reddit
+python fundamental_agent.py AAPL
+python macro_agent.py --sector technology
+```
+## What Each Does
+- **technical_agent**: Price, RSI, MACD, moving averages
+- **news_agent**: Yahoo/Reddit/NewsAPI sentiment
+- **fundamental_agent**: P/E, earnings, growth metrics
+- **macro_agent**: Market conditions, VIX, sectors
+- **orchestrator**: Runs all agents, makes final decision
+
+All default to 7-day analysis. Works without API keys (basic mode).
+
+## Output
+Each gives BUY/HOLD/SELL recommendation. Orchestrator combines all.
