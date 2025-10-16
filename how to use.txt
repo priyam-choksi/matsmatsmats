@@ -1,23 +1,120 @@
+# How to Use
+
 ### Run Everything
 ```bash
-python orchestrator_agent.py AAPL --agents technical news fundamental macro --output report.txt
+python master_orchestrator.py AAPL --run-all --portfolio-value 100000
+```
+
+### Quick Analysis (No Trading)
+```bash
+python master_orchestrator.py AAPL --quick
+```
+
+### Run Specific Phases Only
+```bash
+python master_orchestrator.py AAPL --phases phase1              # Just analysts
+python master_orchestrator.py AAPL --phases phase1 phase2       # Analysts + researchers
+python master_orchestrator.py AAPL --phases phase2 phase3 phase4  # Skip analysts
+```
+
+### With Error Handling
+```bash
+python master_orchestrator.py AAPL --run-all --stop-on-error   # Stop if any agent fails
+```
+
+### Different Portfolio Sizes
+```bash
+python master_orchestrator.py AAPL --run-all --portfolio-value 50000   # $50k portfolio
+python master_orchestrator.py AAPL --run-all --portfolio-value 250000  # $250k portfolio
 ```
 
 ### Individual Agents
 ```bash
 python technical_agent.py AAPL --days 7
-python news_agent.py AAPL --sources yahoo reddit
+python news_agent.py AAPL --sources yahoo reddit --days 7
 python fundamental_agent.py AAPL
-python macro_agent.py --sector technology
+python macro_agent.py --days 7 --sector technology
+python discussion_hub.py AAPL --run-analysts
+python bull_researcher.py AAPL --discussion-file discussion_points.json
+python bear_researcher.py AAPL --discussion-file discussion_points.json
+python aggressive_debator.py AAPL --bull-file bull.json --bear-file bear.json
+python neutral_debator.py AAPL --bull-file bull.json --bear-file bear.json
+python conservative_debator.py AAPL --bull-file bull.json --bear-file bear.json
+python research_manager.py AAPL
+python risk_manager.py AAPL --portfolio-value 100000
+python trader.py AAPL
 ```
+
 ## What Each Does
-- **technical_agent**: Price, RSI, MACD, moving averages
-- **news_agent**: Yahoo/Reddit/NewsAPI sentiment
-- **fundamental_agent**: P/E, earnings, growth metrics
-- **macro_agent**: Market conditions, VIX, sectors
-- **orchestrator**: Runs all agents, makes final decision
+- **technical_agent**: Price, RSI, MACD, moving averages, Bollinger Bands
+- **news_agent**: Yahoo/Reddit/NewsAPI sentiment analysis
+- **fundamental_agent**: P/E, earnings, margins, growth metrics
+- **macro_agent**: Market conditions, VIX, sector rotation
+- **discussion_hub**: Combines all analysts, structures debate
+- **bull_researcher**: Builds buy case, finds catalysts
+- **bear_researcher**: Identifies risks, builds sell case
+- **aggressive_debator**: 25% max position, high risk tolerance
+- **neutral_debator**: 10% max position, balanced approach
+- **conservative_debator**: 5% max position, capital preservation
+- **research_manager**: Synthesizes all research, probabilities
+- **risk_manager**: Final decision, veto power, position sizing
+- **trader**: Creates order with entry/stop/targets
+- **master_orchestrator**: Runs entire workflow automatically
 
 All default to 7-day analysis. Works without API keys (basic mode).
 
 ## Output
-Each gives BUY/HOLD/SELL recommendation. Orchestrator combines all.
+Each gives BUY/HOLD/SELL recommendation + confidence level.
+Risk Manager gives APPROVE/MODIFY/REJECT.
+Trader creates executable order or cancels.
+All outputs saved to `outputs/` folder.
+
+## All Run Modes
+
+### Master Orchestrator Modes
+```bash
+# Full analysis with trading
+python master_orchestrator.py AAPL --run-all --portfolio-value 100000
+
+# Quick analysis only (phases 1-3, no trading)
+python master_orchestrator.py AAPL --quick
+
+# Run specific phases
+python master_orchestrator.py AAPL --phases phase1              # Just analysts
+python master_orchestrator.py AAPL --phases phase1 phase2       # Analysts + researchers
+python master_orchestrator.py AAPL --phases phase3 phase4 phase5  # Risk team onwards
+
+# Stop on any error
+python master_orchestrator.py AAPL --run-all --stop-on-error
+
+# Different portfolio sizes
+python master_orchestrator.py AAPL --run-all --portfolio-value 50000
+python master_orchestrator.py AAPL --run-all --portfolio-value 250000
+```
+
+### Individual Agent Options
+```bash
+# Technical with different timeframes
+python technical_agent.py AAPL --days 7    # 1 week
+python technical_agent.py AAPL --days 30   # 1 month
+python technical_agent.py AAPL --days 90   # 3 months
+
+# News with different sources
+python news_agent.py AAPL --sources yahoo            # Just Yahoo
+python news_agent.py AAPL --sources reddit newsapi   # Reddit + NewsAPI
+python news_agent.py AAPL --sources yahoo reddit newsapi finnhub alphavantage  # All sources
+
+# Macro with sector focus
+python macro_agent.py --sector technology
+python macro_agent.py --sector financials
+python macro_agent.py --sector energy
+
+# Output to files
+python technical_agent.py AAPL --output technical_report.txt
+python discussion_hub.py AAPL --format json --output discussion.json
+
+# With custom API key
+python technical_agent.py AAPL --api-key YOUR_KEY --model gpt-4
+```
+
+Phase combinations: phase1 (analysts), phase2 (researchers), phase3 (risk team), phase4 (managers), phase5 (trader)
