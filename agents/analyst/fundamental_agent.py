@@ -136,7 +136,7 @@ ANALYST VIEW:
 
 
     def analyze_with_llm(self, fundamental_data):
-        """Use LLM to analyze fundamental"""
+        """Use LLM to analyze fundamentals"""
         if not self.client:
             # Simple rule-based fallback
             if "strong buy" in fundamental_data.lower():
