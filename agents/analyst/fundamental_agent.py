@@ -8,6 +8,7 @@ import sys
 import json
 import argparse
 from datetime import datetime
+import requests
 import yfinance as yf
 import pandas as pd
 from openai import OpenAI
@@ -64,7 +65,7 @@ ANALYST VIEW:
         stock = yf.Ticker(self.ticker)
         try:
             earnings = stock.earnings_history
-            if earnings:
+            if len(earnings):
                 df = pd.DataFrame(earnings)
                 recent = df.tail(4)
                 
@@ -81,10 +82,59 @@ ANALYST VIEW:
                 
                 earnings_summary += f"\nBeat Rate: {beats}/4 quarters ({beats*25}%)"
                 return earnings_summary
-        except:
+        except Exception as e:
+            print(f"Error fetching earnings data: {e}")
             pass
         return "\nEarnings data not available"
     
+    def get_assets(self):
+        "Get assets info from company annual report 10-K"
+        headers = {'User-Agent': "test@gmail.com"}
+        try:
+            companyData = requests.get(
+                "https://www.sec.gov/files/company_tickers.json",
+                headers=headers
+                )
+
+            if companyData.status_code == 200:
+                companyData = pd.DataFrame.from_dict(
+                    companyData.json(), orient='index' )
+                cik = str(companyData[companyData['ticker'] == self.ticker]['cik_str'].values[0]).zfill(10)
+            else:
+                print(f"Error: Failed to retrieve company data. Status code: {companyData.status_code}")
+        except Exception as e:
+            raise Exception(f"Failed to retrieve company data {e}")
+
+
+        companyConcept = requests.get(
+            (
+                f'https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}'
+                f'/us-gaap/Assets.json'
+            ),
+            headers=headers
+        )
+
+        if companyConcept.status_code == 200:
+            print(f"Company data for {self.ticker} retrieved successfully.")
+            assetsData = pd.DataFrame.from_dict(
+                companyConcept.json()['units']['USD']
+            )
+
+            assets10K = assetsData[assetsData.form == '10-K']
+            assets10K = assets10K.reset_index(drop=True)
+            val = str(assets10K['val'].iloc[-1])
+
+            company_assets = f"""
+            {self.ticker} assets from latest 10-K filing:
+            ${val}
+            """
+
+            return company_assets
+        else:
+            print(f"Error fetching company data: Status code {companyConcept.status_code}")
+
+
+
     def analyze_with_llm(self, fundamental_data):
         """Use LLM to analyze fundamentals"""
         if not self.client:
@@ -114,8 +164,9 @@ ANALYST VIEW:
         """Execute full analysis"""
         fundamentals = self.get_fundamentals()
         earnings = self.get_earnings()
-        
-        full_data = fundamentals + earnings
+        assets = self.get_assets()
+
+        full_data = fundamentals + earnings + assets
         analysis = self.analyze_with_llm(full_data)
         
         return analysis
