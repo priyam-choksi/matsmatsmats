@@ -1,0 +1,101 @@
+{
+  "ticker": "AAPL",
+  "timestamp": "2025-11-13T11:49:46.007153",
+  "portfolio_value": 100000.0,
+  "verdict": "MODIFY",
+  "final_position_dollars": 5625.0,
+  "final_position_pct": 0.05625,
+  "confidence": "LOW",
+  "reasoning": [
+    "Research says AVOID but weak conviction - downgrading to HOLD"
+  ],
+  "conditions": [
+    "Strict stop loss at -5%",
+    "Maximum holding: 6 months",
+    "Review frequency: Weekly",
+    "Exit immediately if new red flags emerge"
+  ],
+  "risk_controls": {
+    "stop_loss": {
+      "percentage": 5.0,
+      "max_dollar_loss": 562.5,
+      "type": "TRAILING",
+      "reasoning": "Stop at -5% limits loss to $562"
+    },
+    "take_profit": [
+      {
+        "level": 1,
+        "target_pct": 10,
+        "exit_pct": 33,
+        "reasoning": "Take 1/3 at +10% (lock in quick gain)"
+      },
+      {
+        "level": 2,
+        "target_pct": 20,
+        "exit_pct": 33,
+        "reasoning": "Take 1/3 at +20% (solid profit)"
+      },
+      {
+        "level": 3,
+        "target_pct": 30,
+        "exit_pct": 34,
+        "reasoning": "Final 1/3 at +30% (let winners run)"
+      }
+    ],
+    "time_limit": {
+      "max_holding_period": "6 months",
+      "review_frequency": "Weekly",
+      "mandatory_review": "30 days",
+      "reasoning": "Prevent indefinite holding, force re-evaluation"
+    },
+    "monitoring": {
+      "daily_checks": [
+        "Price vs stop/target",
+        "Volume",
+        "News alerts"
+      ],
+      "weekly_checks": [
+        "Technical levels",
+        "Sentiment shifts",
+        "Thesis validity"
+      ],
+      "monthly_checks": [
+        "Fundamental review",
+        "Position sizing",
+        "Risk/reward update"
+      ]
+    },
+    "exit_triggers": []
+  },
+  "position_sizing_breakdown": {
+    "base_size": 0.1125,
+    "confidence_multiplier": 1.0,
+    "probability_multiplier": 1.0,
+    "final_size_pct": 0.1125,
+    "final_size_dollars": 11250.0,
+    "reasoning": [
+      "Base: 11.2% (avg of risk analysts)",
+      "Confidence adj: \u00d71.0 (MEDIUM)",
+      "Probability adj: \u00d71.0"
+    ]
+  },
+  "risk_consensus": {
+    "stances": {
+      "aggressive": "BUY",
+      "neutral": "HOLD",
+      "conservative": "AVOID"
+    },
+    "position_sizes": {
+      "aggressive": 0.195,
+      "neutral": 0.03,
+      "conservative": 0.0
+    },
+    "agreements": [],
+    "conflicts": [
+      "No clear consensus - all 3 disagree",
+      "Direct conflict: Some say BUY, others say SELL/AVOID"
+    ],
+    "avg_position_size": 0.1125
+  },
+  "research_recommendation": "AVOID"
+}

@@ -1,10 +1,31 @@
 {
   "profile": "NEUTRAL",
   "ticker": "AAPL",
-  "timestamp": "2025-10-16T19:45:24.809216",
+  "timestamp": "2025-11-13T11:49:04.279073",
+  "expected_value": 0.75,
   "stance": "HOLD",
   "position_size": 0.03,
-  "reasoning": "Neutral expected value - wait for better setup",
+  "reasoning": "Neutral EV +0.8%",
   "confidence": "LOW",
-  "expected_value": -6.25
+  "trading_plan": {
+    "entry_strategy": "Wait",
+    "stop_loss": "-5%",
+    "profit_targets": [
+      "+10%"
+    ],
+    "time_frame": "Watch"
+  },
+  "expected_value_calc": {
+    "bull_probability": 0.15,
+    "bear_probability": 0.15,
+    "upside_pct": 25.0,
+    "downside_pct": 20.0,
+    "expected_value": 0.75,
+    "calculation": "(25% \u00d7 15%) - (20% \u00d7 15%) = +0.8%"
+  },
+  "risk_parameters": {
+    "max_position_size": 0.1,
+    "min_reward_ratio": 3.0,
+    "conviction_threshold": 0.65
+  }
 }

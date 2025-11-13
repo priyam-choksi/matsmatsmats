@@ -1,0 +1,38 @@
+{
+  "symbol": "AAPL",
+  "timestamp": "2025-11-13T11:49:47.908310",
+  "recommended_strategy": "cooperator",
+  "regime": "sideways",
+  "strategies": {
+    "actual_market": {
+      "action": "BUY",
+      "position_size": 5625.0,
+      "confidence": 0.4,
+      "reasoning": "Using Risk Manager's decision directly (control strategy)"
+    },
+    "buy_hold": {
+      "action": "HOLD",
+      "position_size": 5625.0,
+      "confidence": 0.4,
+      "reasoning": "Confidence 40.0% below Buy&Hold threshold 80.0%"
+    },
+    "cooperator": {
+      "action": "BUY",
+      "position_size": 3937.4999999999995,
+      "confidence": 0.36000000000000004,
+      "reasoning": "Reducing: Misalignment detected (-0.12)"
+    },
+    "defector": {
+      "action": "SELL",
+      "position_size": 3375.0,
+      "confidence": 0.36000000000000004,
+      "reasoning": "Contrarian: High consensus (100.0%) suggests overreaction"
+    },
+    "tit_for_tat": {
+      "action": "BUY",
+      "position_size": 3937.4999999999995,
+      "confidence": 0.36000000000000004,
+      "reasoning": "First round: Starting cooperative Reducing (Cooperator logic): Misalignment detected"
+    }
+  }
+}
