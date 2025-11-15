@@ -1,6 +1,10 @@
 {
-  "ticker": "AAPL",
+  "ticker": "NVDA",
   "research_mode": "shallow",
+  "research_rounds": 1,
+  "portfolio_value": 100000,
+  "start_time": "2025-11-15T08:22:01.372382",
+  "end_time": "2025-11-15T08:25:17.003508",
   "phases": {
     "phase1": {
       "status": "SUCCESS"
@@ -21,5 +25,235 @@
       "status": "SUCCESS"
     }
   },
-  "errors": []
+  "errors": [],
+  "log": [
+    {
+      "timestamp": "08:22:01",
+      "phase": "phase1",
+      "message": "Phase 1: Running Analysts (4)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "08:22:01",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\orchestrators\\discussion_hub.py NVDA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:23:06",
+      "phase": null,
+      "message": "Output preview: [HUB] Found 4/4 analyst agents  ====================================================================== DISCUSSION HUB: NVDA ======================================================================  [HUB...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:23:06",
+      "phase": "phase1",
+      "message": "Analysts complete - output file created",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "08:23:07",
+      "phase": "phase2",
+      "message": "Phase 2: Researchers (shallow, 1 rounds)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "08:23:07",
+      "phase": "phase2",
+      "message": "Running Bear Researcher...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:23:07",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\researcher\\bear_researcher.py NVDA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:23:36",
+      "phase": null,
+      "message": "Output preview: [BEAR] Loading discussion points from F:\\DAMG 7374_GENAI\\TradingAgent\\outputs\\discussion_points.json... [BEAR] \u2713 Loaded discussion for NVDA [BEAR] \u2713 Full reports: 4  [BEAR] \ud83d\udcca SHALLOW MODE - Quick bear...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:23:36",
+      "phase": "phase2",
+      "message": "Running Bull Researcher...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:23:36",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\researcher\\bull_researcher.py NVDA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:24:02",
+      "phase": null,
+      "message": "Output preview: [BULL] Loading discussion points from F:\\DAMG 7374_GENAI\\TradingAgent\\outputs\\discussion_points.json... [BULL] \u2713 Loaded discussion for NVDA [BULL] \u2713 Full reports: 4  [BULL] \ud83d\udcca SHALLOW MODE - Quick bull...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:24:02",
+      "phase": "phase2",
+      "message": "Both researchers complete with output files",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "08:24:03",
+      "phase": "phase3",
+      "message": "Phase 3: Research Manager",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "08:24:03",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\research_manager.py NVDA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:24:21",
+      "phase": null,
+      "message": "Output preview: [RESEARCH_MGR] Loading research files... [RESEARCH_MGR] \u2713 Bull thesis loaded (F:\\DAMG 7374_GENAI\\TradingAgent\\outputs\\bull_thesis.json) [RESEARCH_MGR] \u2713 Bear thesis loaded (F:\\DAMG 7374_GENAI\\TradingA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:24:21",
+      "phase": "phase3",
+      "message": "Research Manager complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "08:24:22",
+      "phase": "phase4",
+      "message": "Phase 4: Risk Team (3 debators)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "08:24:22",
+      "phase": "phase4",
+      "message": "Running Aggressive debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:24:22",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\aggressive_debator.py NVDA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:24:37",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== AGGRESSIVE RISK EVALUATION: NVDA ======================================================================  [AGGRESSIVE] Loading da...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:24:37",
+      "phase": "phase4",
+      "message": "  \u2713 Aggressive complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "08:24:37",
+      "phase": "phase4",
+      "message": "Running Neutral debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:24:37",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\neutral_debator.py NVDA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:24:49",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== NEUTRAL RISK EVALUATION: NVDA ======================================================================  [NEUTRAL] Loading data... ...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:24:49",
+      "phase": "phase4",
+      "message": "  \u2713 Neutral complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "08:24:49",
+      "phase": "phase4",
+      "message": "Running Conservative debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:24:49",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\conservative_debator.py NVDA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:25:00",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== CONSERVATIVE RISK EVALUATION: NVDA ======================================================================  [CONSERVATIVE] Loadin...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:25:00",
+      "phase": "phase4",
+      "message": "  \u2713 Conservative complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "08:25:00",
+      "phase": "phase4",
+      "message": "Risk team complete (3/3)",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "08:25:01",
+      "phase": "phase5",
+      "message": "Phase 5: Risk Manager",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "08:25:01",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\risk_manager.py NVDA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:25:13",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== RISK MANAGER FINAL DECISION: NVDA Portfolio: $100,000 ======================================================================  [R...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:25:13",
+      "phase": "phase5",
+      "message": "Final Decision: MODIFY ($5,625)",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "08:25:14",
+      "phase": "phase6",
+      "message": "Phase 6: Game Theory Tournament",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "08:25:14",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\orchestrators\\game_theory_orchestrator.py NVDA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:25:16",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== \ud83c\udfae GAME THEORY TOURNAMENT: NVDA ======================================================================  \ud83d\udcc2 Loading risk decision.....",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "08:25:16",
+      "phase": "phase6",
+      "message": "Game theory tournament complete",
+      "status": "SUCCESS"
+    }
+  ]
 }
