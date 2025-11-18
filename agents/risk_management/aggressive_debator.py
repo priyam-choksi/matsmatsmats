@@ -1,334 +1,404 @@
 """
-Aggressive Debator - High risk tolerance evaluation of bull/bear research
-Usage: python aggressive_debator.py AAPL --bull-file ../researcher/bull_thesis.json --bear-file ../researcher/bear_thesis.json
+Aggressive Risk Debator - Token-Efficient Version
+High risk tolerance evaluation with smart data loading
+
+Usage: python aggressive_debator.py AAPL --synthesis-file ../../outputs/research_synthesis.json
 """
 
 import os
 import sys
 import json
 import argparse
+import time
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, List, Any, Optional
 from openai import OpenAI
 
+# Force UTF-8 for Windows
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+
 class AggressiveDebator:
-    def __init__(self, ticker, api_key=None, model="gpt-4o-mini"):
-        self.ticker = ticker
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
+        self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
         
         self.risk_profile = "AGGRESSIVE"
         
-        self.system_prompt = """You are an aggressive risk-taking trader who favors high-conviction, high-reward trades.
-        You believe in taking larger positions when the opportunity is right, accepting volatility for returns.
-        Your philosophy:
-        - Fortune favors the bold - bigger bets on strong convictions
-        - Volatility is opportunity, not just risk
-        - Missing upside is worse than temporary drawdowns
-        - Maximum position size: 25% of portfolio
-        - Accept 10-15% drawdowns for 30%+ upside potential
-        
-        Evaluate the bull and bear cases and make an aggressive but reasoned recommendation.
-        End with: AGGRESSIVE STANCE: BUY/SELL/HOLD - Position Size: X% - Confidence: High/Medium/Low"""
+        self.system_prompt = """You are the Aggressive Risk Analyst - a high-reward champion who seeks bold opportunities.
+
+**YOUR PERSONALITY:**
+"Fortune favors the bold" - You believe missing upside is worse than temporary drawdowns.
+
+**DECISION CRITERIA:**
+- STRONG BUY (20-25%): R/R >3:1, upside >30%
+- BUY (10-15%): R/R >2:1, upside >20%
+- HOLD/SMALL (5%): R/R ~1.5:1, need more confirmation
+- AVOID (0%): R/R <1:1 or downside >25%
+
+**OUTPUT:** 
+Provide aggressive analysis with specific position sizing, entry strategy, and profit targets.
+
+AGGRESSIVE STANCE: [STRONG BUY/BUY/HOLD/AVOID] - Position Size: X% - Confidence: [High/Medium/Low]"""
         
         self.risk_parameters = {
-            'max_position_size': 0.25,  # 25% of portfolio
-            'min_position_size': 0.05,  # 5% minimum
-            'max_drawdown_tolerance': 0.15,  # 15% drawdown acceptable
-            'min_reward_ratio': 2.0,  # Want 2:1 reward/risk minimum
-            'volatility_preference': 'HIGH',  # Actually prefer volatility
-            'time_horizon': 'MEDIUM',  # 3-6 months
-            'conviction_threshold': 0.6  # 60% conviction to act
+            'max_position_size': 0.25,
+            'min_position_size': 0.05,
+            'max_drawdown_tolerance': 0.15,
+            'min_reward_ratio': 2.0
         }
+        
+        self.evaluation = {}
     
-    def load_research(self, bull_file, bear_file):
-        """Load bull and bear research reports"""
+    def load_all_data(
+        self,
+        synthesis_file: Optional[str] = None,
+        bull_file: Optional[str] = None,
+        bear_file: Optional[str] = None
+    ) -> Dict:
+        """
+        Smart data loading - token efficient
+        Tries synthesis first, falls back to separate files
+        """
+        print(f"[AGGRESSIVE] Loading data...")
+        
+        # Try loading synthesis
+        if synthesis_file and os.path.exists(synthesis_file):
+            try:
+                with open(synthesis_file, 'r', encoding='utf-8') as f:
+                    synthesis = json.load(f)
+                print(f"[AGGRESSIVE] ✓ Synthesis loaded")
+                
+                # Check if bull/bear are embedded
+                if 'bull_thesis' in synthesis and 'bear_thesis' in synthesis:
+                    print(f"[AGGRESSIVE] ✓ Bull/bear found in synthesis")
+                    return synthesis
+                else:
+                    # Synthesis exists but doesn't have bull/bear - load separately
+                    print(f"[AGGRESSIVE] → Synthesis missing bull/bear, loading separately...")
+                    
+                    # Load bull
+                    if not bull_file:
+                        bull_file = "../../outputs/bull_thesis.json"
+                    if not bear_file:
+                        bear_file = "../../outputs/bear_thesis.json"
+                    
+                    if os.path.exists(bull_file):
+                        with open(bull_file, 'r', encoding='utf-8') as f:
+                            synthesis['bull_thesis'] = json.load(f)
+                        print(f"[AGGRESSIVE] ✓ Bull thesis loaded")
+                    
+                    if os.path.exists(bear_file):
+                        with open(bear_file, 'r', encoding='utf-8') as f:
+                            synthesis['bear_thesis'] = json.load(f)
+                        print(f"[AGGRESSIVE] ✓ Bear thesis loaded")
+                    
+                    return synthesis
+                    
+            except Exception as e:
+                print(f"[AGGRESSIVE] ⚠️  Synthesis load error: {e}")
+        
+        # Fallback: Load bull/bear directly
+        print(f"[AGGRESSIVE] → Loading bull/bear directly (no synthesis)...")
+        
+        if not bull_file:
+            bull_file = "../../outputs/bull_thesis.json"
+        if not bear_file:
+            bear_file = "../../outputs/bear_thesis.json"
+        
         bull_thesis = {}
         bear_thesis = {}
         
-        # Load bull thesis
         if os.path.exists(bull_file):
-            with open(bull_file, 'r') as f:
+            with open(bull_file, 'r', encoding='utf-8') as f:
                 bull_thesis = json.load(f)
-        else:
-            print(f"Bull thesis file not found: {bull_file}")
-            bull_thesis = self.create_default_thesis('bull')
+            print(f"[AGGRESSIVE] ✓ Bull loaded")
         
-        # Load bear thesis
         if os.path.exists(bear_file):
-            with open(bear_file, 'r') as f:
+            with open(bear_file, 'r', encoding='utf-8') as f:
                 bear_thesis = json.load(f)
-        else:
-            print(f"Bear thesis file not found: {bear_file}")
-            bear_thesis = self.create_default_thesis('bear')
+            print(f"[AGGRESSIVE] ✓ Bear loaded")
         
-        return bull_thesis, bear_thesis
+        return {
+            'ticker': self.ticker,
+            'bull_thesis': bull_thesis,
+            'bear_thesis': bear_thesis,
+            'source': 'direct_load'
+        }
     
-    def create_default_thesis(self, thesis_type):
-        """Create default thesis if files not found"""
-        if thesis_type == 'bull':
-            return {
-                'risk_reward': {'upside_potential': '20-30%', 'downside_risk': '10%', 'reward_risk_ratio': 2.5},
-                'catalysts': [{'description': 'Strong momentum', 'timeline': 'near-term'}],
-                'core_thesis': 'Bullish momentum intact'
-            }
-        else:
-            return {
-                'risk_assessment': {'downside_risk': '20%', 'risk_level': 'MEDIUM'},
-                'downside_triggers': [{'description': 'Market weakness', 'timeline': 'ongoing'}],
-                'core_thesis': 'Risks are manageable'
-            }
-    
-    def evaluate_opportunity(self, bull_thesis, bear_thesis):
+    def evaluate_opportunity(self, synthesis: Dict) -> Dict[str, Any]:
         """Evaluate from aggressive perspective"""
+        print(f"[AGGRESSIVE] Evaluating opportunity...")
+        
+        bull_thesis = synthesis.get('bull_thesis', {})
+        bear_thesis = synthesis.get('bear_thesis', {})
+        
+        # Get metrics
+        bull_rr = bull_thesis.get('risk_reward', {})
+        bear_ra = bear_thesis.get('risk_assessment', {})
+        
+        rr_ratio = bull_rr.get('reward_risk_ratio', 1.0)
+        upside = bull_rr.get('upside_potential', '20%')
+        downside = bear_ra.get('downside_risk', '15%')
+        
+        # Parse percentages
+        import re
+        upside_nums = re.findall(r'\d+', str(upside))
+        downside_nums = re.findall(r'\d+', str(downside))
+        
+        upside_pct = sum(int(n) for n in upside_nums) / len(upside_nums) if upside_nums else 20
+        downside_pct = sum(int(n) for n in downside_nums) / len(downside_nums) if downside_nums else 15
+        
         evaluation = {
             'profile': self.risk_profile,
             'ticker': self.ticker,
             'timestamp': datetime.now().isoformat()
         }
         
-        # Extract key metrics
-        bull_rr = bull_thesis.get('risk_reward', {})
-        bear_ra = bear_thesis.get('risk_assessment', {})
-        
-        # Parse reward/risk ratio
-        rr_ratio = bull_rr.get('reward_risk_ratio', 1.0)
-        if isinstance(rr_ratio, str):
-            rr_ratio = 1.0
-        
-        # Aggressive scoring - we favor upside potential
-        upside = bull_rr.get('upside_potential', '10%')
-        downside = bear_ra.get('downside_risk', '20%')
-        
-        # Extract percentages
-        upside_pct = self.extract_percentage(upside)
-        downside_pct = self.extract_percentage(downside)
-        
-        # Aggressive decision logic
-        if rr_ratio >= 2.0 and upside_pct >= 20:
+        # Aggressive logic
+        if rr_ratio >= 3.0 and upside_pct >= 30:
             evaluation['stance'] = 'STRONG BUY'
-            evaluation['position_size'] = 0.20  # 20% position
-            evaluation['reasoning'] = "Excellent risk/reward with significant upside"
+            evaluation['position_size'] = 0.25
+            evaluation['reasoning'] = f"Exceptional R/R ({rr_ratio:.1f}:1) with {upside_pct:.0f}% upside"
+        elif rr_ratio >= 2.0 and upside_pct >= 20:
+            evaluation['stance'] = 'BUY'
+            evaluation['position_size'] = 0.15
+            evaluation['reasoning'] = f"Strong R/R ({rr_ratio:.1f}:1) with {upside_pct:.0f}% upside"
         elif rr_ratio >= 1.5 and upside_pct >= 15:
             evaluation['stance'] = 'BUY'
-            evaluation['position_size'] = 0.15  # 15% position
-            evaluation['reasoning'] = "Good opportunity worth aggressive positioning"
+            evaluation['position_size'] = 0.10
+            evaluation['reasoning'] = f"Decent R/R ({rr_ratio:.1f}:1) worth aggressive bet"
         elif downside_pct >= 30:
-            evaluation['stance'] = 'SELL'
+            evaluation['stance'] = 'AVOID'
             evaluation['position_size'] = 0.0
-            evaluation['reasoning'] = "Even for aggressive traders, downside risk too severe"
+            evaluation['reasoning'] = f"Even aggressive traders avoid {downside_pct:.0f}% downside"
         else:
-            evaluation['stance'] = 'HOLD/WAIT'
-            evaluation['position_size'] = 0.05  # Small position
-            evaluation['reasoning'] = "Insufficient conviction for aggressive bet"
+            evaluation['stance'] = 'HOLD/SMALL'
+            evaluation['position_size'] = 0.05
+            evaluation['reasoning'] = f"Insufficient conviction"
         
-        # Check catalysts for timing
-        catalysts = bull_thesis.get('catalysts', [])
-        if catalysts and 'imminent' in str(catalysts[0].get('timeline', '')):
-            evaluation['position_size'] *= 1.5  # Increase size for imminent catalysts
-            evaluation['position_size'] = min(evaluation['position_size'], self.risk_parameters['max_position_size'])
+        # Catalyst boost
+        for catalyst in bull_thesis.get('catalysts', []):
+            if 'imminent' in str(catalyst.get('timeline', '')).lower():
+                evaluation['position_size'] = min(evaluation['position_size'] * 1.3, 0.25)
+                evaluation['reasoning'] += " (BOOSTED for imminent catalyst)"
+                break
         
-        evaluation['confidence'] = self.calculate_confidence(bull_thesis, bear_thesis)
+        # Confidence
+        if evaluation['stance'] == 'STRONG BUY':
+            evaluation['confidence'] = 'HIGH'
+        elif evaluation['stance'] == 'BUY' and evaluation['position_size'] >= 0.15:
+            evaluation['confidence'] = 'HIGH'
+        elif evaluation['stance'] == 'BUY':
+            evaluation['confidence'] = 'MEDIUM'
+        else:
+            evaluation['confidence'] = 'LOW'
+        
+        print(f"[AGGRESSIVE] ✓ {evaluation['stance']}, Position: {evaluation['position_size']*100:.0f}%")
         
         return evaluation
     
-    def extract_percentage(self, value_str):
-        """Extract percentage from string like '20-30%' """
-        if isinstance(value_str, (int, float)):
-            return value_str
-        if isinstance(value_str, str):
-            # Extract first number
-            import re
-            numbers = re.findall(r'\d+', value_str)
-            if numbers:
-                return float(numbers[0])
-        return 10.0  # Default
-    
-    def calculate_confidence(self, bull_thesis, bear_thesis):
-        """Calculate confidence level"""
-        # Aggressive traders have higher baseline confidence
-        confidence_score = 70  # Start at 70%
-        
-        # Boost confidence for strong bull case
-        if bull_thesis.get('risk_reward', {}).get('conviction_level') == 'HIGH':
-            confidence_score += 20
-        
-        # Only slightly reduce for bear risks (aggressive = risk tolerant)
-        if bear_thesis.get('risk_assessment', {}).get('risk_level') == 'HIGH':
-            confidence_score -= 10  # Only -10 instead of more
-        
-        if confidence_score >= 80:
-            return 'HIGH'
-        elif confidence_score >= 60:
-            return 'MEDIUM'
-        else:
-            return 'LOW'
-    
-    def generate_aggressive_plan(self, evaluation, bull_thesis, bear_thesis):
-        """Generate aggressive trading plan"""
+    def generate_trading_plan(self, evaluation: Dict, synthesis: Dict) -> Dict[str, Any]:
+        """Generate trading plan"""
         plan = {
             'entry_strategy': '',
             'position_building': '',
-            'risk_management': '',
             'profit_targets': [],
+            'stop_loss': '',
             'time_frame': ''
         }
         
-        if evaluation['stance'] in ['BUY', 'STRONG BUY']:
-            plan['entry_strategy'] = "Scale in aggressively on any weakness"
-            plan['position_building'] = f"Start with {evaluation['position_size']*100/2:.0f}%, double on confirmation"
-            plan['risk_management'] = "Wide stop at -15% to avoid shakeouts"
-            plan['profit_targets'] = ["First target: +20%", "Second target: +35%", "Let remainder run"]
-            plan['time_frame'] = "3-6 months for full position"
-        elif evaluation['stance'] == 'SELL':
-            plan['entry_strategy'] = "Exit immediately or short aggressively"
-            plan['position_building'] = "Full exit, consider inverse position"
-            plan['risk_management'] = "No averaging down - cut losses"
-            plan['profit_targets'] = ["Target: Exit or -20% on short"]
-            plan['time_frame'] = "Immediate action"
+        if evaluation['stance'] in ['STRONG BUY', 'BUY']:
+            plan['entry_strategy'] = "Aggressive entry on weakness or at market"
+            plan['position_building'] = f"{evaluation['position_size']*50:.0f}% initial, double on confirmation"
+            plan['stop_loss'] = "Wide stop -12 to -15%"
+            plan['profit_targets'] = ["+25%", "+40%", "+50%+"]
+            plan['time_frame'] = "3-6 months"
+        elif evaluation['stance'] == 'AVOID':
+            plan['entry_strategy'] = "No entry"
+            plan['position_building'] = "Zero"
+            plan['stop_loss'] = "N/A"
+            plan['profit_targets'] = ["N/A"]
+            plan['time_frame'] = "No position"
         else:
-            plan['entry_strategy'] = "Wait for better setup"
-            plan['position_building'] = "Minimal pilot position only"
-            plan['risk_management'] = "Tight stop at -5%"
-            plan['profit_targets'] = ["Quick profit at +10%"]
-            plan['time_frame'] = "Re-evaluate in 1-2 weeks"
+            plan['entry_strategy'] = "Small pilot"
+            plan['position_building'] = "5% max"
+            plan['stop_loss'] = "-8%"
+            plan['profit_targets'] = ["+15%"]
+            plan['time_frame'] = "1-2 months"
         
         return plan
     
-    def synthesize_with_llm(self, evaluation_data):
-        """Use LLM for final synthesis"""
+    def synthesize_with_llm(self, evaluation: Dict, trading_plan: Dict, synthesis: Dict) -> str:
+        """Generate report - ONLY sends relevant excerpts to LLM"""
+        
         if not self.client:
-            return self.create_fallback_report(evaluation_data)
+            return self._create_fallback_report(evaluation, trading_plan)
         
         try:
-            prompt = f"""As an aggressive trader, evaluate this opportunity for {self.ticker}:
+            print(f"[AGGRESSIVE] Generating report...")
+            
+            # TOKEN OPTIMIZATION: Only send key excerpts, not full theses!
+            bull_summary = synthesis.get('bull_thesis', {}).get('core_thesis', 'Not available')[:500]
+            bear_summary = synthesis.get('bear_thesis', {}).get('core_thesis', 'Not available')[:500]
+            research_rec = synthesis.get('conclusion', {}).get('recommendation', 'N/A')
+            
+            # Small, focused context
+            context = f"""Aggressive evaluation for {self.ticker}:
 
-Bull Case Summary: {evaluation_data['bull_summary']}
-Bear Case Summary: {evaluation_data['bear_summary']}
-Initial Evaluation: {evaluation_data['evaluation']}
+Research Recommendation: {research_rec}
+Bull Case: {bull_summary}
+Bear Case: {bear_summary}
 
-Provide an aggressive but intelligent trading recommendation that:
-1. Explains why this is or isn't an aggressive opportunity
-2. Specifies exact position sizing (max 25%)
-3. Defines entry points and scaling strategy
-4. Sets profit targets (be ambitious)
-5. Acknowledges risks but explains why they're acceptable
+Your Assessment: {json.dumps(evaluation, indent=2)}
+Trading Plan: {json.dumps(trading_plan, indent=2)}
 
-Be bold but not reckless. Focus on asymmetric opportunities."""
+Explain why aggressive positioning is warranted (or not). Be specific."""
             
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": context}
                 ],
-                temperature=0.8  # Higher temp for aggressive stance
+                temperature=0.75,
+                max_tokens=1500  # Reduced - don't need massive report
             )
-            return response.choices[0].message.content
+            
+            report = response.choices[0].message.content
+            
+            if "AGGRESSIVE STANCE:" not in report:
+                report += f"\n\nAGGRESSIVE STANCE: {evaluation['stance']} - Position Size: {evaluation['position_size']*100:.0f}% - Confidence: {evaluation['confidence']}"
+            
+            print(f"[AGGRESSIVE] ✓ Report complete")
+            
+            return report
+            
         except Exception as e:
-            print(f"LLM Error: {e}")
-            return self.create_fallback_report(evaluation_data)
+            print(f"[AGGRESSIVE] ❌ LLM error: {e}")
+            return self._create_fallback_report(evaluation, trading_plan)
     
-    def create_fallback_report(self, evaluation_data):
-        """Create report without LLM"""
-        eval = evaluation_data['evaluation']
-        plan = evaluation_data['trading_plan']
-        
+    def _create_fallback_report(self, evaluation: Dict, trading_plan: Dict) -> str:
+        """Fallback report"""
         report = f"""
-AGGRESSIVE RISK EVALUATION - {self.ticker}
-{'='*60}
-Risk Profile: AGGRESSIVE (High Risk Tolerance)
-Evaluation Date: {eval['timestamp']}
+# AGGRESSIVE RISK EVALUATION: {self.ticker}
+{'='*70}
 
-DECISION: {eval['stance']}
-Position Size: {eval['position_size']*100:.1f}% of portfolio
-Reasoning: {eval['reasoning']}
+**Stance:** {evaluation['stance']}
+**Position:** {evaluation['position_size']*100:.0f}%
+**Reasoning:** {evaluation['reasoning']}
 
-TRADING PLAN:
-Entry Strategy: {plan['entry_strategy']}
-Position Building: {plan['position_building']}
-Risk Management: {plan['risk_management']}
+**Entry:** {trading_plan['entry_strategy']}
+**Stop:** {trading_plan['stop_loss']}
+**Targets:** {', '.join(trading_plan['profit_targets'])}
 
-Profit Targets:
-"""
-        for target in plan['profit_targets']:
-            report += f"  • {target}\n"
-        
-        report += f"""
-Time Frame: {plan['time_frame']}
-
-AGGRESSIVE PERSPECTIVE:
-This analysis favors upside potential over downside protection.
-We accept higher volatility and drawdowns for outsized returns.
-Maximum drawdown tolerance: {self.risk_parameters['max_drawdown_tolerance']*100:.0f}%
-Minimum reward/risk ratio: {self.risk_parameters['min_reward_ratio']:.1f}x
-
-AGGRESSIVE STANCE: {eval['stance']} - Position Size: {eval['position_size']*100:.0f}% - Confidence: {eval['confidence']}
+AGGRESSIVE STANCE: {evaluation['stance']} - Position Size: {evaluation['position_size']*100:.0f}% - Confidence: {evaluation['confidence']}
 """
         return report
     
-    def evaluate(self, bull_thesis=None, bear_thesis=None, bull_file=None, bear_file=None):
-        """Main evaluation function"""
-        # Load research if not provided
+    def evaluate(
+        self,
+        synthesis_file: Optional[str] = None,
+        bull_file: Optional[str] = None,
+        bear_file: Optional[str] = None
+    ) -> tuple:
+        """Main evaluation"""
+        start_time = time.time()
+        
+        print(f"\n{'='*70}")
+        print(f"AGGRESSIVE RISK EVALUATION: {self.ticker}")
+        print(f"{'='*70}\n")
+        
+        # Smart loading - token efficient!
+        synthesis = self.load_all_data(synthesis_file, bull_file, bear_file)
+        
+        # Validate we have minimum data
+        if not synthesis:
+            print("[AGGRESSIVE] ❌ No data loaded")
+            return "Error: No data", {}
+        
+        bull_thesis = synthesis.get('bull_thesis', {})
+        bear_thesis = synthesis.get('bear_thesis', {})
+        
         if not bull_thesis or not bear_thesis:
-            if not bull_file:
-                bull_file = f"../researcher/bull_thesis_{self.ticker}.json"
-            if not bear_file:
-                bear_file = f"../researcher/bear_thesis_{self.ticker}.json"
-            bull_thesis, bear_thesis = self.load_research(bull_file, bear_file)
+            print("[AGGRESSIVE] ❌ Missing bull or bear thesis")
+            return "Error: Incomplete data", {}
         
-        print(f"Aggressive evaluation for {self.ticker}...")
+        # Evaluate
+        evaluation = self.evaluate_opportunity(synthesis)
+        trading_plan = self.generate_trading_plan(evaluation, synthesis)
         
-        # Evaluate opportunity
-        evaluation = self.evaluate_opportunity(bull_thesis, bear_thesis)
+        # Generate report (token-efficient!)
+        report = self.synthesize_with_llm(evaluation, trading_plan, synthesis)
         
-        # Generate trading plan
-        trading_plan = self.generate_aggressive_plan(evaluation, bull_thesis, bear_thesis)
-        
-        # Compile all data
-        evaluation_data = {
-            'evaluation': evaluation,
+        # Store
+        self.evaluation = {
+            **evaluation,
             'trading_plan': trading_plan,
-            'bull_summary': bull_thesis.get('core_thesis', 'No bull thesis'),
-            'bear_summary': bear_thesis.get('core_thesis', 'No bear thesis'),
             'risk_parameters': self.risk_parameters
         }
         
-        # Generate report
-        report = self.synthesize_with_llm(evaluation_data)
+        elapsed = time.time() - start_time
+        print(f"\n[AGGRESSIVE] ✓ Complete in {elapsed:.2f}s")
+        print(f"{'='*70}\n")
         
-        return report, evaluation
+        return report, self.evaluation
+    
+    def save_evaluation(self, filepath: str):
+        """Save evaluation"""
+        try:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(self.evaluation, f, indent=2)
+            print(f"[AGGRESSIVE] ✓ Saved to {filepath}")
+        except Exception as e:
+            print(f"[AGGRESSIVE] ⚠️  Save error: {e}")
+
 
 def main():
-    parser = argparse.ArgumentParser(description="Aggressive Risk Debator - High risk tolerance evaluation")
-    parser.add_argument("ticker", help="Stock ticker symbol")
-    parser.add_argument("--bull-file", help="Path to bull thesis JSON")
-    parser.add_argument("--bear-file", help="Path to bear thesis JSON")
+    parser = argparse.ArgumentParser(description="Aggressive Risk Debator")
+    parser.add_argument("ticker", help="Stock ticker")
+    parser.add_argument("--synthesis-file", default="../../outputs/research_synthesis.json")
+    parser.add_argument("--bull-file", default="../../outputs/bull_thesis.json")
+    parser.add_argument("--bear-file", default="../../outputs/bear_thesis.json")
     parser.add_argument("--api-key", help="OpenAI API key")
-    parser.add_argument("--model", default="gpt-4o-mini", help="OpenAI model")
+    parser.add_argument("--model", default="gpt-4o-mini")
     parser.add_argument("--output", help="Output file")
-    parser.add_argument("--save-evaluation", help="Save evaluation as JSON")
+    parser.add_argument("--save-evaluation", help="Save JSON")
     
     args = parser.parse_args()
     
-    debator = AggressiveDebator(args.ticker, args.api_key, args.model)
-    
-    # Run evaluation
-    report, evaluation = debator.evaluate(bull_file=args.bull_file, bear_file=args.bear_file)
-    
-    print(report)
-    
-    # Save outputs
-    if args.output:
-        with open(args.output, 'w', encoding='utf-8') as f:
-            f.write(report)
-        print(f"\nSaved report to {args.output}")
-    
-    if args.save_evaluation:
-        with open(args.save_evaluation, 'w') as f:
-            json.dump(evaluation, f, indent=2)
-        print(f"Saved evaluation to {args.save_evaluation}")
+    try:
+        debator = AggressiveDebator(ticker=args.ticker, api_key=args.api_key, model=args.model)
+        
+        report, evaluation = debator.evaluate(
+            synthesis_file=args.synthesis_file,
+            bull_file=args.bull_file,
+            bear_file=args.bear_file
+        )
+        
+        print(report)
+        
+        if args.output:
+            with open(args.output, 'w', encoding='utf-8') as f:
+                f.write(report)
+            print(f"\n✓ Saved to {args.output}")
+        
+        if args.save_evaluation:
+            debator.save_evaluation(args.save_evaluation)
+        
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Interrupted")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
