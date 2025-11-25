@@ -1,14 +1,12 @@
 {
   "ticker": "AAPL",
-  "timestamp": "2025-11-25T13:42:22.711900",
+  "timestamp": "2025-11-25T14:26:08.427522",
   "portfolio_value": 100000.0,
-  "verdict": "MODIFY",
-  "final_position_dollars": 4899.999999999999,
-  "final_position_pct": 0.048999999999999995,
-  "confidence": "LOW",
-  "reasoning": [
-    "Research says AVOID but weak conviction - downgrading to HOLD"
-  ],
+  "verdict": "APPROVE",
+  "final_position_dollars": 8225.0,
+  "final_position_pct": 0.08225,
+  "confidence": "MEDIUM",
+  "reasoning": [],
   "conditions": [
     "Strict stop loss at -7%",
     "Maximum holding: 6 months",
@@ -18,9 +16,9 @@
   "risk_controls": {
     "stop_loss": {
       "percentage": 7.000000000000001,
-      "max_dollar_loss": 685.9999999999999,
+      "max_dollar_loss": 575.75,
       "type": "FIXED",
-      "reasoning": "Stop at -7% limits loss to $686"
+      "reasoning": "Stop at -7% limits loss to $576"
     },
     "take_profit": [
       {
@@ -68,33 +66,36 @@
     "exit_triggers": []
   },
   "position_sizing_breakdown": {
-    "base_size": 0.08166666666666667,
-    "confidence_multiplier": 1.0,
-    "probability_multiplier": 1.2,
-    "final_size_pct": 0.09799999999999999,
-    "final_size_dollars": 9799.999999999998,
+    "base_size": 0.11750000000000001,
+    "confidence_multiplier": 0.7,
+    "probability_multiplier": 1.0,
+    "final_size_pct": 0.08225,
+    "final_size_dollars": 8225.0,
     "reasoning": [
-      "Base: 8.2% (avg of risk analysts)",
-      "Confidence adj: \u00d71.0 (MEDIUM)",
-      "Probability adj: \u00d71.2"
+      "Base: 11.8% (avg of risk analysts)",
+      "Confidence adj: \u00d70.7 (LOW)",
+      "Probability adj: \u00d71.0",
+      "Reduced to 8.2% after adjustments"
     ]
   },
   "risk_consensus": {
     "stances": {
       "aggressive": "BUY",
       "neutral": "SMALL BUY",
-      "conservative": "HOLD"
+      "conservative": "AVOID"
     },
     "position_sizes": {
       "aggressive": 0.195,
       "neutral": 0.04,
-      "conservative": 0.01
+      "conservative": 0.0
     },
     "agreements": [
       "2/3 risk analysts favor buying"
     ],
-    "conflicts": [],
-    "avg_position_size": 0.08166666666666667
+    "conflicts": [
+      "Direct conflict: Some say BUY, others say SELL/AVOID"
+    ],
+    "avg_position_size": 0.11750000000000001
   },
-  "research_recommendation": "AVOID"
+  "research_recommendation": "BUY"
 }
