@@ -1,903 +1,723 @@
 """
-Research Manager - Enhanced with Live Debate Orchestration
-Coordinates bull/bear debate and synthesizes results
+Research Manager - With Internal Debate Orchestration
+Loads bull/bear theses, runs debate rounds internally, synthesizes final decision
 
 Usage: 
-  # Old way (static files)
-  python research_manager.py AAPL --bull-file bull.json --bear-file bear.json
-  
-  # New way (orchestrated debate)
-  python research_manager.py AAPL --mode debate --rounds 3
+  python research_manager.py AAPL --bull-file ... --bear-file ...
+  python research_manager.py AAPL --bull-file ... --bear-file ... --debate-rounds 3
 """
 
 import os
 import sys
 import json
 import argparse
-import subprocess
 import time
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from openai import OpenAI
-from pathlib import Path
 
 # Force UTF-8 for Windows
 if sys.platform == 'win32':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-# Add the researcher directory to path
-current_dir = Path(__file__).parent
-researcher_dir = current_dir.parent / "researcher"
-sys.path.insert(0, str(researcher_dir))
-
-# Now import
-from bull_researcher import BullResearcher
-from bear_researcher import BearResearcher
 
 class ResearchManager:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
         
-        # Initialize researchers for debate mode
-        self.bull_researcher = None
-        self.bear_researcher = None
-        
-        # Enhanced system prompt (keeping original)
-        self.system_prompt = """You are the Research Manager acting as an objective debate moderator and portfolio manager.
+        # Debate prompts
+        self.bull_debate_prompt = """You are a Bull Analyst in Round {round_num} of an investment debate for {ticker}.
+
+Your core thesis: {thesis}
+
+**CRITICAL DEBATE RULES:**
+1. You MUST directly address the Bear's specific arguments
+2. Quote or reference their exact claims before countering
+3. Use data and numbers to refute their points
+4. Acknowledge valid concerns but explain why upside still dominates
+5. Bring NEW evidence, don't just repeat yourself
+
+Respond in 400-600 words. Be specific and persuasive.
+End with your strongest conviction point."""
+
+        self.bear_debate_prompt = """You are a Bear Analyst in Round {round_num} of an investment debate for {ticker}.
+
+Your core thesis: {thesis}
+
+**CRITICAL DEBATE RULES:**
+1. You MUST directly address the Bull's specific arguments
+2. Quote or reference their exact claims before countering
+3. Use data and numbers to refute their points
+4. Acknowledge valid points but explain why risks still dominate
+5. Bring NEW evidence, don't just repeat yourself
+
+Respond in 400-600 words. Be specific and persuasive.
+End with your key risk concern."""
+
+        self.moderator_prompt = """You are the Research Manager - an objective debate moderator and final decision maker.
 
 **YOUR CRITICAL ROLE:**
-You've received comprehensive research from both Bull and Bear analysts. Your job is to:
-1. Critically evaluate BOTH sides of the debate
-2. Make a definitive decision (not default to HOLD unless strongly justified)
-3. Weigh evidence objectively - strongest arguments win
-4. Calculate probability-weighted outcomes
-5. Provide clear, actionable investment recommendation
+1. Evaluate the debate objectively - the strongest arguments win
+2. Make a DECISIVE recommendation (avoid defaulting to HOLD)
+3. Weigh probability-adjusted outcomes
+4. Provide clear, actionable investment guidance
 
 **DECISION FRAMEWORK:**
 
-**When to BUY:**
-- Bull case significantly stronger than bear case
-- High-probability positive catalysts identified
-- Risk/reward ratio favorable (>2:1)
-- Multiple analysts aligned on upside
-- Bear concerns are minor or temporary
+**BUY when:**
+- Bull arguments are significantly stronger
+- Risk/reward ratio is favorable (>2:1)
+- Catalysts outweigh concerns
 
-**When to SELL:**
-- Bear case significantly stronger than bull case
-- High-probability downside triggers identified
-- Risk/reward unfavorable
-- Multiple red flags across analysts
-- Bull optimism ignoring critical risks
+**SELL when:**
+- Bear arguments are significantly stronger
+- Risk/reward is unfavorable
+- Downside triggers are imminent
 
-**When to HOLD (Only if justified):**
-- Arguments genuinely balanced with no edge
-- Need more data/time before catalyst clarity
-- Fair valuation with no strong directional catalyst
-- DO NOT default to HOLD just because both have points
+**HOLD only when:**
+- Arguments are genuinely balanced (rare)
+- Need specific catalyst for clarity
 
-RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Medium/Low
+**Be decisive. The best evidence wins.**
 
-**Be decisive.** Commit to the stance supported by strongest evidence. Avoid fence-sitting."""
-        
+End with: RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Medium/Low"""
+
         # Storage
         self.research_inputs = {
             'bull_thesis': {},
             'bear_thesis': {},
-            'risk_evaluations': {
-                'aggressive': {},
-                'neutral': {},
-                'conservative': {}
-            }
-        }
-        
-        # Debate history for orchestration
-        self.debate_history = []
-    
-    def orchestrate_debate(self, discussion_points: Dict, rounds: int = 3, mode: str = 'deep') -> Dict:
-        """
-        NEW METHOD: Orchestrate live debate between bull and bear
-        This replaces static file loading with dynamic interaction
-        """
-        print(f"\n[RESEARCH_MGR] 🎯 ORCHESTRATING {rounds}-ROUND DEBATE\n")
-        print(f"{'='*70}\n")
-        
-        start_time = time.time()
-        
-        # Initialize researchers
-        self.bull_researcher = BullResearcher(self.ticker, api_key=self.api_key, model=self.model)
-        self.bear_researcher = BearResearcher(self.ticker, api_key=self.api_key, model=self.model)
-        
-        # Store arguments for each round
-        bull_arguments = []
-        bear_arguments = []
-        
-        for round_num in range(1, rounds + 1):
-            print(f"[RESEARCH_MGR] 🔄 Round {round_num}/{rounds}")
-            print(f"{'-'*40}")
-            
-            if round_num == 1:
-                # Round 1: Initial arguments based on discussion points
-                print(f"[RESEARCH_MGR] Bull generating opening argument...")
-                bull_arg = self.bull_researcher._generate_initial_argument(
-                    self.bull_researcher.build_bull_thesis(
-                        self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
-                        self.bull_researcher.calculate_risk_reward(discussion_points)
-                    ),
-                    self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
-                    self.bull_researcher.identify_upside_catalysts(discussion_points),
-                    self.bull_researcher.calculate_risk_reward(discussion_points),
-                    discussion_points
-                )
-                
-                print(f"[RESEARCH_MGR] Bear generating opening argument...")
-                bear_arg = self.bear_researcher._generate_initial_argument(
-                    self.bear_researcher.build_bear_thesis(
-                        self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
-                        self.bear_researcher.calculate_risk_assessment(discussion_points)
-                    ),
-                    self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
-                    self.bear_researcher.identify_downside_triggers(discussion_points),
-                    self.bear_researcher.calculate_risk_assessment(discussion_points),
-                    discussion_points
-                )
-            else:
-                # Subsequent rounds: Respond to each other's arguments
-                print(f"[RESEARCH_MGR] Bull responding to bear...")
-                bull_arg = self.bull_researcher._generate_debate_response(
-                    round_num,
-                    rounds,
-                    self.debate_history,
-                    bear_arguments[-1],  # Respond to bear's last argument
-                    self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
-                    discussion_points
-                )
-                
-                print(f"[RESEARCH_MGR] Bear responding to bull...")
-                bear_arg = self.bear_researcher._generate_debate_response(
-                    round_num,
-                    rounds,
-                    self.debate_history,
-                    bull_arguments[-1],  # Respond to bull's last argument
-                    self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
-                    discussion_points
-                )
-            
-            # Store arguments
-            bull_arguments.append(bull_arg)
-            bear_arguments.append(bear_arg)
-            
-            # Update debate history
-            self.debate_history.append({
-                'round': round_num,
-                'speaker': 'bull',
-                'argument': bull_arg
-            })
-            self.debate_history.append({
-                'round': round_num,
-                'speaker': 'bear',
-                'argument': bear_arg
-            })
-            
-            print(f"[RESEARCH_MGR] ✓ Round {round_num} complete")
-            print(f"  Bull: {len(bull_arg)} chars")
-            print(f"  Bear: {len(bear_arg)} chars")
-            print()
-        
-        # Compile final theses with debate history
-        self.research_inputs['bull_thesis'] = {
-            'ticker': self.ticker,
-            'timestamp': datetime.now().isoformat(),
-            'mode': f'DEBATE_{mode.upper()}',
-            'rounds': rounds,
-            'core_thesis': self.bull_researcher.build_bull_thesis(
-                self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
-                self.bull_researcher.calculate_risk_reward(discussion_points)
-            ),
-            'opportunities': self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
-            'catalysts': self.bull_researcher.identify_upside_catalysts(discussion_points),
-            'risk_reward': self.bull_researcher.calculate_risk_reward(discussion_points),
-            'entry_strategies': self.bull_researcher.suggest_entry_strategies(
-                self.bull_researcher.calculate_risk_reward(discussion_points)
-            ),
-            'debate_history': [h for h in self.debate_history if h['speaker'] == 'bull'],
-            'final_argument': bull_arguments[-1]
-        }
-        
-        self.research_inputs['bear_thesis'] = {
-            'ticker': self.ticker,
-            'timestamp': datetime.now().isoformat(),
-            'mode': f'DEBATE_{mode.upper()}',
-            'rounds': rounds,
-            'core_thesis': self.bear_researcher.build_bear_thesis(
-                self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
-                self.bear_researcher.calculate_risk_assessment(discussion_points)
-            ),
-            'risks': self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
-            'downside_triggers': self.bear_researcher.identify_downside_triggers(discussion_points),
-            'risk_assessment': self.bear_researcher.calculate_risk_assessment(discussion_points),
-            'hedging_strategies': self.bear_researcher.suggest_hedging_strategies(
-                self.bear_researcher.calculate_risk_assessment(discussion_points)
-            ),
-            'debate_history': [h for h in self.debate_history if h['speaker'] == 'bear'],
-            'final_argument': bear_arguments[-1]
-        }
-        
-        elapsed = time.time() - start_time
-        print(f"[RESEARCH_MGR] ✓ Debate complete in {elapsed:.2f}s")
-        print(f"{'='*70}\n")
-        
-        return {
-            'debate_complete': True,
-            'rounds': rounds,
-            'duration': elapsed,
-            'bull_thesis': self.research_inputs['bull_thesis'],
-            'bear_thesis': self.research_inputs['bear_thesis']
+            'debate_history': [],
+            'risk_evaluations': {}
         }
     
     def load_research_files(self, bull_file: str, bear_file: str):
-        """Original method - load from static files"""
+        """Load bull and bear thesis files"""
         print(f"[RESEARCH_MGR] Loading research files...")
         
-        # Load bull thesis
         if os.path.exists(bull_file):
             with open(bull_file, 'r', encoding='utf-8') as f:
                 self.research_inputs['bull_thesis'] = json.load(f)
-            print(f"[RESEARCH_MGR] ✓ Bull thesis loaded ({bull_file})")
+            print(f"[RESEARCH_MGR] ✓ Bull thesis loaded")
         else:
-            print(f"[RESEARCH_MGR] ⚠️  Bull thesis not found: {bull_file}")
+            print(f"[RESEARCH_MGR] ⚠️ Bull thesis not found: {bull_file}")
         
-        # Load bear thesis
         if os.path.exists(bear_file):
             with open(bear_file, 'r', encoding='utf-8') as f:
                 self.research_inputs['bear_thesis'] = json.load(f)
-            print(f"[RESEARCH_MGR] ✓ Bear thesis loaded ({bear_file})")
+            print(f"[RESEARCH_MGR] ✓ Bear thesis loaded")
         else:
-            print(f"[RESEARCH_MGR] ⚠️  Bear thesis not found: {bear_file}")
+            print(f"[RESEARCH_MGR] ⚠️ Bear thesis not found: {bear_file}")
     
-    def synthesize(self, load_risk_evals: bool = True) -> tuple:
+    def load_risk_evaluations(self, outputs_dir: str = "../../outputs"):
+        """Load risk team evaluations if available"""
+        print(f"[RESEARCH_MGR] Loading risk evaluations...")
+        
+        risk_files = {
+            'aggressive': os.path.join(outputs_dir, "aggressive_eval.json"),
+            'neutral': os.path.join(outputs_dir, "neutral_eval.json"),
+            'conservative': os.path.join(outputs_dir, "conservative_eval.json")
+        }
+        
+        loaded = 0
+        for risk_type, filepath in risk_files.items():
+            if os.path.exists(filepath):
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        self.research_inputs['risk_evaluations'][risk_type] = json.load(f)
+                    loaded += 1
+                except Exception as e:
+                    print(f"[RESEARCH_MGR] ⚠️ Error loading {risk_type}: {e}")
+        
+        print(f"[RESEARCH_MGR] ✓ Loaded {loaded}/3 risk evaluations")
+
+    # ==================== INTERNAL DEBATE ENGINE ====================
+    
+    def run_debate(self, rounds: int = 3) -> List[Dict]:
         """
-        Main synthesis workflow - works with both static and debate modes
-        Returns (report, synthesis_data)
+        Run internal debate between bull and bear positions.
+        Each round: Bull argues → Bear responds → Bull responds → etc.
+        """
+        if not self.client:
+            print("[RESEARCH_MGR] ⚠️ No API client available, skipping debate")
+            return []
+        
+        bull_thesis = self.research_inputs.get('bull_thesis', {})
+        bear_thesis = self.research_inputs.get('bear_thesis', {})
+        
+        if not bull_thesis or not bear_thesis:
+            print("[RESEARCH_MGR] ⚠️ Missing thesis data, skipping debate")
+            return []
+        
+        # Get core theses for context
+        bull_core = bull_thesis.get('core_thesis', '') or bull_thesis.get('full_analysis', '')[:1500]
+        bear_core = bear_thesis.get('core_thesis', '') or bear_thesis.get('full_analysis', '')[:1500]
+        bull_full = bull_thesis.get('full_analysis', bull_core)
+        bear_full = bear_thesis.get('full_analysis', bear_core)
+        
+        print(f"\n{'='*70}")
+        print(f"INVESTMENT DEBATE: {self.ticker}")
+        print(f"{'='*70}")
+        print(f"Rounds: {rounds}")
+        print(f"Model: {self.model}")
+        print(f"{'='*70}\n")
+        
+        debate_history = []
+        
+        for round_num in range(1, rounds + 1):
+            print(f"\n--- ROUND {round_num}/{rounds} ---\n")
+            
+            # === BULL'S TURN ===
+            print(f"[🐂 BULL] Generating argument...")
+            
+            if round_num == 1:
+                # Opening argument
+                bull_arg = self._generate_opening('bull', bull_full, bear_core)
+            else:
+                # Respond to bear's last argument
+                bear_last = self._get_last_argument(debate_history, 'bear')
+                bull_arg = self._generate_rebuttal('bull', bull_core, bear_last, debate_history, round_num)
+            
+            debate_history.append({
+                'round': round_num,
+                'side': 'bull',
+                'argument': bull_arg,
+                'timestamp': datetime.now().isoformat()
+            })
+            print(f"[🐂 BULL] ✓ Complete ({len(bull_arg)} chars)")
+            
+            # === BEAR'S TURN ===
+            print(f"[🐻 BEAR] Generating response...")
+            
+            if round_num == 1:
+                # Opening response to bull
+                bear_arg = self._generate_opening('bear', bear_full, bull_arg)
+            else:
+                # Respond to bull's argument from this round
+                bear_arg = self._generate_rebuttal('bear', bear_core, bull_arg, debate_history, round_num)
+            
+            debate_history.append({
+                'round': round_num,
+                'side': 'bear',
+                'argument': bear_arg,
+                'timestamp': datetime.now().isoformat()
+            })
+            print(f"[🐻 BEAR] ✓ Complete ({len(bear_arg)} chars)")
+            
+            # Small delay for rate limiting
+            time.sleep(0.3)
+        
+        self.research_inputs['debate_history'] = debate_history
+        
+        print(f"\n{'='*70}")
+        print(f"DEBATE COMPLETE: {len(debate_history)} arguments over {rounds} rounds")
+        print(f"{'='*70}\n")
+        
+        return debate_history
+    
+    def _generate_opening(self, side: str, full_analysis: str, opponent_thesis: str) -> str:
+        """Generate opening argument for a side"""
+        if side == 'bull':
+            system = f"""You are the Bull Analyst presenting your opening argument for {self.ticker}.
+Be compelling, specific, and data-driven. Address potential bear concerns preemptively."""
+            
+            context = f"""## Your Complete Bull Analysis:
+{full_analysis[:2500]}
+
+## Bear's Thesis (you'll be debating against):
+{opponent_thesis[:1000]}
+
+---
+Present your OPENING bull case. Reference specific data points, price levels, and catalysts.
+Preemptively address the bear's main concerns.
+End with your strongest conviction point."""
+
+        else:  # bear
+            system = f"""You are the Bear Analyst responding to the Bull's opening for {self.ticker}.
+Be compelling, specific, and data-driven. Directly counter the bull's key points."""
+            
+            context = f"""## Your Complete Bear Analysis:
+{full_analysis[:2500]}
+
+## Bull's Opening Argument (you must respond to this):
+{opponent_thesis[:1500]}
+
+---
+DIRECTLY counter the Bull's specific claims, then present your bear case.
+Reference specific data points, risk levels, and downside triggers.
+End with your key risk concern."""
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": context}
+                ],
+                temperature=0.7,
+                max_tokens=1000
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"[RESEARCH_MGR] ⚠️ LLM error ({side} opening): {e}")
+            return f"{side.title()}'s opening argument (LLM error: {e})"
+    
+    def _generate_rebuttal(self, side: str, my_thesis: str, opponent_arg: str, 
+                           history: List[Dict], round_num: int) -> str:
+        """Generate rebuttal to opponent's argument"""
+        
+        # Format recent debate history
+        recent = history[-4:] if len(history) > 4 else history
+        history_str = "\n\n".join([
+            f"**Round {h['round']} - {h['side'].upper()}:**\n{h['argument'][:400]}..."
+            for h in recent
+        ])
+        
+        if side == 'bull':
+            system = self.bull_debate_prompt.format(
+                round_num=round_num,
+                ticker=self.ticker,
+                thesis=my_thesis[:800]
+            )
+        else:
+            system = self.bear_debate_prompt.format(
+                round_num=round_num,
+                ticker=self.ticker,
+                thesis=my_thesis[:800]
+            )
+        
+        context = f"""## Debate History:
+{history_str}
+
+## OPPONENT'S LATEST ARGUMENT (YOU MUST RESPOND TO THIS):
+{opponent_arg}
+
+---
+Directly address their specific claims first, then reinforce your position with new evidence."""
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": context}
+                ],
+                temperature=0.7,
+                max_tokens=1000
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"[RESEARCH_MGR] ⚠️ LLM error ({side} round {round_num}): {e}")
+            return f"{side.title()}'s rebuttal for round {round_num} (LLM error)"
+    
+    def _get_last_argument(self, history: List[Dict], side: str) -> str:
+        """Get the last argument from specified side"""
+        for entry in reversed(history):
+            if entry['side'] == side:
+                return entry['argument']
+        return ""
+
+    # ==================== SYNTHESIS ====================
+    
+    def format_debate_for_synthesis(self) -> str:
+        """Format the complete debate for final synthesis"""
+        debate = self.research_inputs.get('debate_history', [])
+        bull = self.research_inputs.get('bull_thesis', {})
+        bear = self.research_inputs.get('bear_thesis', {})
+        
+        formatted = f"""# Investment Debate Transcript: {self.ticker}
+{'='*60}
+
+"""
+        
+        if debate:
+            # We have actual debate history
+            for entry in debate:
+                icon = "🐂 BULL" if entry['side'] == 'bull' else "🐻 BEAR"
+                formatted += f"## Round {entry['round']} - {icon}\n\n{entry['argument']}\n\n{'─'*40}\n\n"
+        else:
+            # No debate - use original theses
+            formatted += f"""## BULL POSITION (No Debate)
+{bull.get('full_analysis', bull.get('core_thesis', 'Not available'))[:2000]}
+
+{'─'*40}
+
+## BEAR POSITION (No Debate)
+{bear.get('full_analysis', bear.get('core_thesis', 'Not available'))[:2000]}
+"""
+        
+        # Add quantitative data
+        formatted += f"""
+{'='*60}
+# QUANTITATIVE ASSESSMENTS
+
+## Bull Risk/Reward:
+{json.dumps(bull.get('risk_reward', {}), indent=2)}
+
+## Bear Risk Assessment:
+{json.dumps(bear.get('risk_assessment', {}), indent=2)}
+
+## Key Bull Catalysts:
+{json.dumps(bull.get('catalysts', [])[:3], indent=2)}
+
+## Key Bear Triggers:
+{json.dumps(bear.get('downside_triggers', [])[:3], indent=2)}
+"""
+        return formatted
+    
+    def calculate_probabilities(self) -> Dict[str, Any]:
+        """Calculate scenario probabilities based on conviction levels"""
+        bull = self.research_inputs.get('bull_thesis', {})
+        bear = self.research_inputs.get('bear_thesis', {})
+        
+        # Get conviction levels
+        bull_conv = bull.get('risk_reward', {}).get('conviction_level', 'MEDIUM')
+        bear_conv = bear.get('risk_assessment', {}).get('conviction_level', 'MEDIUM')
+        
+        # Score based on conviction
+        conv_scores = {'HIGH': 0.75, 'MEDIUM': 0.50, 'LOW': 0.30}
+        bull_score = conv_scores.get(bull_conv, 0.5)
+        bear_score = conv_scores.get(bear_conv, 0.5)
+        
+        # Factor in risk evaluations if available
+        for risk_type, eval_data in self.research_inputs.get('risk_evaluations', {}).items():
+            stance = eval_data.get('stance', '')
+            weight = 0.1  # Each risk eval adds 10% weight
+            if 'BUY' in stance:
+                bull_score += weight
+            elif 'SELL' in stance or 'AVOID' in stance:
+                bear_score += weight
+        
+        # Normalize to probabilities (leaving room for base case)
+        total = bull_score + bear_score
+        if total > 0:
+            bull_prob = (bull_score / total) * 75  # Max 75% to leave room for base
+            bear_prob = (bear_score / total) * 75
+        else:
+            bull_prob = bear_prob = 37.5
+        
+        base_prob = 100 - bull_prob - bear_prob
+        
+        return {
+            'bull_case': round(bull_prob, 1),
+            'bear_case': round(bear_prob, 1),
+            'base_case': round(base_prob, 1),
+            'scenarios': [
+                {
+                    'name': 'Bull Case',
+                    'probability': f"{bull_prob:.0f}%",
+                    'outcome': bull.get('risk_reward', {}).get('upside_potential', '20-30%')
+                },
+                {
+                    'name': 'Bear Case', 
+                    'probability': f"{bear_prob:.0f}%",
+                    'outcome': bear.get('risk_assessment', {}).get('downside_risk', '15-20%')
+                },
+                {
+                    'name': 'Base Case',
+                    'probability': f"{base_prob:.0f}%",
+                    'outcome': 'Sideways (±5%)'
+                }
+            ]
+        }
+    
+    def analyze_consensus(self) -> Dict[str, Any]:
+        """Analyze consensus across all inputs"""
+        consensus = {
+            'recommendations': {},
+            'conviction_levels': {},
+            'key_agreements': [],
+            'key_conflicts': []
+        }
+        
+        bull = self.research_inputs.get('bull_thesis', {})
+        bear = self.research_inputs.get('bear_thesis', {})
+        
+        # Bull recommendation
+        rr = bull.get('risk_reward', {})
+        if rr.get('reward_risk_ratio', 0) >= 2:
+            consensus['recommendations']['bull'] = 'BUY'
+        else:
+            consensus['recommendations']['bull'] = 'HOLD'
+        consensus['conviction_levels']['bull'] = rr.get('conviction_level', 'MEDIUM')
+        
+        # Bear recommendation
+        ra = bear.get('risk_assessment', {})
+        if ra.get('risk_level') == 'HIGH':
+            consensus['recommendations']['bear'] = 'SELL'
+        else:
+            consensus['recommendations']['bear'] = 'HOLD'
+        consensus['conviction_levels']['bear'] = ra.get('conviction_level', 'MEDIUM')
+        
+        # Risk evaluations
+        for risk_type, eval_data in self.research_inputs.get('risk_evaluations', {}).items():
+            consensus['recommendations'][risk_type] = eval_data.get('stance', 'HOLD')
+            consensus['conviction_levels'][risk_type] = eval_data.get('confidence', 'MEDIUM')
+        
+        # Identify conflicts
+        recs = list(consensus['recommendations'].values())
+        if 'BUY' in recs and 'SELL' in recs:
+            consensus['key_conflicts'].append("Direct BUY vs SELL conflict between analysts")
+        
+        return consensus
+    
+    def form_conclusion(self, probabilities: Dict, consensus: Dict) -> Dict[str, Any]:
+        """Form final investment conclusion"""
+        bull_prob = probabilities['bull_case']
+        bear_prob = probabilities['bear_case']
+        
+        # Decision logic - be decisive
+        if bull_prob >= 55:
+            rec = 'BUY'
+            conf = 'HIGH' if bull_prob >= 65 else 'MEDIUM'
+            rationale = f"Bull case dominates ({bull_prob:.0f}% vs {bear_prob:.0f}%)"
+        elif bear_prob >= 55:
+            rec = 'SELL'
+            conf = 'HIGH' if bear_prob >= 65 else 'MEDIUM'
+            rationale = f"Bear case dominates ({bear_prob:.0f}% vs {bull_prob:.0f}%)"
+        elif bull_prob > bear_prob + 5:
+            rec = 'BUY'
+            conf = 'LOW'
+            rationale = f"Slight bull edge ({bull_prob:.0f}% vs {bear_prob:.0f}%)"
+        elif bear_prob > bull_prob + 5:
+            rec = 'SELL'
+            conf = 'LOW'
+            rationale = f"Slight bear edge ({bear_prob:.0f}% vs {bull_prob:.0f}%)"
+        else:
+            rec = 'HOLD'
+            conf = 'LOW'
+            rationale = f"Balanced probabilities ({bull_prob:.0f}% vs {bear_prob:.0f}%)"
+        
+        # Position sizing
+        if rec == 'BUY':
+            position = "10-15%" if conf == 'HIGH' else "5-10%" if conf == 'MEDIUM' else "3-5%"
+        elif rec == 'SELL':
+            position = "0% (Exit/Avoid)"
+        else:
+            position = "2-5% (Maintain if held)"
+        
+        return {
+            'recommendation': rec,
+            'confidence': conf,
+            'rationale': rationale,
+            'position_size': position,
+            'time_horizon': '3-6 months'
+        }
+    
+    def generate_synthesis(self, debate_formatted: str, probabilities: Dict, 
+                           consensus: Dict, conclusion: Dict) -> str:
+        """Generate final synthesis report with LLM"""
+        if not self.client:
+            return self._fallback_report(probabilities, consensus, conclusion)
+        
+        context = f"""{debate_formatted}
+
+{'='*60}
+# PRELIMINARY ANALYSIS
+
+## Probability Assessment:
+{json.dumps(probabilities, indent=2)}
+
+## Consensus Analysis:
+{json.dumps(consensus, indent=2)}
+
+## Initial Conclusion:
+{json.dumps(conclusion, indent=2)}
+
+{'='*60}
+
+As Research Manager, evaluate this debate and provide your FINAL DECISION.
+- Who presented stronger arguments?
+- Which side had better data support?
+- What is your definitive recommendation?
+
+Be thorough but decisive."""
+
+        try:
+            print(f"[RESEARCH_MGR] Generating final synthesis...")
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": self.moderator_prompt},
+                    {"role": "user", "content": context}
+                ],
+                temperature=0.5,  # Lower temp for more decisive output
+                max_tokens=2500
+            )
+            
+            result = response.choices[0].message.content
+            
+            # Ensure conclusion is present
+            if "RESEARCH CONCLUSION:" not in result:
+                result += f"\n\nRESEARCH CONCLUSION: {conclusion['recommendation']} - Confidence: {conclusion['confidence']}"
+            
+            return result
+            
+        except Exception as e:
+            print(f"[RESEARCH_MGR] ❌ Synthesis error: {e}")
+            return self._fallback_report(probabilities, consensus, conclusion)
+    
+    def _fallback_report(self, probabilities: Dict, consensus: Dict, conclusion: Dict) -> str:
+        """Fallback report when LLM unavailable"""
+        debate_conducted = len(self.research_inputs.get('debate_history', [])) > 0
+        
+        return f"""
+# RESEARCH SYNTHESIS: {self.ticker}
+{'='*70}
+*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*
+*Debate Conducted: {'Yes' if debate_conducted else 'No'}*
+
+## Probability Assessment
+
+| Scenario | Probability | Expected Outcome |
+|----------|-------------|------------------|
+| Bull Case | {probabilities['bull_case']:.0f}% | {probabilities['scenarios'][0]['outcome']} |
+| Bear Case | {probabilities['bear_case']:.0f}% | {probabilities['scenarios'][1]['outcome']} |
+| Base Case | {probabilities['base_case']:.0f}% | {probabilities['scenarios'][2]['outcome']} |
+
+## Consensus Analysis
+
+**Recommendations:**
+{chr(10).join(f"- {k}: {v}" for k, v in consensus['recommendations'].items())}
+
+**Conflicts:** {consensus['key_conflicts'][0] if consensus['key_conflicts'] else 'None identified'}
+
+## Final Decision
+
+**Recommendation:** {conclusion['recommendation']}
+**Confidence:** {conclusion['confidence']}
+**Position Size:** {conclusion['position_size']}
+**Time Horizon:** {conclusion['time_horizon']}
+
+**Rationale:** {conclusion['rationale']}
+
+{'='*70}
+RESEARCH CONCLUSION: {conclusion['recommendation']} - Confidence: {conclusion['confidence']}
+"""
+
+    def synthesize(self, debate_rounds: int = 0, skip_risk_evals: bool = False, 
+                   outputs_dir: str = "../../outputs") -> tuple:
+        """
+        Main synthesis workflow.
+        
+        Args:
+            debate_rounds: Number of debate rounds (0 = no debate, just synthesis)
+            skip_risk_evals: Skip loading risk team evaluations
+            outputs_dir: Directory for risk evaluation files
+        
+        Returns:
+            (report_text, synthesis_data_dict)
         """
         start_time = time.time()
         
         print(f"\n{'='*70}")
-        print(f"RESEARCH SYNTHESIS: {self.ticker}")
+        print(f"RESEARCH MANAGER: {self.ticker}")
+        print(f"{'='*70}")
+        print(f"Debate Rounds: {debate_rounds if debate_rounds > 0 else 'None (direct synthesis)'}")
         print(f"{'='*70}\n")
         
-        # Load risk evaluations (optional)
-        if load_risk_evals:
-            self.load_risk_evaluations()
+        # Run internal debate if rounds > 0
+        if debate_rounds > 0:
+            self.run_debate(rounds=debate_rounds)
         
-        # Format debate
-        print(f"[RESEARCH_MGR] Formatting debate...")
-        debate_formatted = self.format_debate_for_analysis()
+        # Load risk evaluations
+        if not skip_risk_evals:
+            self.load_risk_evaluations(outputs_dir)
         
-        # Calculate probabilities
+        # Format debate/theses
+        debate_formatted = self.format_debate_for_synthesis()
+        
+        # Calculate metrics
         probabilities = self.calculate_probabilities()
-        
-        # Analyze consensus
         consensus = self.analyze_consensus()
+        conclusion = self.form_conclusion(probabilities, consensus)
         
-        # Form conclusion
-        conclusion = self.form_conclusion(consensus, probabilities)
-        
-        # Generate LLM synthesis
-        print(f"\n[RESEARCH_MGR] Synthesizing final decision...\n")
-        report = self.synthesize_with_llm(debate_formatted, consensus, probabilities, conclusion)
+        # Generate final synthesis
+        report = self.generate_synthesis(debate_formatted, probabilities, consensus, conclusion)
         
         # Compile synthesis data
         synthesis_data = {
             'ticker': self.ticker,
             'timestamp': datetime.now().isoformat(),
-            'consensus': consensus,
+            'debate_rounds': debate_rounds,
+            'debate_conducted': debate_rounds > 0,
             'probabilities': probabilities,
+            'consensus': consensus,
             'conclusion': conclusion,
-            'research_inputs_summary': {
-                'bull_thesis': bool(self.research_inputs['bull_thesis']),
-                'bear_thesis': bool(self.research_inputs['bear_thesis']),
-                'bull_mode': self.research_inputs['bull_thesis'].get('mode', 'unknown'),
-                'bear_mode': self.research_inputs['bear_thesis'].get('mode', 'unknown'),
-                'risk_evals': sum(1 for e in self.research_inputs['risk_evaluations'].values() if e)
+            'debate_history': self.research_inputs.get('debate_history', []),
+            'inputs_summary': {
+                'bull_thesis': bool(self.research_inputs.get('bull_thesis')),
+                'bear_thesis': bool(self.research_inputs.get('bear_thesis')),
+                'risk_evaluations': len(self.research_inputs.get('risk_evaluations', {}))
             }
-        }
-        
-        # Save synthesis.json for downstream components
-        synthesis_output = {
-            'ticker': self.ticker,
-            'timestamp': datetime.now().isoformat(),
-            'bull_thesis': self.research_inputs['bull_thesis'].get('final_argument', 
-                          self.research_inputs['bull_thesis'].get('core_thesis', '')),
-            'bear_thesis': self.research_inputs['bear_thesis'].get('final_argument',
-                          self.research_inputs['bear_thesis'].get('core_thesis', '')),
-            'consensus': consensus,
-            'probabilities': probabilities,
-            'conclusion': conclusion,
-            'recommendation': conclusion['recommendation'],
-            'confidence': conclusion['confidence']
         }
         
         elapsed = time.time() - start_time
         print(f"\n[RESEARCH_MGR] ✓ Synthesis complete in {elapsed:.2f}s")
         print(f"{'='*70}\n")
         
-        return report, synthesis_data, synthesis_output
-    
-    # Keep all other existing methods unchanged
-    def load_risk_evaluations(self):
-        """Load risk debator evaluations (optional)"""
-        print(f"[RESEARCH_MGR] Loading risk evaluations...")
-        
-        risk_files = {
-            'aggressive': f"../../outputs/aggressive_evaluation_{self.ticker}.json",
-            'neutral': f"../../outputs/neutral_evaluation_{self.ticker}.json",
-            'conservative': f"../../outputs/conservative_evaluation_{self.ticker}.json"
-        }
-        
-        loaded_count = 0
-        
-        for risk_type, filepath in risk_files.items():
-            if os.path.exists(filepath):
-                try:
-                    with open(filepath, 'r', encoding='utf-8') as f:
-                        self.research_inputs['risk_evaluations'][risk_type] = json.load(f)
-                    loaded_count += 1
-                except Exception as e:
-                    print(f"[RESEARCH_MGR] ⚠️  Error loading {risk_type}: {e}")
-        
-        print(f"[RESEARCH_MGR] ✓ Loaded {loaded_count}/3 risk evaluations")
-    
-    def format_debate_for_analysis(self) -> str:
-        """Format bull/bear debate for LLM analysis"""
-        bull = self.research_inputs.get('bull_thesis', {})
-        bear = self.research_inputs.get('bear_thesis', {})
-        
-        debate = f"""# Investment Debate for {self.ticker}
-
-## BULL ANALYST POSITION
-
-**Core Thesis:**
-{bull.get('core_thesis', 'Not available')}
-
-**Key Opportunities:**
-"""
-        # Add bull opportunities
-        for category, opps in bull.get('opportunities', {}).items():
-            if opps:
-                debate += f"\n### {category.title()}:\n"
-                for opp in opps[:3]:
-                    debate += f"- {opp}\n"
-        
-        # Add bull catalysts
-        debate += "\n**Upside Catalysts:**\n"
-        for catalyst in bull.get('catalysts', [])[:5]:
-            debate += f"- {catalyst.get('description', '')} ({catalyst.get('timeline', 'TBD')})\n"
-        
-        # Add bull R/R
-        rr = bull.get('risk_reward', {})
-        debate += f"\n**Risk/Reward:** {rr.get('upside_potential', 'N/A')} upside, {rr.get('downside_risk', 'N/A')} downside"
-        debate += f" (Ratio: {rr.get('reward_risk_ratio', 0):.1f}:1)\n"
-        
-        # If debate history exists (from deep/research mode)
-        if 'debate_history' in bull:
-            debate += "\n**Debate Arguments:**\n"
-            for entry in bull['debate_history']:
-                debate += f"\nRound {entry['round']}: {entry['argument'][:400]}...\n"
-        
-        debate += "\n" + "="*70 + "\n\n"
-        
-        debate += "## BEAR ANALYST POSITION\n\n"
-        
-        debate += f"**Core Thesis:**\n{bear.get('core_thesis', 'Not available')}\n\n"
-        
-        # Add bear risks
-        debate += "**Risk Factors:**\n"
-        for category, risks in bear.get('risks', {}).items():
-            if risks:
-                debate += f"\n### {category.title()}:\n"
-                for risk in risks[:3]:
-                    debate += f"- {risk}\n"
-        
-        # Add bear triggers
-        debate += "\n**Downside Triggers:**\n"
-        for trigger in bear.get('downside_triggers', [])[:5]:
-            debate += f"- {trigger.get('description', '')} ({trigger.get('timeline', 'TBD')})\n"
-        
-        # Add bear risk assessment
-        ra = bear.get('risk_assessment', {})
-        debate += f"\n**Risk Assessment:** {ra.get('downside_risk', 'N/A')} downside, {ra.get('limited_upside', 'N/A')} upside"
-        debate += f" (Risk Level: {ra.get('risk_level', 'N/A')})\n"
-        
-        # If debate history exists
-        if 'debate_history' in bear:
-            debate += "\n**Debate Arguments:**\n"
-            for entry in bear['debate_history']:
-                debate += f"\nRound {entry['round']}: {entry['argument'][:400]}...\n"
-        
-        return debate
-    
-    def calculate_probabilities(self) -> Dict[str, Any]:
-        """Calculate scenario probabilities"""
-        print(f"[RESEARCH_MGR] Calculating probabilities...")
-        
-        weights = {
-            'bull_research': 0.25,
-            'bear_research': 0.25,
-            'aggressive': 0.15,
-            'neutral': 0.25,
-            'conservative': 0.10
-        }
-        
-        bull_score = 0
-        bear_score = 0
-        
-        # Bull thesis
-        bull_conviction = self.research_inputs['bull_thesis'].get('risk_reward', {}).get('conviction_level', 'LOW')
-        if bull_conviction == 'HIGH':
-            bull_score += weights['bull_research']
-        elif bull_conviction == 'MEDIUM':
-            bull_score += weights['bull_research'] * 0.6
-        
-        # Bear thesis
-        bear_risk = self.research_inputs['bear_thesis'].get('risk_assessment', {}).get('risk_level', 'LOW')
-        if bear_risk == 'HIGH':
-            bear_score += weights['bear_research']
-        elif bear_risk == 'MEDIUM':
-            bear_score += weights['bear_research'] * 0.6
-        
-        # Risk evaluations
-        for risk_type in ['aggressive', 'neutral', 'conservative']:
-            eval_data = self.research_inputs['risk_evaluations'].get(risk_type, {})
-            stance = eval_data.get('stance', '')
-            
-            if 'BUY' in stance:
-                bull_score += weights[risk_type]
-            elif 'SELL' in stance or 'AVOID' in stance:
-                bear_score += weights[risk_type]
-            elif 'HOLD' in stance:
-                # Distribute hold votes proportionally
-                bull_score += weights[risk_type] * 0.3
-                bear_score += weights[risk_type] * 0.2
-        
-        # Normalize
-        bull_prob = min(bull_score * 100, 85)
-        bear_prob = min(bear_score * 100, 85)
-        base_prob = max(100 - bull_prob - bear_prob, 10)
-        
-        # Renormalize to 100%
-        total = bull_prob + bear_prob + base_prob
-        if total > 0:
-            bull_prob = (bull_prob / total) * 100
-            bear_prob = (bear_prob / total) * 100
-            base_prob = (base_prob / total) * 100
-        
-        bull_rr = self.research_inputs['bull_thesis'].get('risk_reward', {})
-        bear_ra = self.research_inputs['bear_thesis'].get('risk_assessment', {})
-        
-        probabilities = {
-            'bull_case': bull_prob,
-            'bear_case': bear_prob,
-            'base_case': base_prob,
-            'scenarios': [
-                {
-                    'name': 'Bull Case',
-                    'probability': f"{bull_prob:.0f}%",
-                    'outcome': bull_rr.get('upside_potential', '20-30%'),
-                    'description': 'Positive catalysts materialize, upside targets reached'
-                },
-                {
-                    'name': 'Bear Case',
-                    'probability': f"{bear_prob:.0f}%",
-                    'outcome': bear_ra.get('downside_risk', '15-20%'),
-                    'description': 'Risk triggers activate, downside scenario plays out'
-                },
-                {
-                    'name': 'Base Case',
-                    'probability': f"{base_prob:.0f}%",
-                    'outcome': 'Sideways ±5%',
-                    'description': 'Mixed signals, range-bound action'
-                }
-            ]
-        }
-        
-        print(f"[RESEARCH_MGR] ✓ Probabilities: Bull {bull_prob:.0f}%, Bear {bear_prob:.0f}%, Base {base_prob:.0f}%")
-        
-        return probabilities
-    
-    def analyze_consensus(self) -> Dict[str, Any]:
-        """Analyze consensus across all inputs"""
-        print(f"[RESEARCH_MGR] Analyzing consensus...")
-        
-        consensus = {
-            'recommendations': {},
-            'position_sizes': {},
-            'conviction_levels': {},
-            'key_agreements': [],
-            'key_conflicts': []
-        }
-        
-        # Bull recommendation
-        if self.research_inputs['bull_thesis']:
-            bull_rr = self.research_inputs['bull_thesis'].get('risk_reward', {})
-            rr_ratio = bull_rr.get('reward_risk_ratio', 0)
-            consensus['recommendations']['bull'] = 'BUY' if rr_ratio > 2 else 'HOLD'
-            consensus['conviction_levels']['bull'] = bull_rr.get('conviction_level', 'LOW')
-        
-        # Bear recommendation
-        if self.research_inputs['bear_thesis']:
-            bear_ra = self.research_inputs['bear_thesis'].get('risk_assessment', {})
-            consensus['recommendations']['bear'] = 'SELL' if bear_ra.get('risk_level') == 'HIGH' else 'HOLD'
-            consensus['conviction_levels']['bear'] = bear_ra.get('conviction_level', 'LOW')
-        
-        # Risk evaluations
-        for risk_type, evaluation in self.research_inputs['risk_evaluations'].items():
-            if evaluation:
-                consensus['recommendations'][risk_type] = evaluation.get('stance', 'HOLD')
-                consensus['position_sizes'][risk_type] = evaluation.get('position_size', 0)
-                consensus['conviction_levels'][risk_type] = evaluation.get('confidence', 'LOW')
-        
-        # Find agreements
-        all_recs = list(consensus['recommendations'].values())
-        if all_recs:
-            from collections import Counter
-            rec_counts = Counter(all_recs)
-            most_common = rec_counts.most_common(1)[0]
-            
-            if most_common[1] >= 3:
-                consensus['key_agreements'].append(
-                    f"{most_common[1]}/{len(all_recs)} agree on {most_common[0]}"
-                )
-        
-        # Find conflicts
-        if 'BUY' in all_recs and 'SELL' in all_recs:
-            consensus['key_conflicts'].append("Direct BUY vs SELL conflict - requires resolution")
-        
-        # Average position size
-        positions = [p for p in consensus['position_sizes'].values() if p > 0]
-        consensus['avg_position_size'] = sum(positions) / len(positions) if positions else 0
-        
-        print(f"[RESEARCH_MGR] ✓ Consensus analyzed")
-        
-        return consensus
-    
-    def form_conclusion(self, consensus: Dict, probabilities: Dict) -> Dict[str, Any]:
-        """Form final investment conclusion"""
-        print(f"[RESEARCH_MGR] Forming conclusion...")
-        
-        bull_prob = probabilities['bull_case']
-        bear_prob = probabilities['bear_case']
-        avg_position = consensus['avg_position_size']
-        
-        # Decision logic (decisive, not fence-sitting)
-        if bull_prob > 60 and avg_position > 0.05:
-            recommendation = 'BUY'
-            confidence = 'HIGH' if bull_prob > 75 else 'MEDIUM'
-            rationale = f"Bull case dominates ({bull_prob:.0f}% probability) with favorable risk/reward"
-        elif bull_prob > 50 and avg_position > 0.03:
-            recommendation = 'BUY'
-            confidence = 'MEDIUM'
-            rationale = f"Moderate bull edge ({bull_prob:.0f}% vs {bear_prob:.0f}%)"
-        elif bear_prob > 60:
-            recommendation = 'SELL'
-            confidence = 'HIGH' if bear_prob > 75 else 'MEDIUM'
-            rationale = f"Bear case dominates ({bear_prob:.0f}% probability) - risk too high"
-        elif bear_prob > 50:
-            recommendation = 'SELL'
-            confidence = 'MEDIUM'
-            rationale = f"Moderate bear edge ({bear_prob:.0f}% vs {bull_prob:.0f}%)"
-        elif avg_position > 0.02:
-            recommendation = 'HOLD'
-            confidence = 'LOW'
-            rationale = f"Balanced probabilities ({bull_prob:.0f}% vs {bear_prob:.0f}%) - wait for clarity"
-        else:
-            recommendation = 'AVOID'
-            confidence = 'MEDIUM'
-            rationale = "Insufficient edge and low conviction across all analyses"
-        
-        # Position sizing
-        if recommendation == 'BUY':
-            if confidence == 'HIGH':
-                position_range = "8-12%"
-            elif confidence == 'MEDIUM':
-                position_range = "4-8%"
-            else:
-                position_range = "2-4%"
-        elif recommendation == 'SELL':
-            position_range = "0% (Exit)"
-        elif recommendation == 'HOLD':
-            position_range = "2-5% (Maintain or small pilot)"
-        else:  # AVOID
-            position_range = "0%"
-        
-        conclusion = {
-            'recommendation': recommendation,
-            'confidence': confidence,
-            'rationale': rationale,
-            'position_size_range': position_range,
-            'time_horizon': '3-6 months',
-            'key_catalysts': self._extract_key_catalysts(),
-            'key_risks': self._extract_key_risks(),
-            'expected_value': self._calculate_expected_value(probabilities)
-        }
-        
-        print(f"[RESEARCH_MGR] ✓ Conclusion: {recommendation} - {confidence} confidence")
-        
-        return conclusion
-    
-    def _extract_key_catalysts(self) -> List[str]:
-        """Extract top catalysts from bull thesis"""
-        catalysts = self.research_inputs['bull_thesis'].get('catalysts', [])
-        return [c.get('description', '') for c in catalysts[:3]]
-    
-    def _extract_key_risks(self) -> List[str]:
-        """Extract top risks from bear thesis"""
-        triggers = self.research_inputs['bear_thesis'].get('downside_triggers', [])
-        return [t.get('description', '') for t in triggers[:3]]
-    
-    def _calculate_expected_value(self, probabilities: Dict) -> float:
-        """Calculate probability-weighted expected value"""
-        # Extract upside/downside percentages
-        bull_outcome = self.research_inputs['bull_thesis'].get('risk_reward', {}).get('upside_potential', '20%')
-        bear_outcome = self.research_inputs['bear_thesis'].get('risk_assessment', {}).get('downside_risk', '15%')
-        
-        # Parse percentages (take midpoint of range)
-        import re
-        
-        bull_nums = re.findall(r'\d+', bull_outcome)
-        bear_nums = re.findall(r'\d+', bear_outcome)
-        
-        bull_pct = sum(int(n) for n in bull_nums) / len(bull_nums) if bull_nums else 20
-        bear_pct = sum(int(n) for n in bear_nums) / len(bear_nums) if bear_nums else 15
-        
-        # Weighted calculation
-        bull_prob = probabilities['bull_case'] / 100
-        bear_prob = probabilities['bear_case'] / 100
-        
-        expected_value = (bull_pct * bull_prob) - (bear_pct * bear_prob)
-        
-        return expected_value
-    
-    def synthesize_with_llm(self, debate_formatted: str, consensus: Dict, probabilities: Dict, conclusion: Dict) -> str:
-        """Generate comprehensive synthesis using LLM"""
-        if not self.client:
-            print("[RESEARCH_MGR] ⚠️  No API key - using fallback")
-            return self._create_fallback_report(consensus, probabilities, conclusion)
-        
-        try:
-            print(f"[RESEARCH_MGR] Generating synthesis with {self.model}...")
-            
-            context = f"""# Research Synthesis for {self.ticker}
-
-{debate_formatted}
-
-{'='*70}
-
-## Preliminary Analysis
-
-**Probability Assessment:**
-{json.dumps(probabilities, indent=2)}
-
-**Consensus Summary:**
-{json.dumps(consensus, indent=2)}
-
-**Initial Conclusion:**
-{json.dumps(conclusion, indent=2)}
-
-{'='*70}
-
-As Research Manager, provide your definitive investment decision. Evaluate both sides critically and make a clear recommendation supported by the strongest evidence."""
-            
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": context}
-                ],
-                temperature=0.6,
-                max_tokens=3000
-            )
-            
-            synthesis = response.choices[0].message.content
-            
-            # Validate conclusion
-            if "RESEARCH CONCLUSION:" not in synthesis:
-                synthesis += f"\n\nRESEARCH CONCLUSION: {conclusion['recommendation']} - Confidence: {conclusion['confidence']}"
-            
-            print(f"[RESEARCH_MGR] ✓ Synthesis complete ({len(synthesis)} chars)")
-            
-            return synthesis
-            
-        except Exception as e:
-            print(f"[RESEARCH_MGR] ❌ LLM error: {e}")
-            import traceback
-            traceback.print_exc()
-            return self._create_fallback_report(consensus, probabilities, conclusion)
-    
-    def _create_fallback_report(self, consensus: Dict, probabilities: Dict, conclusion: Dict) -> str:
-        """Fallback report without LLM"""
-        report = f"""
-# RESEARCH SYNTHESIS: {self.ticker}
-{'='*70}
-*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*
-*Mode: Fallback (LLM unavailable)*
-
-## Probability Assessment
-"""
-        for scenario in probabilities['scenarios']:
-            report += f"\n**{scenario['name']}:** {scenario['probability']}\n"
-            report += f"  Outcome: {scenario['outcome']}\n"
-            report += f"  {scenario['description']}\n"
-        
-        report += f"""
-## Consensus Analysis
-
-**Recommendations:**
-"""
-        for source, rec in consensus['recommendations'].items():
-            report += f"  - {source}: {rec}\n"
-        
-        if consensus['key_agreements']:
-            report += f"\n**Agreement:** {consensus['key_agreements'][0]}\n"
-        
-        if consensus['key_conflicts']:
-            report += f"**Conflict:** {consensus['key_conflicts'][0]}\n"
-        
-        report += f"""
-## Final Conclusion
-
-**Recommendation:** {conclusion['recommendation']}
-**Confidence:** {conclusion['confidence']}
-**Position Size:** {conclusion['position_size_range']}
-**Time Horizon:** {conclusion['time_horizon']}
-
-**Rationale:** {conclusion['rationale']}
-
-**Expected Value:** {conclusion['expected_value']:+.1f}%
-
-RESEARCH CONCLUSION: {conclusion['recommendation']} - Confidence: {conclusion['confidence']}
-"""
-        return report
+        return report, synthesis_data
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Research Manager - Orchestrates debate and synthesizes decision",
+        description="Research Manager - Orchestrates debate and synthesizes final investment decision",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Operation Modes:
-  auto    - Auto-detect: debate if no bull/bear files exist, static if they do
-  static  - Load pre-generated bull/bear files (original behavior)
-  debate  - Orchestrate live debate between bull and bear
-
 Examples:
-  # Auto mode (default) - works with your current orchestrator!
-  python research_manager.py AAPL
+  # Direct synthesis (no debate)
+  python research_manager.py AAPL --bull-file ../../outputs/bull_thesis.json --bear-file ../../outputs/bear_thesis.json
   
-  # Force static files
-  python research_manager.py AAPL --mode static
+  # With 3 rounds of debate
+  python research_manager.py AAPL --bull-file ... --bear-file ... --debate-rounds 3
   
-  # Force debate mode
-  python research_manager.py AAPL --mode debate --rounds 3
+  # Deep debate (5 rounds)
+  python research_manager.py AAPL --bull-file ... --bear-file ... --debate-rounds 5
         """
     )
     
-    parser.add_argument("ticker", help="Stock ticker")
-    
-    # Mode selection with static default for backward compatibility
-    parser.add_argument("--mode", choices=['auto', 'static', 'debate'], default='static',
-                       help="Operation mode: auto-detect, static files, or live debate (default: static)")
-    
-    # Debate-specific options
-    parser.add_argument("--rounds", type=int, default=3,
-                       help="Number of debate rounds (for debate mode, default: 3)")
-    parser.add_argument("--debate-mode", choices=['shallow', 'deep', 'research'], default='deep',
-                       help="Debate depth (for debate mode, default: deep)")
-    parser.add_argument("--discussion-file", default="../../outputs/discussion_points.json",
-                       help="Discussion points file (for debate mode)")
-    
-    # Static mode options
+    parser.add_argument("ticker", help="Stock ticker symbol")
     parser.add_argument("--bull-file", default="../../outputs/bull_thesis.json",
-                       help="Bull thesis JSON file (for static mode)")
+                       help="Path to bull thesis JSON")
     parser.add_argument("--bear-file", default="../../outputs/bear_thesis.json",
-                       help="Bear thesis JSON file (for static mode)")
-    
-    # Common options
+                       help="Path to bear thesis JSON")
+    parser.add_argument("--debate-rounds", type=int, default=0,
+                       help="Number of debate rounds (0=no debate, 3=standard, 5=deep)")
     parser.add_argument("--skip-evaluations", action="store_true",
-                       help="Skip loading risk evaluations")
+                       help="Skip loading risk team evaluations")
     parser.add_argument("--api-key", help="OpenAI API key")
-    parser.add_argument("--model", default="gpt-4o-mini", help="Model")
-    parser.add_argument("--output", help="Output file for report")
-    parser.add_argument("--save-synthesis", default="../../outputs/synthesis.json",
-                       help="Save synthesis JSON (default: ../../outputs/synthesis.json)")
+    parser.add_argument("--model", default="gpt-4o-mini", help="LLM model to use")
+    parser.add_argument("--output", help="Save report to text file")
+    parser.add_argument("--save-synthesis", help="Save synthesis data to JSON")
     
     args = parser.parse_args()
     
     try:
-        manager = ResearchManager(ticker=args.ticker, api_key=args.api_key, model=args.model)
-        
-        # SMART AUTO-DETECTION LOGIC
-        if args.mode == 'auto':
-            # Detect if called by master orchestrator
-            # Master orch always passes --bull-file and --bear-file
-            called_by_orchestrator = ('--bull-file' in sys.argv and '--bear-file' in sys.argv)
-            
-            # Check if bull/bear thesis files exist
-            bull_exists = os.path.exists(args.bull_file)
-            bear_exists = os.path.exists(args.bear_file)
-            discussion_exists = os.path.exists(args.discussion_file)
-            
-            if called_by_orchestrator and not (bull_exists and bear_exists):
-                # Called by orchestrator but files don't exist yet
-                # This means Phase 2 failed or we should run debate
-                if discussion_exists:
-                    print(f"[MAIN] AUTO: Orchestrator call without bull/bear files - running DEBATE mode")
-                    args.mode = 'debate'
-                else:
-                    print(f"[MAIN] AUTO: Missing prerequisites - need Phase 1 first")
-                    sys.exit(1)
-            elif bull_exists and bear_exists:
-                # Files exist - use static mode (normal orchestrator flow)
-                print(f"[MAIN] AUTO: Found bull/bear files, using STATIC mode")
-                args.mode = 'static'
-            elif discussion_exists:
-                # No bull/bear but have discussion - use debate mode
-                print(f"[MAIN] AUTO: No bull/bear files but found discussion, using DEBATE mode")
-                args.mode = 'debate'
-            else:
-                # Fallback to static, will error appropriately
-                print(f"[MAIN] AUTO: No files found, defaulting to STATIC mode")
-                args.mode = 'static'
-        
-        if args.mode == 'debate':
-            # NEW: Debate mode
-            print(f"[MAIN] Running in DEBATE mode")
-            
-            # Load discussion points
-            if not os.path.exists(args.discussion_file):
-                # Try to find it in standard location
-                alt_discussion = "../../outputs/discussion_points.json"
-                if os.path.exists(alt_discussion):
-                    args.discussion_file = alt_discussion
-                    print(f"[MAIN] Found discussion points at {alt_discussion}")
-                else:
-                    print(f"\n❌ Error: Discussion points file not found: {args.discussion_file}")
-                    print("Run Phase 1 analysts first to generate discussion points!")
-                    sys.exit(1)
-            
-            with open(args.discussion_file, 'r', encoding='utf-8') as f:
-                discussion_points = json.load(f)
-            
-            # Orchestrate the debate
-            debate_result = manager.orchestrate_debate(
-                discussion_points,
-                rounds=args.rounds,
-                mode=args.debate_mode
-            )
-            
-            print(f"[MAIN] Debate complete, synthesizing...")
-            
-        else:
-            # ORIGINAL: Static mode
-            print(f"[MAIN] Running in STATIC mode")
-            
-            # Load research files
-            manager.load_research_files(args.bull_file, args.bear_file)
-            
-            # Check we have minimum data
-            if not manager.research_inputs['bull_thesis'] or not manager.research_inputs['bear_thesis']:
-                print("\n❌ Error: Both bull and bear theses required")
-                print("Run bull_researcher.py and bear_researcher.py first!")
-                sys.exit(1)
-        
-        # Run synthesis (works for both modes)
-        report, synthesis_data, synthesis_output = manager.synthesize(
-            load_risk_evals=not args.skip_evaluations
+        manager = ResearchManager(
+            ticker=args.ticker,
+            api_key=args.api_key,
+            model=args.model
         )
         
+        # Load thesis files
+        manager.load_research_files(args.bull_file, args.bear_file)
+        
+        # Validate we have required data
+        if not manager.research_inputs['bull_thesis'] or not manager.research_inputs['bear_thesis']:
+            print("\n❌ Error: Both bull and bear thesis files are required")
+            print("Run bull_researcher.py and bear_researcher.py first!")
+            sys.exit(1)
+        
+        # Run synthesis
+        report, synthesis_data = manager.synthesize(
+            debate_rounds=args.debate_rounds,
+            skip_risk_evals=args.skip_evaluations
+        )
+        
+        # Print report
         print(report)
         
         # Save outputs
@@ -906,27 +726,14 @@ Examples:
                 f.write(report)
             print(f"\n✓ Report saved to {args.output}")
         
-        # Always save synthesis.json for downstream components
-        with open(args.save_synthesis, 'w', encoding='utf-8') as f:
-            json.dump(synthesis_output, f, indent=2)
-        print(f"✓ Synthesis data saved to {args.save_synthesis}")
-        
-        # Optionally save bull/bear theses from debate
-        if args.mode == 'debate':
-            bull_path = args.bull_file or "../../outputs/bull_thesis.json"
-            bear_path = args.bear_file or "../../outputs/bear_thesis.json"
-            
-            with open(bull_path, 'w', encoding='utf-8') as f:
-                json.dump(manager.research_inputs['bull_thesis'], f, indent=2)
-            print(f"✓ Bull thesis saved to {bull_path}")
-            
-            with open(bear_path, 'w', encoding='utf-8') as f:
-                json.dump(manager.research_inputs['bear_thesis'], f, indent=2)
-            print(f"✓ Bear thesis saved to {bear_path}")
+        if args.save_synthesis:
+            with open(args.save_synthesis, 'w', encoding='utf-8') as f:
+                json.dump(synthesis_data, f, indent=2, ensure_ascii=False)
+            print(f"✓ Synthesis data saved to {args.save_synthesis}")
         
     except KeyboardInterrupt:
-        print("\n\n⚠️  Interrupted")
-        sys.exit(1)
+        print("\n\n⚠️ Interrupted by user")
+        sys.exit(130)
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback

@@ -3,8 +3,8 @@
   "research_mode": "deep",
   "research_rounds": 3,
   "portfolio_value": 100000,
-  "start_time": "2025-11-25T13:23:27.807371",
-  "end_time": "2025-11-25T13:25:44.390341",
+  "start_time": "2025-11-25T13:38:56.757741",
+  "end_time": "2025-11-25T13:42:23.852355",
   "phases": {
     "phase1": {
       "status": "SUCCESS"
@@ -13,112 +13,220 @@
       "status": "SUCCESS"
     },
     "phase3": {
-      "status": "FAILED"
+      "status": "SUCCESS"
+    },
+    "phase4": {
+      "status": "SUCCESS"
+    },
+    "phase5": {
+      "status": "SUCCESS"
     }
   },
   "errors": [],
   "log": [
     {
-      "timestamp": "13:23:27",
+      "timestamp": "13:38:56",
       "phase": "phase1",
       "message": "Phase 1: Running Analysts (4)",
       "status": "RUNNING"
     },
     {
-      "timestamp": "13:23:27",
+      "timestamp": "13:38:56",
       "phase": null,
       "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\orchestrators\\discussion_hub.py AAPL...",
       "status": "INFO"
     },
     {
-      "timestamp": "13:24:50",
+      "timestamp": "13:40:16",
       "phase": null,
       "message": "Output preview: [HUB] Found 4/4 analyst agents  ====================================================================== DISCUSSION HUB: AAPL ======================================================================  [HUB...",
       "status": "INFO"
     },
     {
-      "timestamp": "13:24:50",
+      "timestamp": "13:40:16",
       "phase": "phase1",
       "message": "Analysts complete - output file created",
       "status": "SUCCESS"
     },
     {
-      "timestamp": "13:24:51",
+      "timestamp": "13:40:17",
       "phase": "phase2",
       "message": "Phase 2: Researchers (deep, 3 rounds)",
       "status": "RUNNING"
     },
     {
-      "timestamp": "13:24:51",
+      "timestamp": "13:40:17",
       "phase": "phase2",
       "message": "Running Bear Researcher...",
       "status": "INFO"
     },
     {
-      "timestamp": "13:24:51",
+      "timestamp": "13:40:17",
       "phase": null,
       "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\researcher\\bear_researcher.py AAPL...",
       "status": "INFO"
     },
     {
-      "timestamp": "13:25:16",
+      "timestamp": "13:40:43",
       "phase": null,
       "message": "Output preview: [BEAR] Loading discussion points from F:\\DAMG 7374_GENAI\\TradingAgent\\outputs\\discussion_points.json... [BEAR] \u2713 Loaded discussion for AAPL [BEAR] \u2713 Full reports: 4  [BEAR] \ud83c\udfaf DEEP MODE - 3-round debat...",
       "status": "INFO"
     },
     {
-      "timestamp": "13:25:16",
+      "timestamp": "13:40:43",
       "phase": "phase2",
       "message": "Running Bull Researcher...",
       "status": "INFO"
     },
     {
-      "timestamp": "13:25:16",
+      "timestamp": "13:40:43",
       "phase": null,
       "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\researcher\\bull_researcher.py AAPL...",
       "status": "INFO"
     },
     {
-      "timestamp": "13:25:42",
+      "timestamp": "13:41:10",
       "phase": null,
       "message": "Output preview: [BULL] Loading discussion points from F:\\DAMG 7374_GENAI\\TradingAgent\\outputs\\discussion_points.json... [BULL] \u2713 Loaded discussion for AAPL [BULL] \u2713 Full reports: 4  [BULL] \ud83c\udfaf DEEP MODE - 3-round debat...",
       "status": "INFO"
     },
     {
-      "timestamp": "13:25:42",
+      "timestamp": "13:41:10",
       "phase": "phase2",
       "message": "Both researchers complete with output files",
       "status": "SUCCESS"
     },
     {
-      "timestamp": "13:25:43",
+      "timestamp": "13:41:11",
       "phase": "phase3",
       "message": "Phase 3: Research Manager",
       "status": "RUNNING"
     },
     {
-      "timestamp": "13:25:43",
+      "timestamp": "13:41:11",
       "phase": null,
       "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\research_manager.py AAPL...",
       "status": "INFO"
     },
     {
-      "timestamp": "13:25:44",
-      "phase": "phase3",
-      "message": "Research Manager failed",
-      "status": "ERROR"
-    },
-    {
-      "timestamp": "13:25:44",
-      "phase": "phase3",
-      "message": "Error: Traceback (most recent call last):\n  File \"F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\research_manager.py\", line 48, in <module>\n    from bear_researcher import BearResearcher\n  File \"F:\\DAMG 737",
-      "status": "ERROR"
-    },
-    {
-      "timestamp": "13:25:44",
+      "timestamp": "13:41:29",
       "phase": null,
-      "message": "Stopping due to critical failure in Phase 3",
-      "status": "ERROR"
+      "message": "Output preview: [RESEARCH_MGR] Loading research files... [RESEARCH_MGR] \u2713 Bull thesis loaded (F:\\DAMG 7374_GENAI\\TradingAgent\\outputs\\bull_thesis.json) [RESEARCH_MGR] \u2713 Bear thesis loaded (F:\\DAMG 7374_GENAI\\TradingA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "13:41:29",
+      "phase": "phase3",
+      "message": "Research Manager complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "13:41:30",
+      "phase": "phase4",
+      "message": "Phase 4: Risk Team (3 debators)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "13:41:30",
+      "phase": "phase4",
+      "message": "Running Aggressive debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "13:41:30",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\aggressive_debator.py AAPL...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "13:41:44",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== AGGRESSIVE RISK EVALUATION: AAPL ======================================================================  [AGGRESSIVE] Loading da...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "13:41:44",
+      "phase": "phase4",
+      "message": "  \u2713 Aggressive complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "13:41:44",
+      "phase": "phase4",
+      "message": "Running Neutral debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "13:41:44",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\neutral_debator.py AAPL...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "13:41:57",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== NEUTRAL RISK EVALUATION: AAPL ======================================================================  [NEUTRAL] Loading data... ...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "13:41:57",
+      "phase": "phase4",
+      "message": "  \u2713 Neutral complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "13:41:57",
+      "phase": "phase4",
+      "message": "Running Conservative debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "13:41:57",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\conservative_debator.py AAPL...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "13:42:10",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== CONSERVATIVE RISK EVALUATION: AAPL ======================================================================  [CONSERVATIVE] Loadin...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "13:42:10",
+      "phase": "phase4",
+      "message": "  \u2713 Conservative complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "13:42:10",
+      "phase": "phase4",
+      "message": "Risk team complete (3/3)",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "13:42:11",
+      "phase": "phase5",
+      "message": "Phase 5: Risk Manager",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "13:42:11",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\risk_manager.py AAPL...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "13:42:22",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== RISK MANAGER FINAL DECISION: AAPL Portfolio: $100,000 ======================================================================  [R...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "13:42:22",
+      "phase": "phase5",
+      "message": "Final Decision: MODIFY ($4,900)",
+      "status": "SUCCESS"
     }
   ]
 }
