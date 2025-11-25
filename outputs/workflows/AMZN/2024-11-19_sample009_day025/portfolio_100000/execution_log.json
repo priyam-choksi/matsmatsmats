@@ -1,0 +1,244 @@
+{
+  "ticker": "AMZN",
+  "research_mode": "shallow",
+  "research_rounds": 1,
+  "portfolio_value": 100000,
+  "start_time": "2025-11-25T00:43:06.116886",
+  "end_time": "2025-11-25T00:46:58.986518",
+  "phases": {
+    "phase1": {
+      "status": "SUCCESS"
+    },
+    "phase2": {
+      "status": "SUCCESS"
+    },
+    "phase3": {
+      "status": "SUCCESS"
+    },
+    "phase4": {
+      "status": "SUCCESS"
+    },
+    "phase5": {
+      "status": "FAILED"
+    }
+  },
+  "errors": [],
+  "log": [
+    {
+      "timestamp": "00:43:06",
+      "phase": "phase1",
+      "message": "Phase 1: Running Analysts (4)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "00:43:06",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\orchestrators\\discussion_hub.py AMZN...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:45:05",
+      "phase": null,
+      "message": "Output preview: [HUB] Found 4/4 analyst agents  ====================================================================== DISCUSSION HUB: AMZN ======================================================================  [HUB...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:45:05",
+      "phase": "phase1",
+      "message": "Analysts complete - output file created",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "00:45:06",
+      "phase": "phase2",
+      "message": "Phase 2: Researchers (shallow, 1 rounds)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "00:45:06",
+      "phase": "phase2",
+      "message": "Running Bear Researcher...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:45:06",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\researcher\\bear_researcher.py AMZN...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:45:25",
+      "phase": null,
+      "message": "Output preview: [BEAR] Loading discussion points from C:\\Users\\pchok\\AppData\\Local\\Temp\\trading_workflows\\AMZN_100000_sample9_3b035a83\\outputs\\discussion_points.json... [BEAR] \u2713 Loaded discussion for AMZN [BEAR] \u2713 Fu...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:45:25",
+      "phase": "phase2",
+      "message": "Running Bull Researcher...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:45:25",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\researcher\\bull_researcher.py AMZN...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:45:45",
+      "phase": null,
+      "message": "Output preview: [BULL] Loading discussion points from C:\\Users\\pchok\\AppData\\Local\\Temp\\trading_workflows\\AMZN_100000_sample9_3b035a83\\outputs\\discussion_points.json... [BULL] \u2713 Loaded discussion for AMZN [BULL] \u2713 Fu...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:45:45",
+      "phase": "phase2",
+      "message": "Both researchers complete with output files",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "00:45:46",
+      "phase": "phase3",
+      "message": "Phase 3: Research Manager",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "00:45:46",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\research_manager.py AMZN...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:05",
+      "phase": null,
+      "message": "Output preview: [RESEARCH_MGR] Loading research files... [RESEARCH_MGR] \u2713 Bull thesis loaded (C:\\Users\\pchok\\AppData\\Local\\Temp\\trading_workflows\\AMZN_100000_sample9_3b035a83\\outputs\\bull_thesis.json) [RESEARCH_MGR] ...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:05",
+      "phase": "phase3",
+      "message": "Research Manager complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "00:46:06",
+      "phase": "phase4",
+      "message": "Phase 4: Risk Team (3 debators)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "00:46:06",
+      "phase": "phase4",
+      "message": "Running Aggressive debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:06",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\aggressive_debator.py AMZN...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:26",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== AGGRESSIVE RISK EVALUATION: AMZN ======================================================================  [AGGRESSIVE] Loading da...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:26",
+      "phase": "phase4",
+      "message": "  \u2713 Aggressive complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "00:46:26",
+      "phase": "phase4",
+      "message": "Running Neutral debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:26",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\neutral_debator.py AMZN...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:45",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== NEUTRAL RISK EVALUATION: AMZN ======================================================================  [NEUTRAL] Loading data... ...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:45",
+      "phase": "phase4",
+      "message": "  \u2713 Neutral complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "00:46:45",
+      "phase": "phase4",
+      "message": "Running Conservative debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:45",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\conservative_debator.py AMZN...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:56",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== CONSERVATIVE RISK EVALUATION: AMZN ======================================================================  [CONSERVATIVE] Loadin...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:56",
+      "phase": "phase4",
+      "message": "  \u2713 Conservative complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "00:46:56",
+      "phase": "phase4",
+      "message": "Risk team complete (3/3)",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "00:46:57",
+      "phase": "phase5",
+      "message": "Phase 5: Risk Manager",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "00:46:57",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\risk_manager.py AMZN...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:58",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== RISK MANAGER FINAL DECISION: AMZN Portfolio: $100,000 ======================================================================  [R...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "00:46:58",
+      "phase": "phase5",
+      "message": "Risk Manager failed",
+      "status": "ERROR"
+    },
+    {
+      "timestamp": "00:46:58",
+      "phase": "phase5",
+      "message": "Error: Traceback (most recent call last):\n  File \"F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\risk_manager.py\", line 729, in main\n    report, decision_data = manager.execute(synthesis_file=args.synthesis",
+      "status": "ERROR"
+    },
+    {
+      "timestamp": "00:46:58",
+      "phase": null,
+      "message": "Stopping due to critical failure in Phase 5",
+      "status": "ERROR"
+    }
+  ]
+}

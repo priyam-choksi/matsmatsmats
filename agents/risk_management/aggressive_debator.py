@@ -21,7 +21,7 @@ if sys.platform == 'win32':
 
 
 class AggressiveDebator:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model

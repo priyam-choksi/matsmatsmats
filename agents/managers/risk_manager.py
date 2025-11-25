@@ -21,7 +21,7 @@ if sys.platform == 'win32':
 
 
 class RiskManager:
-    def __init__(self, ticker: str, portfolio_value: float = 100000, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
+    def __init__(self, ticker: str, portfolio_value: float = 100000, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
         self.ticker = ticker.upper()
         self.portfolio_value = portfolio_value
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")

@@ -1,0 +1,244 @@
+{
+  "ticker": "TSLA",
+  "research_mode": "shallow",
+  "research_rounds": 1,
+  "portfolio_value": 100000,
+  "start_time": "2025-11-25T01:22:15.774414",
+  "end_time": "2025-11-25T01:26:05.969272",
+  "phases": {
+    "phase1": {
+      "status": "SUCCESS"
+    },
+    "phase2": {
+      "status": "SUCCESS"
+    },
+    "phase3": {
+      "status": "SUCCESS"
+    },
+    "phase4": {
+      "status": "SUCCESS"
+    },
+    "phase5": {
+      "status": "FAILED"
+    }
+  },
+  "errors": [],
+  "log": [
+    {
+      "timestamp": "01:22:15",
+      "phase": "phase1",
+      "message": "Phase 1: Running Analysts (4)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "01:22:15",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\orchestrators\\discussion_hub.py TSLA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:24:01",
+      "phase": null,
+      "message": "Output preview: [HUB] Found 4/4 analyst agents  ====================================================================== DISCUSSION HUB: TSLA ======================================================================  [HUB...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:24:01",
+      "phase": "phase1",
+      "message": "Analysts complete - output file created",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "01:24:02",
+      "phase": "phase2",
+      "message": "Phase 2: Researchers (shallow, 1 rounds)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "01:24:02",
+      "phase": "phase2",
+      "message": "Running Bear Researcher...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:24:02",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\researcher\\bear_researcher.py TSLA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:24:21",
+      "phase": null,
+      "message": "Output preview: [BEAR] Loading discussion points from C:\\Users\\pchok\\AppData\\Local\\Temp\\trading_workflows\\TSLA_100000_sample18_f3715929\\outputs\\discussion_points.json... [BEAR] \u2713 Loaded discussion for TSLA [BEAR] \u2713 F...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:24:21",
+      "phase": "phase2",
+      "message": "Running Bull Researcher...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:24:21",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\researcher\\bull_researcher.py TSLA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:24:41",
+      "phase": null,
+      "message": "Output preview: [BULL] Loading discussion points from C:\\Users\\pchok\\AppData\\Local\\Temp\\trading_workflows\\TSLA_100000_sample18_f3715929\\outputs\\discussion_points.json... [BULL] \u2713 Loaded discussion for TSLA [BULL] \u2713 F...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:24:41",
+      "phase": "phase2",
+      "message": "Both researchers complete with output files",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "01:24:42",
+      "phase": "phase3",
+      "message": "Phase 3: Research Manager",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "01:24:42",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\research_manager.py TSLA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:25:01",
+      "phase": null,
+      "message": "Output preview: [RESEARCH_MGR] Loading research files... [RESEARCH_MGR] \u2713 Bull thesis loaded (C:\\Users\\pchok\\AppData\\Local\\Temp\\trading_workflows\\TSLA_100000_sample18_f3715929\\outputs\\bull_thesis.json) [RESEARCH_MGR]...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:25:01",
+      "phase": "phase3",
+      "message": "Research Manager complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "01:25:02",
+      "phase": "phase4",
+      "message": "Phase 4: Risk Team (3 debators)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "01:25:02",
+      "phase": "phase4",
+      "message": "Running Aggressive debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:25:02",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\aggressive_debator.py TSLA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:25:24",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== AGGRESSIVE RISK EVALUATION: TSLA ======================================================================  [AGGRESSIVE] Loading da...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:25:24",
+      "phase": "phase4",
+      "message": "  \u2713 Aggressive complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "01:25:24",
+      "phase": "phase4",
+      "message": "Running Neutral debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:25:24",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\neutral_debator.py TSLA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:25:44",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== NEUTRAL RISK EVALUATION: TSLA ======================================================================  [NEUTRAL] Loading data... ...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:25:44",
+      "phase": "phase4",
+      "message": "  \u2713 Neutral complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "01:25:44",
+      "phase": "phase4",
+      "message": "Running Conservative debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:25:44",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\conservative_debator.py TSLA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:26:03",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== CONSERVATIVE RISK EVALUATION: TSLA ======================================================================  [CONSERVATIVE] Loadin...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:26:03",
+      "phase": "phase4",
+      "message": "  \u2713 Conservative complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "01:26:03",
+      "phase": "phase4",
+      "message": "Risk team complete (3/3)",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "01:26:04",
+      "phase": "phase5",
+      "message": "Phase 5: Risk Manager",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "01:26:04",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\risk_manager.py TSLA...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:26:05",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== RISK MANAGER FINAL DECISION: TSLA Portfolio: $100,000 ======================================================================  [R...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "01:26:05",
+      "phase": "phase5",
+      "message": "Risk Manager failed",
+      "status": "ERROR"
+    },
+    {
+      "timestamp": "01:26:05",
+      "phase": "phase5",
+      "message": "Error: Traceback (most recent call last):\n  File \"F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\risk_manager.py\", line 729, in main\n    report, decision_data = manager.execute(synthesis_file=args.synthesis",
+      "status": "ERROR"
+    },
+    {
+      "timestamp": "01:26:05",
+      "phase": null,
+      "message": "Stopping due to critical failure in Phase 5",
+      "status": "ERROR"
+    }
+  ]
+}

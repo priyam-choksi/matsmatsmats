@@ -23,7 +23,7 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 class TechnicalAgent:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
@@ -596,8 +596,9 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
             
             # Validate recommendation
             if "RECOMMENDATION:" not in analysis:
-                print("[TECHNICAL] ⚠️  Missing recommendation, appending...")
-                analysis += "\n\nRECOMMENDATION: HOLD - Confidence: Low"
+                print(f"[TECHNICAL] ⚠️  Response missing formal recommendation, extracting...")
+                recommendation, confidence = self._extract_recommendation_from_content(analysis)
+                analysis += f"RECOMMENDATION: {recommendation} - Confidence: {confidence}"
             
             print(f"[TECHNICAL] ✓ Analysis generated ({len(analysis)} chars)")
             return analysis
@@ -731,6 +732,44 @@ RECOMMENDATION: HOLD - Confidence: N/A
         
         return analysis
 
+
+    def _extract_recommendation_from_content(self, analysis: str) -> Tuple[str, str]:
+        """Extract recommendation from LLM response even without formal format"""
+        analysis_lower = analysis.lower()
+        
+        # Agent-specific indicators for technical
+        specific_buy_signals = ['uptrend', 'oversold', 'support level', 'bullish crossover', 'breakout']
+        specific_sell_signals = ['downtrend', 'overbought', 'resistance level', 'bearish crossover', 'breakdown']
+        
+        # Look for explicit recommendations first
+        if any(phrase in analysis_lower for phrase in ["recommend buy", "should buy", "buy signal", "final decision: buy"]):
+            return "BUY", "Medium"
+        elif any(phrase in analysis_lower for phrase in ["recommend sell", "should sell", "sell signal", "final decision: sell"]):
+            return "SELL", "Medium"
+        elif any(phrase in analysis_lower for phrase in ["recommend hold", "should hold", "wait", "neutral position"]):
+            return "HOLD", "Low"
+        
+        # Check agent-specific signals
+        buy_count = sum(1 for signal in specific_buy_signals if signal in analysis_lower)
+        sell_count = sum(1 for signal in specific_sell_signals if signal in analysis_lower)
+        
+        # General sentiment indicators
+        general_buy = ["bullish", "positive", "upside", "growth", "strong"]
+        general_sell = ["bearish", "negative", "downside", "decline", "weak"]
+        
+        buy_count += sum(0.5 for word in general_buy if word in analysis_lower)
+        sell_count += sum(0.5 for word in general_sell if word in analysis_lower)
+        
+        # Decision based on signal strength
+        if buy_count > sell_count + 1.5:
+            confidence = "High" if buy_count > 4 else "Medium"
+            return "BUY", confidence
+        elif sell_count > buy_count + 1.5:
+            confidence = "High" if sell_count > 4 else "Medium"
+            return "SELL", confidence
+        else:
+            # Default to HOLD only if truly neutral
+            return "HOLD", "Low"
 
 def main():
     parser = argparse.ArgumentParser(

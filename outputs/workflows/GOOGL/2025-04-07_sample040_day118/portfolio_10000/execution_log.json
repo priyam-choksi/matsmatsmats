@@ -1,0 +1,244 @@
+{
+  "ticker": "GOOGL",
+  "research_mode": "shallow",
+  "research_rounds": 1,
+  "portfolio_value": 10000,
+  "start_time": "2025-11-24T18:23:25.125387",
+  "end_time": "2025-11-24T18:26:27.070613",
+  "phases": {
+    "phase1": {
+      "status": "SUCCESS"
+    },
+    "phase2": {
+      "status": "SUCCESS"
+    },
+    "phase3": {
+      "status": "SUCCESS"
+    },
+    "phase4": {
+      "status": "SUCCESS"
+    },
+    "phase5": {
+      "status": "FAILED"
+    }
+  },
+  "errors": [],
+  "log": [
+    {
+      "timestamp": "18:23:25",
+      "phase": "phase1",
+      "message": "Phase 1: Running Analysts (4)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "18:23:25",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\orchestrators\\discussion_hub.py GOOGL...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:24:44",
+      "phase": null,
+      "message": "Output preview: [HUB] Found 4/4 analyst agents  ====================================================================== DISCUSSION HUB: GOOGL ======================================================================  [HU...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:24:44",
+      "phase": "phase1",
+      "message": "Analysts complete - output file created",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "18:24:45",
+      "phase": "phase2",
+      "message": "Phase 2: Researchers (shallow, 1 rounds)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "18:24:45",
+      "phase": "phase2",
+      "message": "Running Bear Researcher...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:24:45",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\researcher\\bear_researcher.py GOOGL...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:25:05",
+      "phase": null,
+      "message": "Output preview: [BEAR] Loading discussion points from C:\\Users\\pchok\\AppData\\Local\\Temp\\trading_workflows\\GOOGL_10000_sample40_d10368fd\\outputs\\discussion_points.json... [BEAR] \u2713 Loaded discussion for GOOGL [BEAR] \u2713 ...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:25:05",
+      "phase": "phase2",
+      "message": "Running Bull Researcher...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:25:05",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\researcher\\bull_researcher.py GOOGL...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:25:33",
+      "phase": null,
+      "message": "Output preview: [BULL] Loading discussion points from C:\\Users\\pchok\\AppData\\Local\\Temp\\trading_workflows\\GOOGL_10000_sample40_d10368fd\\outputs\\discussion_points.json... [BULL] \u2713 Loaded discussion for GOOGL [BULL] \u2713 ...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:25:33",
+      "phase": "phase2",
+      "message": "Both researchers complete with output files",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "18:25:34",
+      "phase": "phase3",
+      "message": "Phase 3: Research Manager",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "18:25:34",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\research_manager.py GOOGL...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:25:50",
+      "phase": null,
+      "message": "Output preview: [RESEARCH_MGR] Loading research files... [RESEARCH_MGR] \u2713 Bull thesis loaded (C:\\Users\\pchok\\AppData\\Local\\Temp\\trading_workflows\\GOOGL_10000_sample40_d10368fd\\outputs\\bull_thesis.json) [RESEARCH_MGR]...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:25:50",
+      "phase": "phase3",
+      "message": "Research Manager complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "18:25:51",
+      "phase": "phase4",
+      "message": "Phase 4: Risk Team (3 debators)",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "18:25:51",
+      "phase": "phase4",
+      "message": "Running Aggressive debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:25:51",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\aggressive_debator.py GOOGL...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:26:05",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== AGGRESSIVE RISK EVALUATION: GOOGL ======================================================================  [AGGRESSIVE] Loading d...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:26:05",
+      "phase": "phase4",
+      "message": "  \u2713 Aggressive complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "18:26:05",
+      "phase": "phase4",
+      "message": "Running Neutral debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:26:05",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\neutral_debator.py GOOGL...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:26:15",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== NEUTRAL RISK EVALUATION: GOOGL ======================================================================  [NEUTRAL] Loading data......",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:26:15",
+      "phase": "phase4",
+      "message": "  \u2713 Neutral complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "18:26:15",
+      "phase": "phase4",
+      "message": "Running Conservative debator...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:26:15",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\risk_management\\conservative_debator.py GOOGL...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:26:24",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== CONSERVATIVE RISK EVALUATION: GOOGL ======================================================================  [CONSERVATIVE] Loadi...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:26:24",
+      "phase": "phase4",
+      "message": "  \u2713 Conservative complete",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "18:26:24",
+      "phase": "phase4",
+      "message": "Risk team complete (3/3)",
+      "status": "SUCCESS"
+    },
+    {
+      "timestamp": "18:26:25",
+      "phase": "phase5",
+      "message": "Phase 5: Risk Manager",
+      "status": "RUNNING"
+    },
+    {
+      "timestamp": "18:26:25",
+      "phase": null,
+      "message": "Running: C:\\Users\\pchok\\anaconda3\\python.exe F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\risk_manager.py GOOGL...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:26:27",
+      "phase": null,
+      "message": "Output preview:  ====================================================================== RISK MANAGER FINAL DECISION: GOOGL Portfolio: $10,000 ======================================================================  [R...",
+      "status": "INFO"
+    },
+    {
+      "timestamp": "18:26:27",
+      "phase": "phase5",
+      "message": "Risk Manager failed",
+      "status": "ERROR"
+    },
+    {
+      "timestamp": "18:26:27",
+      "phase": "phase5",
+      "message": "Error: Traceback (most recent call last):\n  File \"F:\\DAMG 7374_GENAI\\TradingAgent\\agents\\managers\\risk_manager.py\", line 729, in main\n    report, decision_data = manager.execute(synthesis_file=args.synthesis",
+      "status": "ERROR"
+    },
+    {
+      "timestamp": "18:26:27",
+      "phase": null,
+      "message": "Stopping due to critical failure in Phase 5",
+      "status": "ERROR"
+    }
+  ]
+}

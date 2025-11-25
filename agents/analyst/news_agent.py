@@ -31,7 +31,7 @@ except ImportError:
 
 
 class NewsAgent:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
@@ -567,12 +567,13 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
             
             # Validate recommendation
             if "RECOMMENDATION:" not in analysis:
-                print("[NEWS] ⚠️  Missing recommendation, appending...")
-                analysis += "\n\nRECOMMENDATION: HOLD - Confidence: Low"
-            
+                print(f"[NEWS] ⚠️  Response missing formal recommendation, extracting...")
+                recommendation, confidence = self._extract_recommendation_from_content(analysis)
+                analysis += f"RECOMMENDATION: {recommendation} - Confidence: {confidence}"
+                
             print(f"[NEWS] ✓ Analysis complete ({len(analysis)} chars)")
             return analysis
-            
+                
         except Exception as e:
             print(f"[NEWS] ❌ LLM error: {e}")
             import traceback
@@ -697,6 +698,44 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
         
         return final_report
 
+
+    def _extract_recommendation_from_content(self, analysis: str) -> Tuple[str, str]:
+        """Extract recommendation from LLM response even without formal format"""
+        analysis_lower = analysis.lower()
+        
+        # Agent-specific indicators for news
+        specific_buy_signals = ['positive news', 'bullish sentiment', 'upgrade', 'positive catalyst']
+        specific_sell_signals = ['negative news', 'bearish sentiment', 'downgrade', 'negative catalyst']
+        
+        # Look for explicit recommendations first
+        if any(phrase in analysis_lower for phrase in ["recommend buy", "should buy", "buy signal", "final decision: buy"]):
+            return "BUY", "Medium"
+        elif any(phrase in analysis_lower for phrase in ["recommend sell", "should sell", "sell signal", "final decision: sell"]):
+            return "SELL", "Medium"
+        elif any(phrase in analysis_lower for phrase in ["recommend hold", "should hold", "wait", "neutral position"]):
+            return "HOLD", "Low"
+        
+        # Check agent-specific signals
+        buy_count = sum(1 for signal in specific_buy_signals if signal in analysis_lower)
+        sell_count = sum(1 for signal in specific_sell_signals if signal in analysis_lower)
+        
+        # General sentiment indicators
+        general_buy = ["bullish", "positive", "upside", "growth", "strong"]
+        general_sell = ["bearish", "negative", "downside", "decline", "weak"]
+        
+        buy_count += sum(0.5 for word in general_buy if word in analysis_lower)
+        sell_count += sum(0.5 for word in general_sell if word in analysis_lower)
+        
+        # Decision based on signal strength
+        if buy_count > sell_count + 1.5:
+            confidence = "High" if buy_count > 4 else "Medium"
+            return "BUY", confidence
+        elif sell_count > buy_count + 1.5:
+            confidence = "High" if sell_count > 4 else "Medium"
+            return "SELL", confidence
+        else:
+            # Default to HOLD only if truly neutral
+            return "HOLD", "Low"
 
 def main():
     parser = argparse.ArgumentParser(
