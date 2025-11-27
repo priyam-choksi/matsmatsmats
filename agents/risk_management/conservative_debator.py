@@ -2,7 +2,10 @@
 Conservative Risk Debator - Token-Efficient Version
 Risk-averse evaluation with red flag detection
 
+MODIFIED: Now supports historical backtesting via analysis_date parameter
+
 Usage: python conservative_debator.py AAPL --synthesis-file ../../outputs/research_synthesis.json
+       python conservative_debator.py AAPL --synthesis-file ... --analysis-date 2024-06-15
 """
 
 import os
@@ -21,11 +24,20 @@ if sys.platform == 'win32':
 
 
 class ConservativeDebator:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini",
+                 analysis_date: Optional[str] = None):
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
+        
+        # Historical backtesting support
+        self.analysis_date = analysis_date
+        
+        if self.analysis_date:
+            print(f"[CONSERVATIVE] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+        else:
+            print(f"[CONSERVATIVE] Running in LIVE mode (current date)")
         
         self.risk_profile = "CONSERVATIVE"
         
@@ -68,6 +80,11 @@ CONSERVATIVE STANCE: [SMALL BUY/MINIMAL BUY/HOLD/AVOID] - Position Size: X% - Co
                     synthesis = json.load(f)
                 print(f"[CONSERVATIVE] ✓ Synthesis loaded")
                 
+                # Check for historical date in loaded data
+                if synthesis.get('analysis_date') and not self.analysis_date:
+                    self.analysis_date = synthesis.get('analysis_date')
+                    print(f"[CONSERVATIVE] → Using historical date from synthesis: {self.analysis_date}")
+                
                 if 'bull_thesis' in synthesis and 'bear_thesis' in synthesis:
                     return synthesis
                 else:
@@ -101,6 +118,11 @@ CONSERVATIVE STANCE: [SMALL BUY/MINIMAL BUY/HOLD/AVOID] - Position Size: X% - Co
         if os.path.exists(bull_file):
             with open(bull_file, 'r', encoding='utf-8') as f:
                 bull_thesis = json.load(f)
+            
+            # Check for historical date
+            if bull_thesis.get('analysis_date') and not self.analysis_date:
+                self.analysis_date = bull_thesis.get('analysis_date')
+                print(f"[CONSERVATIVE] → Using historical date from bull thesis: {self.analysis_date}")
         
         if os.path.exists(bear_file):
             with open(bear_file, 'r', encoding='utf-8') as f:
@@ -154,7 +176,9 @@ CONSERVATIVE STANCE: [SMALL BUY/MINIMAL BUY/HOLD/AVOID] - Position Size: X% - Co
             'profile': self.risk_profile,
             'ticker': self.ticker,
             'timestamp': datetime.now().isoformat(),
-            'red_flags': red_flags
+            'red_flags': red_flags,
+            'analysis_date': self.analysis_date,
+            'historical_mode': self.analysis_date is not None
         }
         
         if len(red_flags) >= 2:
@@ -210,7 +234,19 @@ CONSERVATIVE STANCE: [SMALL BUY/MINIMAL BUY/HOLD/AVOID] - Position Size: X% - Co
             return self._create_fallback_report(evaluation, trading_plan, red_flags)
         
         try:
-            context = f"""Conservative evaluation for {self.ticker}:
+            # Historical date context for LLM
+            date_context = ""
+            if self.analysis_date:
+                date_context = f"""
+**⚠️ HISTORICAL ANALYSIS MODE ⚠️**
+You are analyzing data AS OF {self.analysis_date}.
+All research and analyst reports are from this historical date.
+Make your conservative evaluation as if you were deciding ON {self.analysis_date}.
+Do NOT reference any events or data after {self.analysis_date}.
+
+"""
+            
+            context = f"""{date_context}Conservative evaluation for {self.ticker}:
 
 Red Flags: {len(red_flags)} detected
 {chr(10).join(f'- {flag}' for flag in red_flags)}
@@ -227,7 +263,7 @@ Explain safety-first approach."""
                     {"role": "user", "content": context}
                 ],
                 temperature=0.4,
-                max_tokens=1500
+                max_completion_tokens=1500
             )
             
             report = response.choices[0].message.content
@@ -242,10 +278,12 @@ Explain safety-first approach."""
     
     def _create_fallback_report(self, evaluation: Dict, trading_plan: Dict, red_flags: List[str]) -> str:
         """Fallback"""
+        date_header = f"\n**Analysis Date:** {self.analysis_date} (HISTORICAL)\n" if self.analysis_date else ""
+        
         report = f"""
 # CONSERVATIVE RISK EVALUATION: {self.ticker}
 {'='*70}
-
+{date_header}
 **Red Flags:** {len(red_flags)}
 """
         for flag in red_flags:
@@ -270,12 +308,14 @@ CONSERVATIVE STANCE: {evaluation['stance']} - Position Size: {evaluation['positi
         
         print(f"\n{'='*70}")
         print(f"CONSERVATIVE RISK EVALUATION: {self.ticker}")
+        if self.analysis_date:
+            print(f"*** HISTORICAL MODE: As of {self.analysis_date} ***")
         print(f"{'='*70}\n")
         
         synthesis = self.load_all_data(synthesis_file, bull_file, bear_file)
         
         if not synthesis or not synthesis.get('bull_thesis') or not synthesis.get('bear_thesis'):
-            print("[CONSERVATIVE] ❌ Missing data")
+            print("[CONSERVATIVE] ✗ Missing data")
             return "Error: No data", {}
         
         red_flags = self.identify_red_flags(synthesis)
@@ -287,7 +327,9 @@ CONSERVATIVE STANCE: {evaluation['stance']} - Position Size: {evaluation['positi
         self.evaluation = {
             **evaluation,
             'trading_plan': trading_plan,
-            'risk_parameters': self.risk_parameters
+            'risk_parameters': self.risk_parameters,
+            'analysis_date': self.analysis_date,
+            'historical_mode': self.analysis_date is not None
         }
         
         elapsed = time.time() - start_time
@@ -316,11 +358,17 @@ def main():
     parser.add_argument("--model", default="gpt-4o-mini")
     parser.add_argument("--output", help="Output file")
     parser.add_argument("--save-evaluation", help="Save JSON")
+    parser.add_argument("--analysis-date", help="Historical analysis date (YYYY-MM-DD)")
     
     args = parser.parse_args()
     
     try:
-        debator = ConservativeDebator(ticker=args.ticker, api_key=args.api_key, model=args.model)
+        debator = ConservativeDebator(
+            ticker=args.ticker, 
+            api_key=args.api_key, 
+            model=args.model,
+            analysis_date=args.analysis_date
+        )
         
         report, evaluation = debator.evaluate(
             synthesis_file=args.synthesis_file,
@@ -342,7 +390,7 @@ def main():
         print("\n\n⚠️  Interrupted")
         sys.exit(1)
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n✗ Error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

@@ -2,7 +2,11 @@
 Macro Economic Analysis Agent - Enhanced with Intelligent Tool Calling
 Comprehensive macroeconomic and market analysis with adaptive data gathering
 
-Usage: python macro_agent.py --sector technology --days 7 --output report.txt
+MODIFIED: Now supports historical backtesting via analysis_date parameter
+
+Usage: 
+  python macro_agent.py --sector technology --days 7
+  python macro_agent.py --days 7 --analysis-date 2024-06-15
 """
 
 import os
@@ -23,10 +27,20 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 class MacroAgent:
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-5-nano",
+                 analysis_date: Optional[str] = None):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
+        
+        # NEW: Historical backtesting support
+        self.analysis_date = analysis_date
+        
+        # Log mode
+        if self.analysis_date:
+            print(f"[MACRO] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+        else:
+            print(f"[MACRO] Running in LIVE mode (current data)")
         
         # Enhanced system prompt with reference-level detail
         self.system_prompt = """You are an expert macroeconomic analyst evaluating market conditions for trading decisions.
@@ -116,6 +130,34 @@ RECOMMENDATION: RISK-ON/RISK-OFF/NEUTRAL - Confidence: High/Medium/Low
 
 Be quantitative - reference actual numbers and percentages from the data."""
 
+    def _fetch_historical_data(self, symbol: str, days: int) -> Optional[pd.DataFrame]:
+        """
+        Helper method to fetch data with historical date support.
+        Used by all data-fetching methods.
+        """
+        try:
+            ticker = yf.Ticker(symbol)
+            
+            if self.analysis_date:
+                # === HISTORICAL MODE ===
+                end_date = datetime.strptime(self.analysis_date, '%Y-%m-%d')
+                start_date = end_date - timedelta(days=days * 2)
+                
+                hist = ticker.history(
+                    start=start_date.strftime('%Y-%m-%d'),
+                    end=(end_date + timedelta(days=1)).strftime('%Y-%m-%d')
+                )
+            else:
+                # === CURRENT MODE ===
+                period = "7d" if days <= 7 else "1mo" if days <= 30 else "3mo"
+                hist = ticker.history(period=period)
+            
+            return hist if not hist.empty else None
+            
+        except Exception as e:
+            print(f"[MACRO] ⚠️ Error fetching {symbol}: {e}")
+            return None
+
     def get_market_indicators(self, days: int = 7) -> str:
         """
         Tool: Gather major market indicators
@@ -133,14 +175,19 @@ Be quantitative - reference actual numbers and percentages from the data."""
         }
         
         result = f"## Market Indicators ({days}-Day Analysis)\n\n"
+        
+        # NEW: Add date note if historical
+        if self.analysis_date:
+            result += f"**⚠️ Historical Data as of: {self.analysis_date}**\n\n"
+        
         successful = 0
         
         for symbol, name in indices.items():
             try:
-                ticker = yf.Ticker(symbol)
-                hist = ticker.history(period="7d" if days <= 7 else "1mo")
+                # Use helper method for historical support
+                hist = self._fetch_historical_data(symbol, days)
                 
-                if hist.empty or len(hist) < 2:
+                if hist is None or len(hist) < 2:
                     continue
                 
                 current = hist['Close'].iloc[-1]
@@ -202,10 +249,10 @@ Be quantitative - reference actual numbers and percentages from the data."""
         
         for symbol, name in sectors.items():
             try:
-                ticker = yf.Ticker(symbol)
-                hist = ticker.history(period="7d" if days <= 7 else "1mo")
+                # Use helper method for historical support
+                hist = self._fetch_historical_data(symbol, days)
                 
-                if hist.empty or len(hist) < 2:
+                if hist is None or len(hist) < 2:
                     continue
                 
                 current = hist['Close'].iloc[-1]
@@ -229,6 +276,11 @@ Be quantitative - reference actual numbers and percentages from the data."""
         sorted_sectors = sorted(sector_data.items(), key=lambda x: x[1]['change'], reverse=True)
         
         result = f"## Sector Performance ({days}-Day)\n\n"
+        
+        # NEW: Add date note if historical
+        if self.analysis_date:
+            result += f"**⚠️ Historical Data as of: {self.analysis_date}**\n\n"
+        
         result += "**Leaders:**\n"
         for name, data in sorted_sectors[:3]:
             result += f"- {name}: {data['change']:+.2f}% (Momentum: {data['momentum']:+.2f}%)\n"
@@ -273,12 +325,16 @@ Be quantitative - reference actual numbers and percentages from the data."""
         
         result = f"## Economic Indicators ({days}-Day)\n\n"
         
+        # NEW: Add date note if historical
+        if self.analysis_date:
+            result += f"**⚠️ Historical Data as of: {self.analysis_date}**\n\n"
+        
         for symbol, (name, sentiment) in indicators.items():
             try:
-                ticker = yf.Ticker(symbol)
-                hist = ticker.history(period="7d" if days <= 7 else "1mo")
+                # Use helper method for historical support
+                hist = self._fetch_historical_data(symbol, days)
                 
-                if hist.empty or len(hist) < 2:
+                if hist is None or len(hist) < 2:
                     continue
                 
                 current = hist['Close'].iloc[-1]
@@ -314,15 +370,16 @@ Be quantitative - reference actual numbers and percentages from the data."""
         
         result = f"## Market Breadth ({days}-Day)\n\n"
         
+        # NEW: Add date note if historical
+        if self.analysis_date:
+            result += f"**⚠️ Historical Data as of: {self.analysis_date}**\n\n"
+        
         try:
-            spy = yf.Ticker('^GSPC')
-            iwm = yf.Ticker('^RUT')
+            # Use helper method for historical support
+            spy_hist = self._fetch_historical_data('^GSPC', days)
+            iwm_hist = self._fetch_historical_data('^RUT', days)
             
-            period = "7d" if days <= 7 else "1mo"
-            spy_hist = spy.history(period=period)
-            iwm_hist = iwm.history(period=period)
-            
-            if not spy_hist.empty and not iwm_hist.empty:
+            if spy_hist is not None and iwm_hist is not None and len(spy_hist) >= 2 and len(iwm_hist) >= 2:
                 spy_change = ((spy_hist['Close'].iloc[-1]/spy_hist['Close'].iloc[0] - 1) * 100)
                 iwm_change = ((iwm_hist['Close'].iloc[-1]/iwm_hist['Close'].iloc[0] - 1) * 100)
                 spread = iwm_change - spy_change
@@ -353,7 +410,7 @@ Be quantitative - reference actual numbers and percentages from the data."""
         LLM decides which tools to call and when to stop
         """
         if not self.client:
-            print("[MACRO] ⚠️  No API key - gathering all data for fallback")
+            print("[MACRO] ⚠️ No API key - gathering all data for fallback")
             return self._run_without_llm(days, sector)
         
         print(f"[MACRO] Starting iterative analysis...")
@@ -414,10 +471,15 @@ Be quantitative - reference actual numbers and percentages from the data."""
             }
         ]
         
+        # NEW: Add date context to initial message
+        date_context = ""
+        if self.analysis_date:
+            date_context = f" **HISTORICAL ANALYSIS AS OF {self.analysis_date}** - All data is historical ending on this date."
+        
         # Initial message
         messages = [
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": f"Analyze current macro environment ({days}-day view)" + (f" with focus on {sector} sector" if sector else "")}
+            {"role": "user", "content": f"Analyze current macro environment ({days}-day view){date_context}" + (f" with focus on {sector} sector" if sector else "")}
         ]
         
         # Iterative tool calling (like reference code)
@@ -523,7 +585,13 @@ Be quantitative - reference actual numbers and percentages from the data."""
         print("[MACRO] Running fallback mode (no LLM)")
         
         report = f"# Macro Analysis ({days}-Day)\n"
-        report += f"*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*\n\n"
+        report += f"*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*\n"
+        
+        # NEW: Add historical note
+        if self.analysis_date:
+            report += f"**⚠️ HISTORICAL ANALYSIS AS OF {self.analysis_date}**\n"
+        
+        report += "\n"
         
         report += self.get_market_indicators(days)
         report += self.get_sector_performance(days)
@@ -544,6 +612,11 @@ Be quantitative - reference actual numbers and percentages from the data."""
         """Create report from partial tool execution"""
         report = f"# Macro Analysis (Partial)\n"
         report += f"*Analysis Period: {days} days*\n"
+        
+        # NEW: Add historical note
+        if self.analysis_date:
+            report += f"**⚠️ HISTORICAL ANALYSIS AS OF {self.analysis_date}**\n"
+        
         report += f"*Successful Tools: {len(successful)}, Failed: {len(failed)}*\n\n"
         
         if failed:
@@ -564,6 +637,8 @@ Be quantitative - reference actual numbers and percentages from the data."""
         print(f"\n{'='*70}")
         print(f"MACRO ECONOMIC ANALYSIS")
         print(f"Period: {days} days | Sector: {sector or 'All'}")
+        if self.analysis_date:
+            print(f"*** HISTORICAL MODE: As of {self.analysis_date} ***")
         print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'='*70}\n")
         
@@ -615,6 +690,7 @@ Be quantitative - reference actual numbers and percentages from the data."""
             # Default to HOLD only if truly neutral
             return "HOLD", "Low"
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Macro Economic Analysis Agent - Intelligent iterative analysis",
@@ -624,6 +700,7 @@ Examples:
   python macro_agent.py
   python macro_agent.py --days 30
   python macro_agent.py --sector technology
+  python macro_agent.py --days 7 --analysis-date 2024-06-15
         """
     )
     
@@ -632,11 +709,18 @@ Examples:
     parser.add_argument("--api-key", help="OpenAI API key")
     parser.add_argument("--model", default="gpt-4o-mini", help="Model (default: gpt-4o-mini)")
     parser.add_argument("--output", help="Save to file")
+    # NEW: Historical backtesting support
+    parser.add_argument("--analysis-date", type=str, default=None,
+                       help="Historical analysis date (YYYY-MM-DD format). If set, fetches data ending on this date.")
     
     args = parser.parse_args()
     
     try:
-        agent = MacroAgent(api_key=args.api_key, model=args.model)
+        agent = MacroAgent(
+            api_key=args.api_key, 
+            model=args.model,
+            analysis_date=args.analysis_date  # NEW
+        )
         result = agent.run(sector=args.sector, days=args.days)
         
         print(result)
@@ -647,7 +731,7 @@ Examples:
             print(f"\n✓ Saved to: {args.output}")
         
     except KeyboardInterrupt:
-        print("\n\n⚠️  Interrupted")
+        print("\n\n⚠️ Interrupted")
         sys.exit(1)
     except Exception as e:
         print(f"\n❌ Error: {e}")

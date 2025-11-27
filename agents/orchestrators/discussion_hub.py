@@ -2,7 +2,11 @@
 Discussion Hub - Enhanced with Full Report Preservation
 Aggregates analyst reports while preserving complete context for downstream agents
 
-Usage: python discussion_hub.py AAPL --run-analysts --output discussion_points.json
+MODIFIED: Now supports historical backtesting via analysis_date parameter
+
+Usage: 
+  python discussion_hub.py AAPL --run-analysts --output discussion_points.json
+  python discussion_hub.py AAPL --run-analysts --analysis-date 2024-06-15
 """
 
 import os
@@ -23,11 +27,20 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 class DiscussionHub:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini",
+                 analysis_date: Optional[str] = None):  # <-- NEW PARAMETER
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
+        
+        # === HISTORICAL BACKTESTING SUPPORT ===
+        self.analysis_date = analysis_date  # Format: 'YYYY-MM-DD' or None for current
+        
+        if self.analysis_date:
+            print(f"[HUB] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+        else:
+            print(f"[HUB] Running in LIVE mode (current data)")
         
         # Enhanced system prompt for synthesis
         self.system_prompt = """You are a research coordinator synthesizing multiple analyst perspectives.
@@ -91,9 +104,19 @@ Be balanced and objective. Your synthesis will guide the bull and bear researche
         if agent_name == "technical":
             cmd.extend(["--days", "7"])
         elif agent_name == "news":
-            cmd.extend(["--sources", "yahoo", "--days", "7"])
+            # Use sources with good historical support for backtesting
+            if self.analysis_date:
+                cmd.extend(["--sources", "yahoo", "finnhub", "--days", "7"])
+            else:
+                cmd.extend(["--sources", "yahoo", "--days", "7"])
         elif agent_name == "macro":
             cmd.extend(["--days", "7"])
+        
+        # ============================================================
+        # NEW: Pass analysis date to ALL analysts
+        # ============================================================
+        if self.analysis_date:
+            cmd.extend(["--analysis-date", self.analysis_date])
         
         try:
             result = subprocess.run(
@@ -103,7 +126,6 @@ Be balanced and objective. Your synthesis will guide the bull and bear researche
                 timeout=90,
                 cwd=Path(agent_script).parent,
                 encoding='utf-8'
-
             )
             
             if result.returncode == 0:
@@ -410,8 +432,18 @@ Be balanced and objective. Your synthesis will guide the bull and bear researche
         try:
             print(f"[HUB] Generating synthesis from full reports...")
             
+            # === ADD HISTORICAL DATE CONTEXT ===
+            date_context = ""
+            if self.analysis_date:
+                date_context = f"""
+**⚠️ HISTORICAL ANALYSIS MODE ⚠️**
+All analyst reports are based on data AS OF {self.analysis_date}.
+Synthesize as if making a decision ON {self.analysis_date}.
+
+"""
+            
             # Prepare FULL context for LLM (this is the key change!)
-            full_context = f"""# Complete Analyst Reports for {self.ticker}
+            full_context = f"""{date_context}# Complete Analyst Reports for {self.ticker}
 
 ## Quick Summary
 - Recommendations: {discussion_data['summary']['recommendations']}
@@ -454,7 +486,7 @@ Be balanced and objective. Your synthesis will guide the bull and bear researche
                     {"role": "user", "content": f"Synthesize these complete analyst reports:\n\n{full_context}"}
                 ],
                 temperature=0.7,
-                max_tokens=2500  # Increased for comprehensive synthesis
+                max_completion_tokens=2500  # Increased for comprehensive synthesis
             )
             
             discussion_data['llm_synthesis'] = response.choices[0].message.content
@@ -474,6 +506,8 @@ Be balanced and objective. Your synthesis will guide the bull and bear researche
         
         print(f"\n{'='*70}")
         print(f"DISCUSSION HUB: {self.ticker}")
+        if self.analysis_date:
+            print(f"*** HISTORICAL MODE: As of {self.analysis_date} ***")
         print(f"{'='*70}\n")
         
         # Step 1: Get analyst reports
@@ -543,6 +577,8 @@ Be balanced and objective. Your synthesis will guide the bull and bear researche
         discussion_points = {
             'ticker': self.ticker,
             'timestamp': datetime.now().isoformat(),
+            'analysis_date': self.analysis_date,  # NEW: Include in output
+            'historical_mode': self.analysis_date is not None,  # NEW
             
             # Quick reference summary
             'summary': {
@@ -606,7 +642,12 @@ Be balanced and objective. Your synthesis will guide the bull and bear researche
 {'='*80}
 Ticker: {dp['ticker']}
 Timestamp: {dp['timestamp']}
-Net Sentiment: {dp['summary']['net_sentiment']}
+"""
+        # NEW: Add historical date info
+        if dp.get('analysis_date'):
+            report += f"*** HISTORICAL ANALYSIS AS OF {dp['analysis_date']} ***\n"
+        
+        report += f"""Net Sentiment: {dp['summary']['net_sentiment']}
 
 ANALYST QUICK SUMMARIES
 {'-'*80}
@@ -675,6 +716,9 @@ Examples:
   python discussion_hub.py AAPL --run-analysts
   python discussion_hub.py MSFT --run-analysts --output discussion.json
   python discussion_hub.py GOOGL --run-analysts --format text --output report.txt
+  
+  # HISTORICAL BACKTESTING:
+  python discussion_hub.py AAPL --run-analysts --analysis-date 2024-06-15
 
 Output Format:
   The JSON output contains:
@@ -694,10 +738,23 @@ Output Format:
     parser.add_argument("--format", choices=['json', 'text'], default='text',
                        help="Output format")
     
+    # ============================================================
+    # NEW: Add analysis-date argument for historical backtesting
+    # ============================================================
+    parser.add_argument("--analysis-date",
+                       type=str,
+                       default=None,
+                       help="Historical analysis date (YYYY-MM-DD format)")
+    
     args = parser.parse_args()
     
     try:
-        hub = DiscussionHub(ticker=args.ticker, api_key=args.api_key, model=args.model)
+        hub = DiscussionHub(
+            ticker=args.ticker, 
+            api_key=args.api_key, 
+            model=args.model,
+            analysis_date=args.analysis_date  # NEW: Pass to hub
+        )
         
         # Run aggregation
         discussion_points = hub.aggregate_reports(run_analysts=args.run_analysts)

@@ -222,7 +222,7 @@ Respond with JSON only.
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.7,
-                max_tokens=300
+                max_completion_tokens=300
             )
             
             # Parse response

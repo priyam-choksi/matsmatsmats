@@ -2,8 +2,12 @@
 News Sentiment Analysis Agent - Enhanced Version
 Comprehensive news and sentiment analysis from multiple sources
 
+MODIFIED: Now supports historical backtesting via analysis_date parameter
+
 Supports: Yahoo Finance, Reddit (PRAW), NewsAPI, Finnhub, Alpha Vantage
-Usage: python news_agent.py AAPL --sources yahoo reddit --days 7 --output report.txt
+Usage: 
+  python news_agent.py AAPL --sources yahoo finnhub --days 7
+  python news_agent.py AAPL --sources yahoo finnhub --days 7 --analysis-date 2024-06-15
 """
 
 import os
@@ -31,11 +35,20 @@ except ImportError:
 
 
 class NewsAgent:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini",
+                 analysis_date: Optional[str] = None):
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
+        
+        # === HISTORICAL BACKTESTING SUPPORT ===
+        self.analysis_date = analysis_date  # Format: 'YYYY-MM-DD' or None for current
+        
+        if self.analysis_date:
+            print(f"[NEWS] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+        else:
+            print(f"[NEWS] Running in LIVE mode (current data)")
         
         # Load API keys from environment
         self.newsapi_key = os.getenv("NEWSAPI_KEY")
@@ -133,25 +146,42 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
 
 Be specific about dates, sources, and sentiment direction. Distinguish between actionable breaking news and old news already priced in."""
 
+    def _get_reference_date(self) -> datetime:
+        """Get the reference date for analysis (historical or current)"""
+        if self.analysis_date:
+            return datetime.strptime(self.analysis_date, '%Y-%m-%d')
+        return datetime.now()
+
     def get_yahoo_news(self, days: int = 7) -> Tuple[str, Dict[str, Any]]:
         """
         Fetch news from Yahoo Finance (free, no API key needed)
+        NOTE: Yahoo Finance news is always current - limited historical support
         Returns formatted string and structured data
         """
         print(f"[NEWS] 🔧 Fetching Yahoo Finance news...")
+        
+        # Warning for historical mode
+        if self.analysis_date:
+            print(f"[NEWS] ⚠️  Yahoo Finance has limited historical news support")
         
         try:
             stock = yf.Ticker(self.ticker)
             news = stock.news[:20] if stock.news else []
             
-            cutoff_date = datetime.now() - timedelta(days=days)
+            reference_date = self._get_reference_date()
+            cutoff_date = reference_date - timedelta(days=days)
             relevant_news = []
             
             for item in news:
                 pub_time = datetime.fromtimestamp(item.get('providerPublishTime', 0))
                 
+                # For historical mode, only include news BEFORE the analysis date
+                if self.analysis_date:
+                    if pub_time > reference_date:
+                        continue  # Skip news after analysis date
+                
                 if pub_time > cutoff_date:
-                    time_ago = datetime.now() - pub_time
+                    time_ago = reference_date - pub_time
                     
                     if time_ago.days > 0:
                         time_str = f"{time_ago.days}d ago"
@@ -173,7 +203,10 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
             relevant_news.sort(key=lambda x: x['pub_time'], reverse=True)
             
             # Format output
-            result = f"## Yahoo Finance News (Last {days} Days)\n\n"
+            result = f"## Yahoo Finance News (Last {days} Days)\n"
+            if self.analysis_date:
+                result = f"## Yahoo Finance News ({days} Days before {self.analysis_date})\n"
+            result += "\n"
             
             if relevant_news:
                 result += f"**Found {len(relevant_news)} articles**\n\n"
@@ -188,7 +221,9 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
                 if recent_count > 5:
                     result += f"📊 High news volume: {recent_count} articles in last 24 hours\n"
             else:
-                result += f"No news found in the last {days} days\n"
+                result += f"No news found in the specified period\n"
+                if self.analysis_date:
+                    result += f"(Historical mode: news before {self.analysis_date})\n"
             
             print(f"[NEWS] ✓ Yahoo Finance: {len(relevant_news)} articles")
             
@@ -205,6 +240,7 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
     def get_reddit_sentiment(self, days: int = 7) -> Tuple[str, Dict[str, Any]]:
         """
         Get Reddit sentiment using PRAW
+        NOTE: Reddit search has limited historical support
         Returns formatted string and structured data
         """
         print(f"[NEWS] 🔧 Analyzing Reddit sentiment...")
@@ -217,6 +253,10 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
             print(f"[NEWS] ⚠️  Reddit credentials missing")
             return "## Reddit Sentiment\n**Status:** No credentials (set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET)\n\n", {'source': 'reddit', 'error': 'no_credentials'}
         
+        # Warning for historical mode
+        if self.analysis_date:
+            print(f"[NEWS] ⚠️  Reddit has limited historical search - results may include newer posts")
+        
         try:
             reddit = praw.Reddit(
                 client_id=self.reddit_client_id,
@@ -226,7 +266,9 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
             
             subreddits = ['wallstreetbets', 'stocks', 'investing', 'StockMarket']
             mentions = []
-            cutoff_date = datetime.now() - timedelta(days=days)
+            
+            reference_date = self._get_reference_date()
+            cutoff_date = reference_date - timedelta(days=days)
             
             for sub_name in subreddits:
                 try:
@@ -235,6 +277,11 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
                     
                     for submission in subreddit.search(self.ticker, time_filter=time_filter, limit=10):
                         created_time = datetime.fromtimestamp(submission.created_utc)
+                        
+                        # For historical mode, filter by date
+                        if self.analysis_date:
+                            if created_time > reference_date:
+                                continue  # Skip posts after analysis date
                         
                         if created_time > cutoff_date:
                             mentions.append({
@@ -254,14 +301,17 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
             top_mentions = mentions[:10]
             
             # Format output
-            result = f"## Reddit Sentiment (Last {days} Days)\n\n"
+            result = f"## Reddit Sentiment (Last {days} Days)\n"
+            if self.analysis_date:
+                result = f"## Reddit Sentiment ({days} Days before {self.analysis_date})\n"
+            result += "\n"
             
             if top_mentions:
                 result += f"**Found {len(mentions)} mentions across Reddit**\n\n"
                 
                 # Top posts
                 for i, m in enumerate(top_mentions[:5], 1):
-                    days_ago = (datetime.now() - m['created']).days
+                    days_ago = (reference_date - m['created']).days
                     time_str = f"{days_ago}d ago" if days_ago > 0 else "today"
                     
                     result += f"{i}. **{m['title']}**\n"
@@ -297,7 +347,7 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
                 else:
                     result += f"- Volume: Low social interest\n"
             else:
-                result += f"No Reddit mentions found for {self.ticker} in last {days} days\n"
+                result += f"No Reddit mentions found for {self.ticker} in specified period\n"
                 sentiment = "none"
             
             print(f"[NEWS] ✓ Reddit: {len(mentions)} mentions, sentiment={sentiment}")
@@ -316,6 +366,7 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
     def get_newsapi_news(self, days: int = 7) -> Tuple[str, Dict[str, Any]]:
         """
         Get news from NewsAPI (free tier: 100 requests/day)
+        GOOD HISTORICAL SUPPORT - uses from/to date parameters
         Returns formatted string and structured data
         """
         print(f"[NEWS] 🔧 Fetching NewsAPI articles...")
@@ -326,29 +377,40 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
         
         try:
             url = "https://newsapi.org/v2/everything"
-            from_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+            
+            # === HISTORICAL DATE SUPPORT ===
+            reference_date = self._get_reference_date()
+            from_date = (reference_date - timedelta(days=days)).strftime('%Y-%m-%d')
+            to_date = reference_date.strftime('%Y-%m-%d')
             
             params = {
                 'q': self.ticker,
                 'apiKey': self.newsapi_key,
                 'from': from_date,
-                'sortBy': 'publishedAt',  # Sort by date
+                'to': to_date,  # KEY: End date for historical queries
+                'sortBy': 'publishedAt',
                 'pageSize': 20,
                 'language': 'en'
             }
             
+            if self.analysis_date:
+                print(f"[NEWS] NewsAPI: Fetching news from {from_date} to {to_date}")
+            
             response = requests.get(url, params=params, timeout=10)
             data = response.json()
             
-            result = f"## NewsAPI (Last {days} Days)\n\n"
+            result = f"## NewsAPI (Last {days} Days)\n"
+            if self.analysis_date:
+                result = f"## NewsAPI ({from_date} to {to_date})\n"
+            result += "\n"
             
             if data.get('status') == 'ok' and data.get('articles'):
                 articles = data['articles']
                 result += f"**Found {len(articles)} articles**\n\n"
                 
                 for i, article in enumerate(articles[:8], 1):
-                    pub_date = datetime.strptime(article['publishedAt'][:10], '%Y-%m-%d') if article.get('publishedAt') else datetime.now()
-                    days_ago = (datetime.now() - pub_date).days
+                    pub_date = datetime.strptime(article['publishedAt'][:10], '%Y-%m-%d') if article.get('publishedAt') else reference_date
+                    days_ago = (reference_date - pub_date).days
                     time_str = f"{days_ago}d ago" if days_ago > 0 else "today"
                     
                     result += f"{i}. **{article.get('title', 'No title')}**\n"
@@ -383,6 +445,7 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
     def get_finnhub_news(self, days: int = 7) -> Tuple[str, Dict[str, Any]]:
         """
         Get news from Finnhub (free tier available)
+        EXCELLENT HISTORICAL SUPPORT - uses from/to date parameters
         Returns formatted string and structured data
         """
         print(f"[NEWS] 🔧 Fetching Finnhub news...")
@@ -393,27 +456,36 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
         
         try:
             url = "https://finnhub.io/api/v1/company-news"
-            from_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
-            to_date = datetime.now().strftime('%Y-%m-%d')
+            
+            # === HISTORICAL DATE SUPPORT ===
+            reference_date = self._get_reference_date()
+            from_date = (reference_date - timedelta(days=days)).strftime('%Y-%m-%d')
+            to_date = reference_date.strftime('%Y-%m-%d')
             
             params = {
                 'symbol': self.ticker,
                 'from': from_date,
-                'to': to_date,
+                'to': to_date,  # KEY: End date for historical queries
                 'token': self.finnhub_key
             }
+            
+            if self.analysis_date:
+                print(f"[NEWS] Finnhub: Fetching news from {from_date} to {to_date}")
             
             response = requests.get(url, params=params, timeout=10)
             data = response.json()
             
-            result = f"## Finnhub News (Last {days} Days)\n\n"
+            result = f"## Finnhub News (Last {days} Days)\n"
+            if self.analysis_date:
+                result = f"## Finnhub News ({from_date} to {to_date})\n"
+            result += "\n"
             
             if data and isinstance(data, list) and len(data) > 0:
                 result += f"**Found {len(data)} articles**\n\n"
                 
                 for i, article in enumerate(data[:8], 1):
                     pub_date = datetime.fromtimestamp(article.get('datetime', 0))
-                    days_ago = (datetime.now() - pub_date).days
+                    days_ago = (reference_date - pub_date).days
                     time_str = f"{days_ago}d ago" if days_ago > 0 else "today"
                     
                     result += f"{i}. **{article.get('headline', 'No title')}**\n"
@@ -446,6 +518,7 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
     def get_alphavantage_news(self, days: int = 7) -> Tuple[str, Dict[str, Any]]:
         """
         Get news from Alpha Vantage with sentiment scores
+        GOOD HISTORICAL SUPPORT - filters by date
         Returns formatted string and structured data
         """
         print(f"[NEWS] 🔧 Fetching Alpha Vantage news...")
@@ -456,18 +529,35 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
         
         try:
             url = "https://www.alphavantage.co/query"
+            
+            # === HISTORICAL DATE SUPPORT ===
+            reference_date = self._get_reference_date()
+            
+            # Alpha Vantage uses time_from and time_to in YYYYMMDDTHHMM format
+            time_from = (reference_date - timedelta(days=days)).strftime('%Y%m%dT0000')
+            time_to = reference_date.strftime('%Y%m%dT2359')
+            
             params = {
                 'function': 'NEWS_SENTIMENT',
                 'tickers': self.ticker,
                 'apikey': self.alphavantage_key,
+                'time_from': time_from,
+                'time_to': time_to,  # KEY: End time for historical queries
                 'limit': 50
             }
+            
+            if self.analysis_date:
+                print(f"[NEWS] Alpha Vantage: Fetching news from {time_from} to {time_to}")
             
             response = requests.get(url, params=params, timeout=10)
             data = response.json()
             
-            result = f"## Alpha Vantage News (Last {days} Days)\n\n"
-            cutoff_date = datetime.now() - timedelta(days=days)
+            result = f"## Alpha Vantage News (Last {days} Days)\n"
+            if self.analysis_date:
+                result = f"## Alpha Vantage News ({days} Days before {self.analysis_date})\n"
+            result += "\n"
+            
+            cutoff_date = reference_date - timedelta(days=days)
             
             if 'feed' in data:
                 relevant_articles = []
@@ -476,7 +566,8 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
                     try:
                         pub_date = datetime.strptime(article.get('time_published', '')[:8], '%Y%m%d')
                         
-                        if pub_date > cutoff_date:
+                        # Filter to date range
+                        if pub_date > cutoff_date and pub_date <= reference_date:
                             # Extract ticker-specific sentiment
                             ticker_sentiment = None
                             for ts in article.get('ticker_sentiment', []):
@@ -497,7 +588,7 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
                     result += f"**Found {len(relevant_articles)} articles with sentiment**\n\n"
                     
                     for i, article in enumerate(relevant_articles[:8], 1):
-                        days_ago = (datetime.now() - article['pub_date']).days
+                        days_ago = (reference_date - article['pub_date']).days
                         time_str = f"{days_ago}d ago" if days_ago > 0 else "today"
                         
                         sentiment_emoji = "📈" if "Bullish" in article['sentiment'] else "📉" if "Bearish" in article['sentiment'] else "➡️"
@@ -526,7 +617,7 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
                         'articles': relevant_articles[:8]
                     }
                 else:
-                    result += f"No news found in last {days} days\n\n"
+                    result += f"No news found in specified period\n\n"
                     print(f"[NEWS] ⚠️  Alpha Vantage: No recent news")
                     return result, {'source': 'alphavantage', 'count': 0}
             else:
@@ -553,14 +644,26 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
         try:
             print(f"[NEWS] Analyzing with {self.model}...")
             
+            # === ADD HISTORICAL DATE CONTEXT ===
+            date_context = ""
+            if self.analysis_date:
+                date_context = f"""
+**⚠️ HISTORICAL ANALYSIS MODE ⚠️**
+You are analyzing news AS OF {self.analysis_date}.
+All news articles are from BEFORE this date.
+Do NOT reference any events after {self.analysis_date}.
+Analyze as if you were making a decision ON {self.analysis_date}.
+
+"""
+            
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": f"Analyze this news and sentiment data for {self.ticker}:\n\n{all_news}"}
+                    {"role": "user", "content": f"{date_context}Analyze this news and sentiment data for {self.ticker}:\n\n{all_news}"}
                 ],
                 temperature=0.7,
-                max_tokens=2000
+                max_completion_tokens=2000
             )
             
             analysis = response.choices[0].message.content
@@ -587,7 +690,12 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
         print("[NEWS] Creating fallback analysis...")
         
         analysis = f"## News & Sentiment Analysis\n"
-        analysis += "*Generated using fallback analysis (LLM unavailable)*\n\n"
+        analysis += "*Generated using fallback analysis (LLM unavailable)*\n"
+        
+        if self.analysis_date:
+            analysis += f"*Historical analysis as of {self.analysis_date}*\n"
+        
+        analysis += "\n"
         
         # Count sources
         successful_sources = [d['source'] for d in news_data if 'error' not in d]
@@ -645,6 +753,8 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
         
         print(f"\n{'='*70}")
         print(f"NEWS & SENTIMENT ANALYSIS: {self.ticker}")
+        if self.analysis_date:
+            print(f"*** HISTORICAL MODE: As of {self.analysis_date} ***")
         print(f"Period: Last {days} days | Sources: {sources or ['yahoo']}")
         print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'='*70}\n")
@@ -653,6 +763,8 @@ Be specific about dates, sources, and sentiment direction. Distinguish between a
             sources = ['yahoo']
         
         all_news = f"# News & Sentiment Analysis: {self.ticker}\n"
+        if self.analysis_date:
+            all_news += f"**⚠️ HISTORICAL ANALYSIS AS OF {self.analysis_date} ⚠️**\n"
         all_news += f"**Analysis Period:** Last {days} Days\n"
         all_news += f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n"
         all_news += "="*70 + "\n\n"
@@ -746,13 +858,17 @@ Examples:
   python news_agent.py AAPL
   python news_agent.py MSFT --sources yahoo reddit newsapi
   python news_agent.py GOOGL --days 3 --output news_report.txt
+  
+  # HISTORICAL BACKTESTING:
+  python news_agent.py AAPL --sources yahoo finnhub --analysis-date 2024-06-15
+  python news_agent.py MSFT --sources finnhub alphavantage --days 7 --analysis-date 2024-03-01
 
 Available Sources:
-  yahoo        - Yahoo Finance (no API key required)
+  yahoo        - Yahoo Finance (limited historical support)
   reddit       - Reddit (requires REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET)
-  newsapi      - NewsAPI (requires NEWSAPI_KEY)
-  finnhub      - Finnhub (requires FINNHUB_KEY)
-  alphavantage - Alpha Vantage (requires ALPHAVANTAGE_KEY)
+  newsapi      - NewsAPI (requires NEWSAPI_KEY) - GOOD historical support
+  finnhub      - Finnhub (requires FINNHUB_KEY) - EXCELLENT historical support
+  alphavantage - Alpha Vantage (requires ALPHAVANTAGE_KEY) - GOOD historical support
         """
     )
     
@@ -767,10 +883,20 @@ Available Sources:
     parser.add_argument("--model", default="gpt-4o-mini", help="OpenAI model (default: gpt-4o-mini)")
     parser.add_argument("--output", help="Save report to file")
     
+    # === HISTORICAL BACKTESTING ARGUMENT ===
+    parser.add_argument("--analysis-date", 
+                       help="Historical date for backtesting (YYYY-MM-DD format). "
+                            "If provided, fetches news AS OF this date instead of current.")
+    
     args = parser.parse_args()
     
     try:
-        agent = NewsAgent(ticker=args.ticker, api_key=args.api_key, model=args.model)
+        agent = NewsAgent(
+            ticker=args.ticker, 
+            api_key=args.api_key, 
+            model=args.model,
+            analysis_date=args.analysis_date  # Pass historical date
+        )
         result = agent.run(sources=args.sources, days=args.days)
         
         print(result)

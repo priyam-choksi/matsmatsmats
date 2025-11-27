@@ -2,10 +2,13 @@
 Master Orchestrator - Complete Trading System Pipeline
 Coordinates all phases: Analysts → Researchers → Debate → Risk Team → Decision
 
+MODIFIED: Now supports historical backtesting via analysis_date parameter
+
 Usage: 
   python master_orchestrator.py AAPL --run-all
   python master_orchestrator.py AAPL --run-all --research-mode deep
   python master_orchestrator.py AAPL --run-all --research-mode research --research-rounds 5
+  python master_orchestrator.py AAPL --run-all --analysis-date 2024-06-15
 """
 
 import os
@@ -27,10 +30,13 @@ if sys.platform == 'win32':
 
 class MasterOrchestrator:
     def __init__(self, ticker: str, portfolio_value: float = 100000, 
-                 research_mode: str = 'shallow', research_rounds: int = 0):
+                 research_mode: str = 'shallow', research_rounds: int = 0,
+                 analysis_date: Optional[str] = None):  # <-- NEW PARAMETER
         self.ticker = ticker.upper()
         self.portfolio_value = portfolio_value
         self.research_mode = research_mode
+        self.analysis_date = analysis_date  # <-- NEW: Store analysis date
+        self.market_context = None  # <-- NEW: Will hold full context if loaded
         
         # Map research mode to debate rounds if not explicitly specified
         if research_rounds == 0:
@@ -89,6 +95,31 @@ class MasterOrchestrator:
         print(f"[SETUP] Project root: {self.project_root}")
         print(f"[SETUP] Outputs: {self.outputs_path}")
     
+    # ============================================================
+    # NEW METHOD: Load market context for historical backtesting
+    # ============================================================
+    def load_market_context(self):
+        """
+        Load market context if available (for batch runs).
+        This is written by batch_collect_all.py before running the orchestrator.
+        """
+        context_file = self.outputs_path / "market_context.json"
+        if context_file.exists():
+            try:
+                with open(context_file, 'r', encoding='utf-8') as f:
+                    context = json.load(f)
+                
+                # Extract analysis date from context (only if not already set via CLI)
+                if not self.analysis_date:
+                    self.analysis_date = context.get('analysis_date')
+                self.market_context = context
+                
+                self.log(f"Loaded market context: {self.analysis_date}", "setup", "INFO")
+                return context
+            except Exception as e:
+                self.log(f"Failed to load market context: {e}", "setup", "ERROR")
+        return None
+    
     def log(self, message: str, phase: Optional[str] = None, status: str = 'INFO'):
         """Log execution progress"""
         timestamp = datetime.now().strftime('%H:%M:%S')
@@ -134,6 +165,10 @@ class MasterOrchestrator:
         """Phase 1: Run analyst discussion hub"""
         self.log("Phase 1: Running Analysts (4 specialists)", "phase1", "RUNNING")
         
+        # NEW: Log if using historical mode
+        if self.analysis_date:
+            self.log(f"Historical mode: {self.analysis_date}", "phase1", "INFO")
+        
         script_path = self.paths['orchestrators'] / "discussion_hub.py"
         if not script_path.exists():
             self.log(f"Script not found: {script_path}", "phase1", "ERROR")
@@ -147,6 +182,12 @@ class MasterOrchestrator:
             "--output", str(self.outputs_path / "discussion_points.json"),
             "--format", "json"
         ]
+        
+        # ============================================================
+        # NEW: Pass analysis date to discussion hub
+        # ============================================================
+        if self.analysis_date:
+            cmd.extend(["--analysis-date", self.analysis_date])
         
         success, stdout, stderr = self.run_command(cmd, self.paths['orchestrators'], timeout=180)
         
@@ -180,6 +221,11 @@ class MasterOrchestrator:
                 "--discussion-file", str(discussion_file),
                 "--save-data", str(self.outputs_path / "bull_thesis.json")
             ]
+            
+            # NEW: Pass analysis date
+            if self.analysis_date:
+                cmd.extend(["--analysis-date", self.analysis_date])
+            
             success, _, stderr = self.run_command(cmd, self.paths['researcher'], timeout=120)
             if not success:
                 self.log(f"Bull researcher error: {stderr[:100]}", "phase2", "ERROR")
@@ -197,6 +243,11 @@ class MasterOrchestrator:
                 "--discussion-file", str(discussion_file),
                 "--save-data", str(self.outputs_path / "bear_thesis.json")
             ]
+            
+            # NEW: Pass analysis date
+            if self.analysis_date:
+                cmd.extend(["--analysis-date", self.analysis_date])
+            
             success, _, stderr = self.run_command(cmd, self.paths['researcher'], timeout=120)
             if not success:
                 self.log(f"Bear researcher error: {stderr[:100]}", "phase2", "ERROR")
@@ -243,6 +294,10 @@ class MasterOrchestrator:
             "--debate-rounds", str(self.research_rounds),  # KEY: Route rounds here
             "--save-synthesis", str(self.outputs_path / "research_synthesis.json")
         ]
+        
+        # NEW: Pass analysis date
+        if self.analysis_date:
+            cmd.extend(["--analysis-date", self.analysis_date])
         
         # Adjust timeout based on debate rounds
         timeout = 120 + (self.research_rounds * 45)  # ~45s per debate round
@@ -302,6 +357,10 @@ class MasterOrchestrator:
             if bear_file.exists():
                 cmd.extend(["--bear-file", str(bear_file)])
             
+            # NEW: Pass analysis date
+            if self.analysis_date:
+                cmd.extend(["--analysis-date", self.analysis_date])
+            
             self.log(f"Running {analyst.capitalize()} evaluator...", "phase4", "INFO")
             success, _, _ = self.run_command(cmd, self.paths['risk_management'], timeout=90)
             
@@ -340,6 +399,10 @@ class MasterOrchestrator:
             "--save-decision", str(self.outputs_path / "risk_decision.json")
         ]
         
+        # NEW: Pass analysis date
+        if self.analysis_date:
+            cmd.extend(["--analysis-date", self.analysis_date])
+        
         success, stdout, stderr = self.run_command(cmd, self.paths['managers'], timeout=120)
         
         output_file = self.outputs_path / "risk_decision.json"
@@ -359,39 +422,15 @@ class MasterOrchestrator:
             self.log(f"Risk Manager failed: {stderr[:200]}", "phase5", "ERROR")
             self.phase_results['phase5'] = {'status': 'FAILED'}
             return False
-    
-    def run_phase6_game_theory(self) -> bool:
-        """Phase 6: Game Theory Tournament"""
-        self.log("Phase 6: Game Theory Tournament", "phase6", "RUNNING")
-        
-        script_path = self.paths['orchestrators'] / "game_theory_orchestrator.py"
-        
-        if not script_path.exists():
-            self.log("Game theory script not found, skipping", "phase6", "INFO")
-            self.phase_results['phase6'] = {'status': 'SKIPPED'}
-            return True
-        
-        cmd = [
-            sys.executable,
-            str(script_path),
-            self.ticker,
-            "--outputs-dir", str(self.outputs_path)
-        ]
-        
-        success, stdout, stderr = self.run_command(cmd, self.paths['orchestrators'], timeout=90)
-        
-        if success:
-            self.log("Game theory tournament complete", "phase6", "SUCCESS")
-            self.phase_results['phase6'] = {'status': 'SUCCESS'}
-            return True
-        else:
-            self.log("Game theory failed", "phase6", "ERROR")
-            self.phase_results['phase6'] = {'status': 'FAILED'}
-            return False
-    
-    def run_complete_workflow(self, include_game_theory: bool = True) -> Dict:
-        """Run complete workflow"""
+       
+    def run_complete_workflow(self) -> Dict:
+        """Run complete workflow (Phases 1–5 only)"""
         self.start_time = datetime.now()
+        
+        # ============================================================
+        # NEW: Load market context first (for batch/historical runs)
+        # ============================================================
+        self.load_market_context()
         
         print(f"\n{'='*80}")
         print("MASTER ORCHESTRATOR - TRADING SYSTEM PIPELINE")
@@ -400,9 +439,17 @@ class MasterOrchestrator:
         print(f"Portfolio: ${self.portfolio_value:,.0f}")
         print(f"Research Mode: {self.research_mode}")
         print(f"Debate Rounds: {self.research_rounds if self.research_rounds > 0 else 'None (shallow)'}")
+        
+        # NEW: Show analysis date prominently
+        if self.analysis_date:
+            print(f"{'='*80}")
+            print(f"*** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+            print(f"{'='*80}")
+        
         print(f"Started: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'='*80}\n")
         
+        # Only phases 1–5
         phases = [
             (1, self.run_phase1_analysts, "Critical"),
             (2, self.run_phase2_researchers, "Critical"),
@@ -410,9 +457,6 @@ class MasterOrchestrator:
             (4, self.run_phase4_risk_team, "Important"),
             (5, self.run_phase5_risk_manager, "Critical"),
         ]
-        
-        if include_game_theory:
-            phases.append((6, self.run_phase6_game_theory, "Optional"))
         
         for phase_num, phase_func, importance in phases:
             print(f"\n{'─'*40}")
@@ -432,6 +476,7 @@ class MasterOrchestrator:
         self.save_logs()
         
         return self.phase_results
+
     
     def print_summary(self):
         """Print execution summary"""
@@ -443,6 +488,10 @@ class MasterOrchestrator:
         
         print(f"Total Time: {elapsed:.1f}s ({elapsed/60:.1f} minutes)")
         print(f"Research Mode: {self.research_mode} ({self.research_rounds} debate rounds)")
+        
+        # NEW: Show analysis date in summary
+        if self.analysis_date:
+            print(f"Analysis Date: {self.analysis_date} (HISTORICAL)")
         
         success_count = sum(1 for r in self.phase_results.values() if r.get('status') == 'SUCCESS')
         print(f"Phases Completed: {success_count}/{len(self.phase_results)}\n")
@@ -479,6 +528,8 @@ class MasterOrchestrator:
                     'research_mode': self.research_mode,
                     'debate_rounds': self.research_rounds,
                     'portfolio_value': self.portfolio_value,
+                    'analysis_date': self.analysis_date,  # NEW: Include in logs
+                    'historical_mode': self.analysis_date is not None,  # NEW
                     'start_time': self.start_time.isoformat() if self.start_time else None,
                     'end_time': self.end_time.isoformat() if self.end_time else None,
                     'duration_seconds': (self.end_time - self.start_time).total_seconds() if self.end_time and self.start_time else None,
@@ -497,20 +548,21 @@ def main():
         epilog="""
 Examples:
   python master_orchestrator.py AAPL
-  python master_orchestrator.py AAPL --run-all
-  python master_orchestrator.py AAPL --run-all --research-mode deep
-  python master_orchestrator.py AAPL --run-all --research-mode research --research-rounds 5
+  python master_orchestrator.py AAPL --research-mode deep
+  python master_orchestrator.py AAPL --research-mode research --research-rounds 5
+  python master_orchestrator.py AAPL --analysis-date 2024-06-15
 
 Research Modes:
   shallow  - Quick analysis, no debate (~2 minutes)
   deep     - 3 debate rounds (~5 minutes)
   research - 5 debate rounds (~8 minutes)
+
+Historical Backtesting:
+  --analysis-date YYYY-MM-DD  - Analyze using data from specified date
         """
     )
     
     parser.add_argument("ticker", help="Stock ticker symbol")
-    parser.add_argument("--run-all", action="store_true", 
-                       help="Include Phase 6 (Game Theory)")
     parser.add_argument("--research-mode", 
                        choices=['shallow', 'deep', 'research'],
                        default='shallow',
@@ -524,6 +576,14 @@ Research Modes:
                        default=100000,
                        help="Portfolio value (default: 100000)")
     
+    # ============================================================
+    # NEW: Add analysis-date argument for historical backtesting
+    # ============================================================
+    parser.add_argument("--analysis-date",
+                       type=str,
+                       default=None,
+                       help="Historical analysis date (YYYY-MM-DD format)")
+    
     args = parser.parse_args()
     
     print(f"Starting from: {os.getcwd()}")
@@ -533,10 +593,11 @@ Research Modes:
             ticker=args.ticker,
             portfolio_value=args.portfolio_value,
             research_mode=args.research_mode,
-            research_rounds=args.research_rounds
+            research_rounds=args.research_rounds,
+            analysis_date=args.analysis_date  # NEW: Pass to orchestrator
         )
         
-        results = orchestrator.run_complete_workflow(include_game_theory=args.run_all)
+        results = orchestrator.run_complete_workflow()
         
         success_count = sum(1 for r in results.values() if r.get('status') == 'SUCCESS')
         sys.exit(0 if success_count == len(results) else 1)

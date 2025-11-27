@@ -2,7 +2,10 @@
 Aggressive Risk Debator - Token-Efficient Version
 High risk tolerance evaluation with smart data loading
 
+MODIFIED: Now supports historical backtesting via analysis_date parameter
+
 Usage: python aggressive_debator.py AAPL --synthesis-file ../../outputs/research_synthesis.json
+       python aggressive_debator.py AAPL --synthesis-file ... --analysis-date 2024-06-15
 """
 
 import os
@@ -21,11 +24,20 @@ if sys.platform == 'win32':
 
 
 class AggressiveDebator:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini",
+                 analysis_date: Optional[str] = None):
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
+        
+        # Historical backtesting support
+        self.analysis_date = analysis_date
+        
+        if self.analysis_date:
+            print(f"[AGGRESSIVE] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+        else:
+            print(f"[AGGRESSIVE] Running in LIVE mode (current date)")
         
         self.risk_profile = "AGGRESSIVE"
         
@@ -73,6 +85,11 @@ AGGRESSIVE STANCE: [STRONG BUY/BUY/HOLD/AVOID] - Position Size: X% - Confidence:
                     synthesis = json.load(f)
                 print(f"[AGGRESSIVE] ✓ Synthesis loaded")
                 
+                # Check for historical date in loaded data
+                if synthesis.get('analysis_date') and not self.analysis_date:
+                    self.analysis_date = synthesis.get('analysis_date')
+                    print(f"[AGGRESSIVE] → Using historical date from synthesis: {self.analysis_date}")
+                
                 # Check if bull/bear are embedded
                 if 'bull_thesis' in synthesis and 'bear_thesis' in synthesis:
                     print(f"[AGGRESSIVE] ✓ Bull/bear found in synthesis")
@@ -117,6 +134,11 @@ AGGRESSIVE STANCE: [STRONG BUY/BUY/HOLD/AVOID] - Position Size: X% - Confidence:
             with open(bull_file, 'r', encoding='utf-8') as f:
                 bull_thesis = json.load(f)
             print(f"[AGGRESSIVE] ✓ Bull loaded")
+            
+            # Check for historical date
+            if bull_thesis.get('analysis_date') and not self.analysis_date:
+                self.analysis_date = bull_thesis.get('analysis_date')
+                print(f"[AGGRESSIVE] → Using historical date from bull thesis: {self.analysis_date}")
         
         if os.path.exists(bear_file):
             with open(bear_file, 'r', encoding='utf-8') as f:
@@ -156,7 +178,9 @@ AGGRESSIVE STANCE: [STRONG BUY/BUY/HOLD/AVOID] - Position Size: X% - Confidence:
         evaluation = {
             'profile': self.risk_profile,
             'ticker': self.ticker,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'analysis_date': self.analysis_date,
+            'historical_mode': self.analysis_date is not None
         }
         
         # Aggressive logic
@@ -247,8 +271,20 @@ AGGRESSIVE STANCE: [STRONG BUY/BUY/HOLD/AVOID] - Position Size: X% - Confidence:
             bear_summary = synthesis.get('bear_thesis', {}).get('core_thesis', 'Not available')[:500]
             research_rec = synthesis.get('conclusion', {}).get('recommendation', 'N/A')
             
+            # Historical date context for LLM
+            date_context = ""
+            if self.analysis_date:
+                date_context = f"""
+**⚠️ HISTORICAL ANALYSIS MODE ⚠️**
+You are analyzing data AS OF {self.analysis_date}.
+All research and analyst reports are from this historical date.
+Make your aggressive evaluation as if you were deciding ON {self.analysis_date}.
+Do NOT reference any events or data after {self.analysis_date}.
+
+"""
+            
             # Small, focused context
-            context = f"""Aggressive evaluation for {self.ticker}:
+            context = f"""{date_context}Aggressive evaluation for {self.ticker}:
 
 Research Recommendation: {research_rec}
 Bull Case: {bull_summary}
@@ -266,7 +302,7 @@ Explain why aggressive positioning is warranted (or not). Be specific."""
                     {"role": "user", "content": context}
                 ],
                 temperature=0.75,
-                max_tokens=1500  # Reduced - don't need massive report
+                max_completion_tokens=1500  # Reduced - don't need massive report
             )
             
             report = response.choices[0].message.content
@@ -279,15 +315,17 @@ Explain why aggressive positioning is warranted (or not). Be specific."""
             return report
             
         except Exception as e:
-            print(f"[AGGRESSIVE] ❌ LLM error: {e}")
+            print(f"[AGGRESSIVE] ✗ LLM error: {e}")
             return self._create_fallback_report(evaluation, trading_plan)
     
     def _create_fallback_report(self, evaluation: Dict, trading_plan: Dict) -> str:
         """Fallback report"""
+        date_header = f"\n**Analysis Date:** {self.analysis_date} (HISTORICAL)\n" if self.analysis_date else ""
+        
         report = f"""
 # AGGRESSIVE RISK EVALUATION: {self.ticker}
 {'='*70}
-
+{date_header}
 **Stance:** {evaluation['stance']}
 **Position:** {evaluation['position_size']*100:.0f}%
 **Reasoning:** {evaluation['reasoning']}
@@ -311,6 +349,8 @@ AGGRESSIVE STANCE: {evaluation['stance']} - Position Size: {evaluation['position
         
         print(f"\n{'='*70}")
         print(f"AGGRESSIVE RISK EVALUATION: {self.ticker}")
+        if self.analysis_date:
+            print(f"*** HISTORICAL MODE: As of {self.analysis_date} ***")
         print(f"{'='*70}\n")
         
         # Smart loading - token efficient!
@@ -318,14 +358,14 @@ AGGRESSIVE STANCE: {evaluation['stance']} - Position Size: {evaluation['position
         
         # Validate we have minimum data
         if not synthesis:
-            print("[AGGRESSIVE] ❌ No data loaded")
+            print("[AGGRESSIVE] ✗ No data loaded")
             return "Error: No data", {}
         
         bull_thesis = synthesis.get('bull_thesis', {})
         bear_thesis = synthesis.get('bear_thesis', {})
         
         if not bull_thesis or not bear_thesis:
-            print("[AGGRESSIVE] ❌ Missing bull or bear thesis")
+            print("[AGGRESSIVE] ✗ Missing bull or bear thesis")
             return "Error: Incomplete data", {}
         
         # Evaluate
@@ -339,7 +379,9 @@ AGGRESSIVE STANCE: {evaluation['stance']} - Position Size: {evaluation['position
         self.evaluation = {
             **evaluation,
             'trading_plan': trading_plan,
-            'risk_parameters': self.risk_parameters
+            'risk_parameters': self.risk_parameters,
+            'analysis_date': self.analysis_date,
+            'historical_mode': self.analysis_date is not None
         }
         
         elapsed = time.time() - start_time
@@ -368,11 +410,17 @@ def main():
     parser.add_argument("--model", default="gpt-4o-mini")
     parser.add_argument("--output", help="Output file")
     parser.add_argument("--save-evaluation", help="Save JSON")
+    parser.add_argument("--analysis-date", help="Historical analysis date (YYYY-MM-DD)")
     
     args = parser.parse_args()
     
     try:
-        debator = AggressiveDebator(ticker=args.ticker, api_key=args.api_key, model=args.model)
+        debator = AggressiveDebator(
+            ticker=args.ticker, 
+            api_key=args.api_key, 
+            model=args.model,
+            analysis_date=args.analysis_date
+        )
         
         report, evaluation = debator.evaluate(
             synthesis_file=args.synthesis_file,
@@ -394,7 +442,7 @@ def main():
         print("\n\n⚠️  Interrupted")
         sys.exit(1)
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n✗ Error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

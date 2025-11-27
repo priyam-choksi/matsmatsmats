@@ -3,7 +3,11 @@ Bull Researcher - Clean Single-Pass Analysis
 Builds comprehensive bullish case from analyst discussion points
 Debate orchestration handled by research_manager.py
 
-Usage: python bull_researcher.py AAPL --discussion-file ../../outputs/discussion_points.json
+MODIFIED: Now supports historical backtesting via analysis_date parameter
+
+Usage: 
+  python bull_researcher.py AAPL --discussion-file ../../outputs/discussion_points.json
+  python bull_researcher.py AAPL --discussion-file ../../outputs/discussion_points.json --analysis-date 2024-06-15
 """
 
 import os
@@ -22,11 +26,20 @@ if sys.platform == 'win32':
 
 
 class BullResearcher:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini",
+                 analysis_date: Optional[str] = None):  # <-- NEW PARAMETER
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
+        
+        # === HISTORICAL BACKTESTING SUPPORT ===
+        self.analysis_date = analysis_date  # Format: 'YYYY-MM-DD' or None for current
+        
+        if self.analysis_date:
+            print(f"[BULL] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+        else:
+            print(f"[BULL] Running in LIVE mode (current data)")
         
         self.system_prompt = """You are a Bull Analyst building the strongest possible case FOR investing in this stock.
 
@@ -74,6 +87,11 @@ End with: BULL CASE STRENGTH: Strong/Moderate/Weak - Confidence: High/Medium/Low
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             print(f"[BULL] ✓ Loaded discussion for {data.get('ticker', 'unknown')}")
+            
+            # NEW: Check if discussion points have historical date info
+            if data.get('analysis_date'):
+                print(f"[BULL] Discussion data is from historical date: {data.get('analysis_date')}")
+            
             return data
         except FileNotFoundError:
             print(f"[BULL] ❌ File not found: {filepath}")
@@ -255,8 +273,20 @@ End with: BULL CASE STRENGTH: Strong/Moderate/Weak - Confidence: High/Medium/Low
             print("[BULL] ⚠️ No API client, using extracted data only")
             return core_thesis
         
+        # === ADD HISTORICAL DATE CONTEXT ===
+        date_context = ""
+        if self.analysis_date:
+            date_context = f"""
+**⚠️ HISTORICAL ANALYSIS MODE ⚠️**
+You are analyzing data AS OF {self.analysis_date}.
+All analyst reports are from this historical date.
+Build your bull case as if you were making a decision ON {self.analysis_date}.
+Do NOT reference any events or data after {self.analysis_date}.
+
+"""
+        
         # Build comprehensive context for LLM
-        context = f"""# Build Comprehensive Bull Case for {self.ticker}
+        context = f"""{date_context}# Build Comprehensive Bull Case for {self.ticker}
 
 ## Full Analyst Reports
 
@@ -297,7 +327,7 @@ End with: BULL CASE STRENGTH: Strong/Moderate/Weak - Confidence: High/Medium/Low
                     {"role": "user", "content": context}
                 ],
                 temperature=0.7,
-                max_tokens=2500
+                max_completion_tokens=2500
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -308,6 +338,8 @@ End with: BULL CASE STRENGTH: Strong/Moderate/Weak - Confidence: High/Medium/Low
         """Main research method - generates complete bull thesis"""
         print(f"\n{'='*60}")
         print(f"BULL RESEARCHER: {self.ticker}")
+        if self.analysis_date:
+            print(f"*** HISTORICAL MODE: As of {self.analysis_date} ***")
         print(f"{'='*60}\n")
         
         start_time = time.time()
@@ -326,6 +358,8 @@ End with: BULL CASE STRENGTH: Strong/Moderate/Weak - Confidence: High/Medium/Low
         self.bull_thesis = {
             'ticker': self.ticker,
             'timestamp': datetime.now().isoformat(),
+            'analysis_date': self.analysis_date,  # NEW: Include in output
+            'historical_mode': self.analysis_date is not None,  # NEW
             'core_thesis': core_thesis,
             'opportunities': opportunities,
             'catalysts': catalysts,
@@ -358,6 +392,9 @@ Examples:
   python bull_researcher.py AAPL
   python bull_researcher.py AAPL --discussion-file ../../outputs/discussion_points.json
   python bull_researcher.py AAPL --save-data ../../outputs/bull_thesis.json
+  
+  # HISTORICAL BACKTESTING:
+  python bull_researcher.py AAPL --discussion-file ../../outputs/discussion_points.json --analysis-date 2024-06-15
         """
     )
     
@@ -369,6 +406,14 @@ Examples:
     parser.add_argument("--output", help="Save report to text file")
     parser.add_argument("--save-data", help="Save thesis data to JSON file")
     
+    # ============================================================
+    # NEW: Add analysis-date argument for historical backtesting
+    # ============================================================
+    parser.add_argument("--analysis-date",
+                       type=str,
+                       default=None,
+                       help="Historical analysis date (YYYY-MM-DD format)")
+    
     # Keep these for backward compatibility with master_orchestrator
     parser.add_argument("--mode", default="shallow", help="[Deprecated] Kept for compatibility")
     parser.add_argument("--rounds", type=int, default=1, help="[Deprecated] Kept for compatibility")
@@ -379,7 +424,8 @@ Examples:
         researcher = BullResearcher(
             ticker=args.ticker,
             api_key=args.api_key,
-            model=args.model
+            model=args.model,
+            analysis_date=args.analysis_date  # NEW: Pass to researcher
         )
         
         # Load discussion points

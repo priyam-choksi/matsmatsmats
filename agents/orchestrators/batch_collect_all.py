@@ -1,6 +1,8 @@
 """
 parallel_collector_sampled.py - With sampling support and better day labeling
 Supports sampling every Nth day over longer periods for better regime coverage
+
+MODIFIED: Now writes market_context.json for historical backtesting
 """
 
 import os
@@ -48,6 +50,35 @@ def process_single_workflow(task_data):
         
         final_path = ticker_path / date_folder / portfolio_folder
         final_path.mkdir(parents=True, exist_ok=True)
+        
+        # ============================================================
+        # NEW: Write market_context.json BEFORE running orchestrator
+        # This is the KEY change for historical backtesting
+        # ============================================================
+        market_context = {
+            'ticker': ticker,
+            'analysis_date': price_info['date'],  # THE CRITICAL FIELD
+            'sample_number': sample_num,
+            'actual_day': actual_day,
+            'price_data': {
+                'open': price_info['open'],
+                'close': price_info['close'],
+                'high': price_info['high'],
+                'low': price_info['low'],
+                'volume': price_info['volume'],
+                'daily_return': price_info['daily_return']
+            },
+            'instruction': f"Analyze {ticker} AS OF {price_info['date']}. All data must be historical ending on this date. Do NOT reference any events after {price_info['date']}."
+        }
+        
+        market_context_file = temp_outputs / "market_context.json"
+        with open(market_context_file, 'w') as f:
+            json.dump(market_context, f, indent=2)
+        
+        print(f"[WORKFLOW] Market context written for {ticker} @ {price_info['date']}")
+        # ============================================================
+        # END OF NEW CODE
+        # ============================================================
         
         # Find and run master orchestrator with CUSTOM OUTPUT DIR
         master_script = Path(project_root) / "agents" / "orchestrators" / "master_orchestrator.py"
@@ -119,6 +150,7 @@ orchestrator.run_complete_workflow()
         
         # Now collect files from the TEMP directory
         workflow_files = [
+            "market_context.json",  # NEW: Include market context in output
             "discussion_points.json",
             "bear_thesis.json", 
             "bull_thesis.json",
@@ -149,13 +181,15 @@ orchestrator.run_complete_workflow()
         summary = {
             "ticker": ticker,
             "date": price_info['date'],
+            "analysis_date": price_info['date'],  # NEW: Explicit analysis date
             "sample_number": sample_num,
             "actual_day_number": actual_day,
             "portfolio_size": portfolio_size,
             "market_data": price_info,
             "timestamp": datetime.now().isoformat(),
             "files_saved": files_saved,
-            "path": str(final_path.relative_to(outputs_path))
+            "path": str(final_path.relative_to(outputs_path)),
+            "historical_mode": True  # NEW: Flag indicating historical analysis
         }
         
         # Extract decision if available
@@ -193,10 +227,12 @@ orchestrator.run_complete_workflow()
                 "sample_number": sample_num,
                 "actual_day": actual_day,
                 "date": price_info['date'],
+                "analysis_date": price_info['date'],  # NEW: Explicit
                 "ticker": ticker,
                 "portfolio_size": portfolio_size,
                 "market_data": price_info,
-                "workflow_location": str(final_path.relative_to(outputs_path))
+                "workflow_location": str(final_path.relative_to(outputs_path)),
+                "historical_mode": True  # NEW: Flag
             }, f, indent=2)
         
         # Clean up temp directory
@@ -362,6 +398,7 @@ class ParallelCollector:
         """Check if data already exists with file validation"""
         # Define ALL required files for a complete workflow
         required_files = [
+            "market_context.json",  # NEW: Now required
             "discussion_points.json",
             "bear_thesis.json",
             "bull_thesis.json",
@@ -369,9 +406,9 @@ class ParallelCollector:
             "aggressive_eval.json",
             "neutral_eval.json",
             "conservative_eval.json",
+            "risk_decision.json",
+            "execution_log.json",
             "summary.json"
-            # Note: risk_decision.json often fails, so not required
-            # execution_log.json is optional
         ]
         
         # Check new structure first
@@ -397,8 +434,8 @@ class ParallelCollector:
                             try:
                                 with open(portfolio_path / "summary.json", 'r') as f:
                                     summary = json.load(f)
-                                    # Check ALL required files are saved (8 minimum)
-                                    if summary.get('files_saved', 0) >= 8:
+                                    # Check ALL required files are saved (9 minimum now with market_context)
+                                    if summary.get('files_saved', 0) >= 9:
                                         return True
                             except:
                                 pass
@@ -437,6 +474,7 @@ class ParallelCollector:
         print(f"Portfolio sizes: {self.portfolio_sizes}")
         print(f"Workers: {self.max_workers} parallel processes")
         print(f"CPU count: {mp.cpu_count()}")
+        print(f"Historical Mode: ENABLED")  # NEW: Indicate historical mode
         print(f"{'='*80}\n")
         
         # Check for previous incomplete runs
@@ -572,8 +610,8 @@ class ParallelCollector:
                                 except:
                                     pass
                         
-                        # If has some files but less than 8 required, it's incomplete
-                        if 0 < valid_files < 8:
+                        # If has some files but less than 9 required, it's incomplete
+                        if 0 < valid_files < 9:
                             return True
         return False
     
@@ -606,7 +644,8 @@ class ParallelCollector:
             'total_tasks': len(tasks),
             'completed': self.completed,
             'failed': self.failed,
-            'results_log': self.results_log
+            'results_log': self.results_log,
+            'historical_mode': True  # NEW
         }
         with open(checkpoint_file, 'w') as f:
             json.dump(checkpoint, f, indent=2)
@@ -661,6 +700,7 @@ class ParallelCollector:
         print(f"  Sample rate: Every {self.sample_rate} day(s)")
         print(f"  Samples collected: {self.samples} per ticker")
         print(f"  Days covered: ~{self.total_days_needed} trading days")
+        print(f"  Historical Mode: ENABLED")  # NEW
         print(f"\nData locations:")
         print(f"  Organized workflows: {self.workflows_path}")
         print(f"  Game theory data: {self.game_theory_path}")
@@ -682,6 +722,7 @@ class ParallelCollector:
             'workers': self.max_workers,
             'completed': self.completed,
             'failed': self.failed,
+            'historical_mode': True,  # NEW
             'results': self.results_log
         }
         
@@ -757,7 +798,7 @@ Examples:
         sample_rate = args.sample_rate
     
     # Calculate estimates
-    total_tasks = len(tickers) * samples * 1  # 3 portfolio sizes
+    total_tasks = len(tickers) * samples * 1  # 1 portfolio size
     total_days = (samples - 1) * sample_rate + 1
     workers = args.workers or min(8, mp.cpu_count() // 2)
     
@@ -770,6 +811,7 @@ Examples:
     print(f"  Total tasks: {total_tasks} workflows")
     print(f"  Workers: {workers} parallel processes")
     print(f"  Estimated time: {total_tasks/workers/12:.1f} hours")
+    print(f"  Historical Mode: ENABLED")  # NEW
     
     if sample_rate > 1:
         print(f"\nNOTE: Sampling every {sample_rate} days gives better regime")

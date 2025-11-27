@@ -2,7 +2,10 @@
 Risk Manager - Final Decision Maker
 Synthesizes aggressive, neutral, conservative evaluations and makes final call
 
+MODIFIED: Now supports historical backtesting via analysis_date parameter
+
 Usage: python risk_manager.py AAPL --synthesis-file ../../outputs/research_synthesis.json --portfolio-value 100000
+       python risk_manager.py AAPL --synthesis-file ... --portfolio-value 100000 --analysis-date 2024-06-15
 """
 
 import os
@@ -21,12 +24,24 @@ if sys.platform == 'win32':
 
 
 class RiskManager:
-    def __init__(self, ticker: str, portfolio_value: float = 100000, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
+    def __init__(self, ticker: str, portfolio_value: float = 100000, api_key: Optional[str] = None, 
+                 model: str = "gpt-4o-mini", analysis_date: Optional[str] = None):
         self.ticker = ticker.upper()
         self.portfolio_value = portfolio_value
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
+
+        # Historical backtesting support
+        self.analysis_date = analysis_date
+        
+        if self.analysis_date:
+            print(f"[RISK_MGR] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+        else:
+            print(f"[RISK_MGR] Running in LIVE mode (current date)")
+
+        # Will be resolved in execute() based on TEMP_OUTPUTS_DIR or synthesis_file
+        self.outputs_dir: Optional[str] = None
         
         # Enhanced system prompt - the final decision maker
         self.system_prompt = """You are the Risk Manager with FINAL DECISION AUTHORITY and VETO POWER.
@@ -131,14 +146,41 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
         # Storage
         self.decision = {}
     
+    def _resolve_outputs_dir(self, synthesis_file: Optional[str]) -> str:
+        """
+        Determine which outputs directory to use.
+        Priority:
+        1. TEMP_OUTPUTS_DIR env (used by parallel collector / orchestrator)
+        2. Directory of synthesis_file (if provided)
+        3. ../../outputs relative to this file
+        """
+        # 1) Explicit env for batch workflows
+        env_dir = os.getenv("TEMP_OUTPUTS_DIR")
+        if env_dir:
+            return os.path.abspath(env_dir)
+        
+        # 2) Same folder as the synthesis file
+        if synthesis_file:
+            return os.path.dirname(os.path.abspath(synthesis_file))
+        
+        # 3) Fallback to ../../outputs
+        module_dir = os.path.dirname(os.path.abspath(__file__))
+        return os.path.abspath(os.path.join(module_dir, "../../outputs"))
+    
     def load_research_synthesis(self, synthesis_file: str) -> Optional[Dict]:
-        """Load Research Manager's synthesis"""
-        print(f"[RISK_MGR] Loading research synthesis...")
+        """Load Research Manager's synthesis from the given file"""
+        print(f"[RISK_MGR] Loading research synthesis from {synthesis_file}...")
         
         try:
             with open(synthesis_file, 'r', encoding='utf-8') as f:
                 synthesis = json.load(f)
             print(f"[RISK_MGR] ✓ Research synthesis loaded")
+            
+            # Check for historical date in loaded data
+            if synthesis.get('analysis_date') and not self.analysis_date:
+                self.analysis_date = synthesis.get('analysis_date')
+                print(f"[RISK_MGR] → Using historical date from synthesis: {self.analysis_date}")
+            
             return synthesis
         except FileNotFoundError:
             print(f"[RISK_MGR] ⚠️  Synthesis not found: {synthesis_file}")
@@ -148,7 +190,12 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
             return None
     
     def load_risk_evaluations(self) -> Dict[str, Dict]:
-        """Load all 3 risk evaluations"""
+        """
+        Load all 3 risk evaluations.
+        Uses the resolved outputs_dir so it works in:
+        - Normal CLI runs (../../outputs)
+        - Orchestrator / batch runs (TEMP_OUTPUTS_DIR / temp workspace)
+        """
         print(f"[RISK_MGR] Loading risk evaluations...")
         
         evaluations = {
@@ -156,11 +203,19 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
             'neutral': None,
             'conservative': None
         }
+
+        # Prefer the resolved outputs_dir from execute()
+        base_dir = self.outputs_dir or os.getenv("TEMP_OUTPUTS_DIR")
+        if not base_dir:
+            module_dir = os.path.dirname(os.path.abspath(__file__))
+            base_dir = os.path.abspath(os.path.join(module_dir, "../../outputs"))
+        else:
+            base_dir = os.path.abspath(base_dir)
         
         files = {
-            'aggressive': f"../../outputs/aggressive_eval.json",
-            'neutral': f"../../outputs/neutral_eval.json",
-            'conservative': f"../../outputs/conservative_eval.json"
+            'aggressive': os.path.join(base_dir, "aggressive_eval.json"),
+            'neutral': os.path.join(base_dir, "neutral_eval.json"),
+            'conservative': os.path.join(base_dir, "conservative_eval.json")
         }
         
         loaded_count = 0
@@ -171,11 +226,17 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
                     with open(filepath, 'r', encoding='utf-8') as f:
                         evaluations[risk_type] = json.load(f)
                     loaded_count += 1
-                    print(f"[RISK_MGR]   ✓ {risk_type}")
+                    print(f"[RISK_MGR]   ✓ {risk_type} ({filepath})")
+                    
+                    # Check for historical date
+                    if evaluations[risk_type].get('analysis_date') and not self.analysis_date:
+                        self.analysis_date = evaluations[risk_type].get('analysis_date')
+                        print(f"[RISK_MGR] → Using historical date from {risk_type}: {self.analysis_date}")
+                        
                 except Exception as e:
                     print(f"[RISK_MGR]   ⚠️  {risk_type}: {e}")
             else:
-                print(f"[RISK_MGR]   ⚠️  {risk_type}: not found")
+                print(f"[RISK_MGR]   ⚠️  {risk_type}: not found at {filepath}")
         
         print(f"[RISK_MGR] ✓ Loaded {loaded_count}/3 evaluations")
         
@@ -201,6 +262,8 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
         
         # Check for agreement
         stances = list(consensus['stances'].values())
+        buy_count = sell_count = hold_count = 0
+        
         if stances:
             # Count BUY vs SELL vs HOLD/AVOID
             buy_count = sum(1 for s in stances if 'BUY' in s)
@@ -215,10 +278,10 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
                 consensus['agreements'].append(f"{hold_count}/3 risk analysts recommend holding")
             else:
                 consensus['conflicts'].append("No clear consensus - all 3 disagree")
-        
-        # Check for extreme disagreement
-        if buy_count > 0 and sell_count > 0:
-            consensus['conflicts'].append("Direct conflict: Some say BUY, others say SELL/AVOID")
+            
+            # Check for extreme disagreement
+            if buy_count > 0 and sell_count > 0:
+                consensus['conflicts'].append("Direct conflict: Some say BUY, others say SELL/AVOID")
         
         # Calculate average position size
         sizes = [s for s in consensus['position_sizes'].values() if s > 0]
@@ -352,7 +415,7 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
             'monthly_checks': ['Fundamental review', 'Position sizing', 'Risk/reward update']
         }
         
-        # Exit triggers from bear thesis
+        # Exit triggers from bear thesis (if available in synthesis)
         bear_thesis = synthesis.get('bear_thesis', {})
         for trigger in bear_thesis.get('downside_triggers', [])[:3]:
             controls['exit_triggers'].append({
@@ -382,7 +445,9 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
             'conditions': [],
             'final_position_dollars': position_sizing['final_size_dollars'],
             'final_position_pct': position_sizing['final_size_pct'],
-            'confidence': 'MEDIUM'
+            'confidence': 'MEDIUM',
+            'analysis_date': self.analysis_date,
+            'historical_mode': self.analysis_date is not None
         }
         
         # Check for veto conditions
@@ -405,7 +470,7 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
                 decision['final_position_pct'] = position_sizing['final_size_pct'] * 0.5
         
         # Veto 2: Conservative found 2+ red flags
-        conservative_eval = evaluations.get('conservative', {})
+        conservative_eval = evaluations.get('conservative', {}) or {}
         red_flags = conservative_eval.get('red_flags', [])
         if len(red_flags) >= 2 and not veto_triggered:
             decision['verdict'] = 'REJECT'
@@ -420,7 +485,8 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
             decision['final_position_dollars'] = self.risk_limits['max_position_pct'] * self.portfolio_value
         
         # Veto 4: All 3 risk analysts say AVOID
-        if all(ev.get('stance', '') in ['AVOID', 'SELL/AVOID'] for ev in evaluations.values() if ev):
+        non_null_evals = [ev for ev in evaluations.values() if ev]
+        if non_null_evals and all(ev.get('stance', '') in ['AVOID', 'SELL/AVOID'] for ev in non_null_evals):
             decision['verdict'] = 'REJECT'
             decision['reasoning'].append("All risk analysts recommend avoiding - unanimous rejection")
             veto_triggered = True
@@ -468,6 +534,18 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
         try:
             print(f"[RISK_MGR] Generating final decision with {self.model}...")
             
+            # Historical date context for LLM
+            date_context = ""
+            if self.analysis_date:
+                date_context = f"""
+**⚠️ HISTORICAL ANALYSIS MODE ⚠️**
+You are making a final risk decision AS OF {self.analysis_date}.
+All research, debate, and risk evaluations are from this historical date.
+Make your final decision as if you were deciding ON {self.analysis_date}.
+Do NOT reference any events or data after {self.analysis_date}.
+
+"""
+            
             # Format debate history
             debate_summary = "## Risk Analyst Debate\n\n"
             
@@ -484,7 +562,7 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
                     
                     debate_summary += "\n"
             
-            context = f"""# Final Risk Management Decision for {self.ticker}
+            context = f"""{date_context}# Final Risk Management Decision for {self.ticker}
 
 ## Research Manager's Recommendation
 {synthesis.get('conclusion', {}).get('rationale', 'Not available')}
@@ -526,7 +604,7 @@ Be decisive and specific. Reference the debate arguments in your reasoning."""
                     {"role": "user", "content": context}
                 ],
                 temperature=0.5,  # Moderate temp for balanced final decision
-                max_tokens=3000
+                max_completion_tokens=3000
             )
             
             final_report = response.choices[0].message.content
@@ -540,7 +618,7 @@ Be decisive and specific. Reference the debate arguments in your reasoning."""
             return final_report
             
         except Exception as e:
-            print(f"[RISK_MGR] ❌ LLM error: {e}")
+            print(f"[RISK_MGR] ✗ LLM error: {e}")
             import traceback
             traceback.print_exc()
             return self._create_fallback_report(synthesis, evaluations, consensus, position_sizing, risk_controls, decision)
@@ -555,12 +633,14 @@ Be decisive and specific. Reference the debate arguments in your reasoning."""
         decision: Dict
     ) -> str:
         """Fallback report without LLM"""
+        date_header = f"\n**Analysis Date:** {self.analysis_date} (HISTORICAL)\n" if self.analysis_date else ""
+        
         report = f"""
 # RISK MANAGER FINAL DECISION: {self.ticker}
 {'='*70}
 **Portfolio Value:** ${self.portfolio_value:,.0f}
 **Date:** {datetime.now().strftime('%Y-%m-%d %H:%M')}
-
+{date_header}
 ## VERDICT: {decision['verdict']}
 {'='*70}
 
@@ -620,22 +700,34 @@ RISK DECISION: {decision['verdict']} - Position: ${decision['final_position_doll
         """
         Main execution workflow
         Returns (report, decision_data)
+
+        Works in three modes:
+        - Called with synthesis_file path (CLI or orchestrator)
+        - Called with synthesis dict (in-memory)
+        - Uses TEMP_OUTPUTS_DIR / ../../outputs to find risk evals
         """
         start_time = time.time()
         
         print(f"\n{'='*70}")
         print(f"RISK MANAGER FINAL DECISION: {self.ticker}")
         print(f"Portfolio: ${self.portfolio_value:,.0f}")
+        if self.analysis_date:
+            print(f"*** HISTORICAL MODE: As of {self.analysis_date} ***")
         print(f"{'='*70}\n")
+        
+        # Resolve and remember base outputs directory first
+        self.outputs_dir = self._resolve_outputs_dir(synthesis_file)
+        print(f"[RISK_MGR] Using outputs directory: {self.outputs_dir}")
         
         # Load research synthesis
         if not synthesis:
             if not synthesis_file:
-                synthesis_file = "../../outputs/research_synthesis.json"
+                # Default to research_synthesis.json in outputs_dir
+                synthesis_file = os.path.join(self.outputs_dir, "research_synthesis.json")
             synthesis = self.load_research_synthesis(synthesis_file)
         
         if not synthesis:
-            print("[RISK_MGR] ❌ Cannot proceed without research synthesis")
+            print("[RISK_MGR] ✗ Cannot proceed without research synthesis")
             return "Error: No synthesis available", {}
         
         # Load risk evaluations
@@ -674,7 +766,9 @@ RISK DECISION: {decision['verdict']} - Position: ${decision['final_position_doll
             'risk_controls': risk_controls,
             'position_sizing_breakdown': position_sizing,
             'risk_consensus': consensus,
-            'research_recommendation': synthesis.get('conclusion', {}).get('recommendation', 'N/A')
+            'research_recommendation': synthesis.get('conclusion', {}).get('recommendation', 'N/A'),
+            'analysis_date': self.analysis_date,
+            'historical_mode': self.analysis_date is not None
         }
         
         elapsed = time.time() - start_time
@@ -702,18 +796,20 @@ Examples:
   python risk_manager.py AAPL --synthesis-file ../../outputs/research_synthesis.json
   python risk_manager.py AAPL --portfolio-value 250000
   python risk_manager.py AAPL --save-decision ../../outputs/risk_decision.json
+  python risk_manager.py AAPL --synthesis-file ... --analysis-date 2024-06-15
         """
     )
     
     parser.add_argument("ticker", help="Stock ticker")
-    parser.add_argument("--synthesis-file", default="../../outputs/research_synthesis.json",
-                       help="Research synthesis JSON")
+    parser.add_argument("--synthesis-file", default=None,
+                       help="Research synthesis JSON (default: research_synthesis.json in outputs dir)")
     parser.add_argument("--portfolio-value", type=float, default=100000,
                        help="Portfolio value (default: $100,000)")
     parser.add_argument("--api-key", help="OpenAI API key")
     parser.add_argument("--model", default="gpt-4o-mini", help="Model")
     parser.add_argument("--output", help="Output report file")
     parser.add_argument("--save-decision", help="Save decision JSON")
+    parser.add_argument("--analysis-date", help="Historical analysis date (YYYY-MM-DD)")
     
     args = parser.parse_args()
     
@@ -722,7 +818,8 @@ Examples:
             ticker=args.ticker,
             portfolio_value=args.portfolio_value,
             api_key=args.api_key,
-            model=args.model
+            model=args.model,
+            analysis_date=args.analysis_date
         )
         
         # Execute
@@ -743,7 +840,7 @@ Examples:
         print("\n\n⚠️  Interrupted")
         sys.exit(1)
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n✗ Error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

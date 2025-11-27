@@ -2,9 +2,12 @@
 Research Manager - With Internal Debate Orchestration
 Loads bull/bear theses, runs debate rounds internally, synthesizes final decision
 
+MODIFIED: Now supports historical backtesting via analysis_date parameter
+
 Usage: 
   python research_manager.py AAPL --bull-file ... --bear-file ...
   python research_manager.py AAPL --bull-file ... --bear-file ... --debate-rounds 3
+  python research_manager.py AAPL --bull-file ... --bear-file ... --analysis-date 2024-06-15
 """
 
 import os
@@ -23,11 +26,20 @@ if sys.platform == 'win32':
 
 
 class ResearchManager:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini",
+                 analysis_date: Optional[str] = None):  # <-- NEW PARAMETER
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
+        
+        # === HISTORICAL BACKTESTING SUPPORT ===
+        self.analysis_date = analysis_date  # Format: 'YYYY-MM-DD' or None for current
+        
+        if self.analysis_date:
+            print(f"[RESEARCH_MGR] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+        else:
+            print(f"[RESEARCH_MGR] Running in LIVE mode (current data)")
         
         # Debate prompts
         self.bull_debate_prompt = """You are a Bull Analyst in Round {round_num} of an investment debate for {ticker}.
@@ -102,6 +114,10 @@ End with: RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence
             with open(bull_file, 'r', encoding='utf-8') as f:
                 self.research_inputs['bull_thesis'] = json.load(f)
             print(f"[RESEARCH_MGR] ✓ Bull thesis loaded")
+            
+            # NEW: Check for historical date in loaded data
+            if self.research_inputs['bull_thesis'].get('analysis_date'):
+                print(f"[RESEARCH_MGR]   Bull thesis from: {self.research_inputs['bull_thesis'].get('analysis_date')}")
         else:
             print(f"[RESEARCH_MGR] ⚠️ Bull thesis not found: {bull_file}")
         
@@ -109,6 +125,10 @@ End with: RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence
             with open(bear_file, 'r', encoding='utf-8') as f:
                 self.research_inputs['bear_thesis'] = json.load(f)
             print(f"[RESEARCH_MGR] ✓ Bear thesis loaded")
+            
+            # NEW: Check for historical date in loaded data
+            if self.research_inputs['bear_thesis'].get('analysis_date'):
+                print(f"[RESEARCH_MGR]   Bear thesis from: {self.research_inputs['bear_thesis'].get('analysis_date')}")
         else:
             print(f"[RESEARCH_MGR] ⚠️ Bear thesis not found: {bear_file}")
     
@@ -160,6 +180,8 @@ End with: RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence
         
         print(f"\n{'='*70}")
         print(f"INVESTMENT DEBATE: {self.ticker}")
+        if self.analysis_date:
+            print(f"*** HISTORICAL MODE: As of {self.analysis_date} ***")
         print(f"{'='*70}")
         print(f"Rounds: {rounds}")
         print(f"Model: {self.model}")
@@ -220,11 +242,21 @@ End with: RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence
     
     def _generate_opening(self, side: str, full_analysis: str, opponent_thesis: str) -> str:
         """Generate opening argument for a side"""
+        
+        # === ADD HISTORICAL DATE CONTEXT ===
+        date_context = ""
+        if self.analysis_date:
+            date_context = f"""
+**⚠️ HISTORICAL ANALYSIS MODE: {self.analysis_date} ⚠️**
+All data is from this date. Do NOT reference events after {self.analysis_date}.
+
+"""
+        
         if side == 'bull':
             system = f"""You are the Bull Analyst presenting your opening argument for {self.ticker}.
 Be compelling, specific, and data-driven. Address potential bear concerns preemptively."""
             
-            context = f"""## Your Complete Bull Analysis:
+            context = f"""{date_context}## Your Complete Bull Analysis:
 {full_analysis[:2500]}
 
 ## Bear's Thesis (you'll be debating against):
@@ -239,7 +271,7 @@ End with your strongest conviction point."""
             system = f"""You are the Bear Analyst responding to the Bull's opening for {self.ticker}.
 Be compelling, specific, and data-driven. Directly counter the bull's key points."""
             
-            context = f"""## Your Complete Bear Analysis:
+            context = f"""{date_context}## Your Complete Bear Analysis:
 {full_analysis[:2500]}
 
 ## Bull's Opening Argument (you must respond to this):
@@ -258,7 +290,7 @@ End with your key risk concern."""
                     {"role": "user", "content": context}
                 ],
                 temperature=0.7,
-                max_tokens=1000
+                max_completion_tokens=1000
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -276,18 +308,23 @@ End with your key risk concern."""
             for h in recent
         ])
         
+        # === ADD HISTORICAL DATE CONTEXT ===
+        date_note = ""
+        if self.analysis_date:
+            date_note = f"\n**HISTORICAL MODE: {self.analysis_date}** - Do not reference future events.\n"
+        
         if side == 'bull':
             system = self.bull_debate_prompt.format(
                 round_num=round_num,
                 ticker=self.ticker,
                 thesis=my_thesis[:800]
-            )
+            ) + date_note
         else:
             system = self.bear_debate_prompt.format(
                 round_num=round_num,
                 ticker=self.ticker,
                 thesis=my_thesis[:800]
-            )
+            ) + date_note
         
         context = f"""## Debate History:
 {history_str}
@@ -306,7 +343,7 @@ Directly address their specific claims first, then reinforce your position with 
                     {"role": "user", "content": context}
                 ],
                 temperature=0.7,
-                max_tokens=1000
+                max_completion_tokens=1000
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -328,9 +365,18 @@ Directly address their specific claims first, then reinforce your position with 
         bull = self.research_inputs.get('bull_thesis', {})
         bear = self.research_inputs.get('bear_thesis', {})
         
+        # === ADD HISTORICAL DATE HEADER ===
+        date_header = ""
+        if self.analysis_date:
+            date_header = f"""
+**⚠️ HISTORICAL ANALYSIS AS OF {self.analysis_date} ⚠️**
+All data and arguments are based on information available on this date.
+
+"""
+        
         formatted = f"""# Investment Debate Transcript: {self.ticker}
 {'='*60}
-
+{date_header}
 """
         
         if debate:
@@ -513,7 +559,18 @@ Directly address their specific claims first, then reinforce your position with 
         if not self.client:
             return self._fallback_report(probabilities, consensus, conclusion)
         
-        context = f"""{debate_formatted}
+        # === ADD HISTORICAL DATE CONTEXT ===
+        date_context = ""
+        if self.analysis_date:
+            date_context = f"""
+**⚠️ HISTORICAL ANALYSIS AS OF {self.analysis_date} ⚠️**
+All debate arguments and data are from this date.
+Make your decision as if you were deciding ON {self.analysis_date}.
+Do NOT reference any events after this date.
+
+"""
+        
+        context = f"""{date_context}{debate_formatted}
 
 {'='*60}
 # PRELIMINARY ANALYSIS
@@ -545,7 +602,7 @@ Be thorough but decisive."""
                     {"role": "user", "content": context}
                 ],
                 temperature=0.5,  # Lower temp for more decisive output
-                max_tokens=2500
+                max_completion_tokens=2500
             )
             
             result = response.choices[0].message.content
@@ -564,11 +621,16 @@ Be thorough but decisive."""
         """Fallback report when LLM unavailable"""
         debate_conducted = len(self.research_inputs.get('debate_history', [])) > 0
         
+        # === ADD HISTORICAL DATE INFO ===
+        date_info = ""
+        if self.analysis_date:
+            date_info = f"*Historical analysis as of {self.analysis_date}*\n"
+        
         return f"""
 # RESEARCH SYNTHESIS: {self.ticker}
 {'='*70}
 *Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*
-*Debate Conducted: {'Yes' if debate_conducted else 'No'}*
+{date_info}*Debate Conducted: {'Yes' if debate_conducted else 'No'}*
 
 ## Probability Assessment
 
@@ -615,6 +677,8 @@ RESEARCH CONCLUSION: {conclusion['recommendation']} - Confidence: {conclusion['c
         
         print(f"\n{'='*70}")
         print(f"RESEARCH MANAGER: {self.ticker}")
+        if self.analysis_date:
+            print(f"*** HISTORICAL MODE: As of {self.analysis_date} ***")
         print(f"{'='*70}")
         print(f"Debate Rounds: {debate_rounds if debate_rounds > 0 else 'None (direct synthesis)'}")
         print(f"{'='*70}\n")
@@ -642,6 +706,8 @@ RESEARCH CONCLUSION: {conclusion['recommendation']} - Confidence: {conclusion['c
         synthesis_data = {
             'ticker': self.ticker,
             'timestamp': datetime.now().isoformat(),
+            'analysis_date': self.analysis_date,  # NEW: Include in output
+            'historical_mode': self.analysis_date is not None,  # NEW
             'debate_rounds': debate_rounds,
             'debate_conducted': debate_rounds > 0,
             'probabilities': probabilities,
@@ -676,6 +742,9 @@ Examples:
   
   # Deep debate (5 rounds)
   python research_manager.py AAPL --bull-file ... --bear-file ... --debate-rounds 5
+  
+  # HISTORICAL BACKTESTING:
+  python research_manager.py AAPL --bull-file ... --bear-file ... --analysis-date 2024-06-15
         """
     )
     
@@ -693,13 +762,22 @@ Examples:
     parser.add_argument("--output", help="Save report to text file")
     parser.add_argument("--save-synthesis", help="Save synthesis data to JSON")
     
+    # ============================================================
+    # NEW: Add analysis-date argument for historical backtesting
+    # ============================================================
+    parser.add_argument("--analysis-date",
+                       type=str,
+                       default=None,
+                       help="Historical analysis date (YYYY-MM-DD format)")
+    
     args = parser.parse_args()
     
     try:
         manager = ResearchManager(
             ticker=args.ticker,
             api_key=args.api_key,
-            model=args.model
+            model=args.model,
+            analysis_date=args.analysis_date  # NEW: Pass to manager
         )
         
         # Load thesis files

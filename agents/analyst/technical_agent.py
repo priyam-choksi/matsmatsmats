@@ -2,7 +2,11 @@
 Technical Analysis Agent - Enhanced Version
 Comprehensive technical analysis with multiple indicators and pattern recognition
 
-Usage: python technical_agent.py AAPL --days 7 --output report.txt
+MODIFIED: Now supports historical backtesting via analysis_date parameter
+
+Usage: 
+  python technical_agent.py AAPL --days 7
+  python technical_agent.py AAPL --days 7 --analysis-date 2024-06-15
 """
 
 import os
@@ -23,11 +27,21 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 class TechnicalAgent:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-5-nano"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini",
+                 analysis_date: Optional[str] = None):
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
+        
+        # NEW: Historical backtesting support
+        self.analysis_date = analysis_date
+        
+        # Log mode
+        if self.analysis_date:
+            print(f"[TECHNICAL] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+        else:
+            print(f"[TECHNICAL] Running in LIVE mode (current data)")
         
         # Enhanced system prompt with comprehensive framework
         self.system_prompt = """You are an expert technical analyst evaluating price action and momentum for trading decisions.
@@ -145,32 +159,51 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
     def get_price_data(self, days: int = 7) -> Optional[pd.DataFrame]:
         """
         Fetch OHLCV price data
-        Returns DataFrame with proper error handling
+        If analysis_date is set, fetches HISTORICAL data ending on that date
         """
         print(f"[TECHNICAL] Fetching {days}-day price data for {self.ticker}...")
         
         try:
             stock = yf.Ticker(self.ticker)
             
-            # Determine appropriate period
-            if days <= 7:
-                period = "7d"
-            elif days <= 30:
-                period = "1mo"
-            elif days <= 90:
-                period = "3mo"
-            elif days <= 180:
-                period = "6mo"
+            # === HISTORICAL MODE ===
+            if self.analysis_date:
+                end_date = datetime.strptime(self.analysis_date, '%Y-%m-%d')
+                # Get extra days to ensure enough data for indicators (need ~60 for SMA_50)
+                start_date = end_date - timedelta(days=days * 2 + 60)
+                
+                df = stock.history(
+                    start=start_date.strftime('%Y-%m-%d'), 
+                    end=(end_date + timedelta(days=1)).strftime('%Y-%m-%d')
+                )
+                
+                if df.empty:
+                    print(f"[TECHNICAL] ⚠️ No historical data for {self.analysis_date}")
+                    return None
+                
+                print(f"[TECHNICAL] ✓ Historical: {len(df)} days ending {self.analysis_date}")
+                print(f"[TECHNICAL]   Date range: {df.index[0].strftime('%Y-%m-%d')} to {df.index[-1].strftime('%Y-%m-%d')}")
+                
+            # === CURRENT MODE (existing logic) ===
             else:
-                period = "1y"
-            
-            df = stock.history(period=period)
+                if days <= 7:
+                    period = "7d"
+                elif days <= 30:
+                    period = "1mo"
+                elif days <= 90:
+                    period = "3mo"
+                elif days <= 180:
+                    period = "6mo"
+                else:
+                    period = "1y"
+                
+                df = stock.history(period=period)
+                
+                if df.empty:
+                    print(f"[TECHNICAL] ⚠️ No data for period '{period}', trying 1mo fallback...")
+                    df = stock.history(period="1mo")
             
             # Validate data
-            if df.empty:
-                print(f"[TECHNICAL] ⚠️  No data for period '{period}', trying 1mo fallback...")
-                df = stock.history(period="1mo")
-            
             if df.empty:
                 print(f"[TECHNICAL] ❌ No data available for {self.ticker}")
                 return None
@@ -178,7 +211,7 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
             # Ensure we have required columns
             required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
             if not all(col in df.columns for col in required_cols):
-                print(f"[TECHNICAL] ⚠️  Missing required columns")
+                print(f"[TECHNICAL] ⚠️ Missing required columns")
                 return None
             
             print(f"[TECHNICAL] ✓ Retrieved {len(df)} days of data")
@@ -194,7 +227,7 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
         Adapts periods based on available data
         """
         if df.empty or len(df) < 2:
-            print(f"[TECHNICAL] ⚠️  Insufficient data for indicators")
+            print(f"[TECHNICAL] ⚠️ Insufficient data for indicators")
             return df
         
         print(f"[TECHNICAL] Calculating technical indicators...")
@@ -307,7 +340,7 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
             return levels
             
         except Exception as e:
-            print(f"[TECHNICAL] ⚠️  Error identifying levels: {e}")
+            print(f"[TECHNICAL] ⚠️ Error identifying levels: {e}")
             return {}
 
     def calculate_price_targets(self, df: pd.DataFrame, levels: Dict[str, float]) -> Dict[str, Any]:
@@ -362,7 +395,7 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
             }
             
         except Exception as e:
-            print(f"[TECHNICAL] ⚠️  Error calculating targets: {e}")
+            print(f"[TECHNICAL] ⚠️ Error calculating targets: {e}")
             return {}
 
     def format_technical_summary(self, df: pd.DataFrame, levels: Dict, targets: Dict, days: int) -> str:
@@ -379,7 +412,17 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
         else:
             period_change = ((latest['Close'] / df.iloc[0]['Close']) - 1) * 100
         
-        summary = f"""# Technical Analysis Data for {self.ticker}
+        # Add historical date note if applicable
+        date_header = ""
+        if self.analysis_date:
+            date_header = f"""
+**⚠️ HISTORICAL ANALYSIS AS OF {self.analysis_date} ⚠️**
+All data below is historical, ending on {self.analysis_date}.
+Do NOT reference any price movements or events after this date.
+
+"""
+        
+        summary = f"""{date_header}# Technical Analysis Data for {self.ticker}
 
 **Analysis Period:** {days} days (Data: {data_length} days available)
 **Date:** {latest.name.strftime('%Y-%m-%d') if hasattr(latest.name, 'strftime') else 'Latest'}
@@ -576,29 +619,41 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
         Send technical data to LLM for comprehensive analysis
         """
         if not self.client:
-            print("[TECHNICAL] ⚠️  No API key - using fallback analysis")
+            print("[TECHNICAL] ⚠️ No API key - using fallback analysis")
             return self._create_fallback_analysis(technical_summary)
         
         try:
             print(f"[TECHNICAL] Generating analysis with {self.model}...")
             
+            # NEW: Add date context for historical analysis
+            date_note = ""
+            if self.analysis_date:
+                date_note = f"""
+**⚠️ HISTORICAL ANALYSIS: {self.analysis_date} ⚠️**
+The technical data below is historical, ending on {self.analysis_date}.
+Analyze price action and indicators AS OF this date.
+Do NOT reference any price movements or events after {self.analysis_date}.
+Pretend today IS {self.analysis_date}.
+
+"""
+            
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": f"Provide comprehensive technical analysis for {self.ticker}:\n\n{technical_summary}"}
+                    {"role": "user", "content": f"{date_note}Provide comprehensive technical analysis for {self.ticker}:\n\n{technical_summary}"}
                 ],
                 temperature=0.7,
-                max_tokens=2000
+                max_completion_tokens=2000
             )
             
             analysis = response.choices[0].message.content
             
             # Validate recommendation
             if "RECOMMENDATION:" not in analysis:
-                print(f"[TECHNICAL] ⚠️  Response missing formal recommendation, extracting...")
+                print(f"[TECHNICAL] ⚠️ Response missing formal recommendation, extracting...")
                 recommendation, confidence = self._extract_recommendation_from_content(analysis)
-                analysis += f"RECOMMENDATION: {recommendation} - Confidence: {confidence}"
+                analysis += f"\n\nRECOMMENDATION: {recommendation} - Confidence: {confidence}"
             
             print(f"[TECHNICAL] ✓ Analysis generated ({len(analysis)} chars)")
             return analysis
@@ -687,6 +742,8 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
         print(f"\n{'='*70}")
         print(f"TECHNICAL ANALYSIS: {self.ticker}")
         print(f"Analysis Period: {days} days")
+        if self.analysis_date:
+            print(f"*** HISTORICAL MODE: As of {self.analysis_date} ***")
         print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'='*70}\n")
         
@@ -698,12 +755,14 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
 
 **Ticker:** {self.ticker}
 **Error:** Unable to retrieve price data
+{"**Analysis Date:** " + self.analysis_date if self.analysis_date else ""}
 
 **Possible Causes:**
 - Invalid ticker symbol
 - Market closed / no recent trading
 - Network connectivity issues
 - yfinance API issues
+{f"- No data available for historical date {self.analysis_date}" if self.analysis_date else ""}
 
 RECOMMENDATION: HOLD - Confidence: N/A
 """
@@ -771,6 +830,7 @@ RECOMMENDATION: HOLD - Confidence: N/A
             # Default to HOLD only if truly neutral
             return "HOLD", "Low"
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Technical Analysis Agent - Comprehensive price action and indicator analysis",
@@ -780,6 +840,7 @@ Examples:
   python technical_agent.py AAPL
   python technical_agent.py MSFT --days 30
   python technical_agent.py GOOGL --days 7 --output tech_report.txt
+  python technical_agent.py AAPL --days 7 --analysis-date 2024-06-15
         """
     )
     
@@ -788,11 +849,19 @@ Examples:
     parser.add_argument("--api-key", help="OpenAI API key")
     parser.add_argument("--model", default="gpt-4o-mini", help="OpenAI model (default: gpt-4o-mini)")
     parser.add_argument("--output", help="Save analysis to file")
+    # NEW: Historical backtesting support
+    parser.add_argument("--analysis-date", type=str, default=None,
+                       help="Historical analysis date (YYYY-MM-DD format). If set, fetches data ending on this date.")
     
     args = parser.parse_args()
     
     try:
-        agent = TechnicalAgent(ticker=args.ticker, api_key=args.api_key, model=args.model)
+        agent = TechnicalAgent(
+            ticker=args.ticker, 
+            api_key=args.api_key, 
+            model=args.model,
+            analysis_date=args.analysis_date  # NEW
+        )
         result = agent.run(days=args.days)
         
         print(result)
@@ -803,7 +872,7 @@ Examples:
             print(f"\n✓ Analysis saved to: {args.output}")
         
     except KeyboardInterrupt:
-        print("\n\n⚠️  Interrupted by user")
+        print("\n\n⚠️ Interrupted by user")
         sys.exit(1)
     except Exception as e:
         print(f"\n❌ Fatal error: {e}")
