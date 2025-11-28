@@ -491,6 +491,54 @@ RISK DECISION: APPROVE/MODIFY/REJECT - Position: $X (Y%) - Confidence: High/Medi
             decision['reasoning'].append("All risk analysts recommend avoiding - unanimous rejection")
             veto_triggered = True
         
+        # =====================================================================
+        # NEW: Generate reasoning if none was added by veto checks
+        # This ensures the reasoning array is never empty in the output
+        # =====================================================================
+        if not decision['reasoning']:
+            # Build reasoning based on consensus and evaluations
+            stances = consensus.get('stances', {})
+            buy_count = sum(1 for s in stances.values() if 'BUY' in str(s).upper())
+            avoid_count = sum(1 for s in stances.values() if 'AVOID' in str(s).upper() or 'SELL' in str(s).upper())
+            hold_count = sum(1 for s in stances.values() if 'HOLD' in str(s).upper())
+            
+            # Research manager recommendation
+            research_rec = synthesis.get('conclusion', {}).get('recommendation', 'HOLD')
+            research_conf = synthesis.get('conclusion', {}).get('confidence', 'LOW')
+            
+            decision['reasoning'].append(f"Research Manager recommends {research_rec} with {research_conf} confidence")
+            
+            if buy_count >= 2:
+                decision['reasoning'].append(f"Risk consensus: {buy_count}/3 analysts favor buying")
+            elif avoid_count >= 2:
+                decision['reasoning'].append(f"Risk consensus: {avoid_count}/3 analysts recommend avoiding")
+            elif hold_count >= 2:
+                decision['reasoning'].append(f"Risk consensus: {hold_count}/3 analysts recommend holding")
+            else:
+                decision['reasoning'].append("Risk consensus: Mixed views across analysts")
+            
+            # Add position sizing rationale
+            avg_size = consensus.get('avg_position_size', 0)
+            if avg_size > 0.15:
+                decision['reasoning'].append(f"Aggressive positioning warranted: {avg_size*100:.1f}% avg recommendation")
+            elif avg_size > 0.05:
+                decision['reasoning'].append(f"Moderate positioning: {avg_size*100:.1f}% avg recommendation")
+            elif avg_size > 0:
+                decision['reasoning'].append(f"Conservative positioning: {avg_size*100:.1f}% avg recommendation")
+            else:
+                decision['reasoning'].append("Zero position recommended by risk consensus")
+            
+            # Add probability assessment
+            bull_prob = synthesis.get('probabilities', {}).get('bull_case', 50)
+            bear_prob = synthesis.get('probabilities', {}).get('bear_case', 50)
+            
+            if bull_prob > bear_prob + 10:
+                decision['reasoning'].append(f"Probability favors bulls: {bull_prob:.0f}% vs {bear_prob:.0f}%")
+            elif bear_prob > bull_prob + 10:
+                decision['reasoning'].append(f"Probability favors bears: {bear_prob:.0f}% vs {bull_prob:.0f}%")
+            else:
+                decision['reasoning'].append(f"Balanced probabilities: Bull {bull_prob:.0f}% vs Bear {bear_prob:.0f}%")
+                
         # Set final confidence
         if decision['verdict'] == 'APPROVE':
             # Check agreement level

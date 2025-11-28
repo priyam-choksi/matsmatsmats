@@ -5,11 +5,31 @@ Coordinates all phases: Analysts → Researchers → Debate → Risk Team → De
 MODIFIED: Now supports historical backtesting via analysis_date parameter
 
 Usage: 
-  python master_orchestrator.py AAPL --run-all
-  python master_orchestrator.py AAPL --run-all --research-mode deep
-  python master_orchestrator.py AAPL --run-all --research-mode research --research-rounds 5
-  python master_orchestrator.py AAPL --run-all --analysis-date 2024-06-15
+  python master_orchestrator.py AAPL
+  python master_orchestrator.py AAPL --research-mode deep
+  python master_orchestrator.py AAPL --research-mode research --research-rounds 5
+  python master_orchestrator.py AAPL --analysis-date 2024-06-15
+
+Research Modes:
+  shallow  - Quick analysis, no debate (~2 minutes)
+  deep     - 3 debate rounds (~5 minutes)
+  research - 5 debate rounds (~8 minutes)
+
+Historical Backtesting:
+  --analysis-date YYYY-MM-DD  - Analyze using data from specified date
 """
+
+import os
+import sys
+from pathlib import Path
+
+
+from dotenv import load_dotenv
+    
+# Find .env in project root (2 levels up from orchestration folder)
+current_file = Path(__file__).resolve()
+project_root = current_file.parent.parent.parent  # Goes up: orchestration → src → TradingAgent
+env_path = project_root / '.env'
 
 import os
 import sys

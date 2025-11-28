@@ -104,11 +104,10 @@ Be balanced and objective. Your synthesis will guide the bull and bear researche
         if agent_name == "technical":
             cmd.extend(["--days", "7"])
         elif agent_name == "news":
-            # Use sources with good historical support for backtesting
-            if self.analysis_date:
-                cmd.extend(["--sources", "yahoo", "finnhub", "--days", "7"])
-            else:
-                cmd.extend(["--sources", "yahoo", "--days", "7"])
+            # Always use both yahoo and finnhub for comprehensive coverage
+            # Finnhub provides excellent news data for both live and historical modes
+            # This ensures we have news data even when Yahoo returns empty
+            cmd.extend(["--sources", "yahoo", "finnhub", "--days", "7"])
         elif agent_name == "macro":
             cmd.extend(["--days", "7"])
         

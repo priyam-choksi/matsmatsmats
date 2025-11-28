@@ -471,14 +471,14 @@ All data and arguments are based on information available on this date.
         }
     
     def analyze_consensus(self) -> Dict[str, Any]:
-        """Analyze consensus across all inputs"""
+        """Analyze consensus between bull and bear positions with improved extraction"""
         consensus = {
             'recommendations': {},
             'conviction_levels': {},
             'key_agreements': [],
             'key_conflicts': []
         }
-        
+               
         bull = self.research_inputs.get('bull_thesis', {})
         bear = self.research_inputs.get('bear_thesis', {})
         
@@ -503,13 +503,121 @@ All data and arguments are based on information available on this date.
             consensus['recommendations'][risk_type] = eval_data.get('stance', 'HOLD')
             consensus['conviction_levels'][risk_type] = eval_data.get('confidence', 'MEDIUM')
         
-        # Identify conflicts
+        # =====================================================================
+        # NEW: Extract key agreements from debate history
+        # =====================================================================
+        debate_history = self.research_inputs.get('debate_history', [])
+        
+        # Common themes that both sides might acknowledge
+        bull_points = []
+        bear_points = []
+        
+        for entry in debate_history:
+            text = entry.get('argument', '').lower()
+            side = entry.get('side', '')
+            
+            if side == 'bull':
+                bull_points.append(text)
+            elif side == 'bear':
+                bear_points.append(text)
+        
+        # Find agreements - themes mentioned positively by both sides
+        agreement_keywords = {
+            'strong fundamentals': ['strong fundamental', 'solid fundamental', 'robust fundamental'],
+            'growth potential': ['growth potential', 'growth trajectory', 'revenue growth'],
+            'market leader': ['market leader', 'leading position', 'dominant position'],
+            'cash flow': ['cash flow', 'free cash flow', 'cash generation'],
+            'valuation concerns': ['valuation', 'overvalued', 'premium valuation', 'high p/e'],
+            'competitive pressure': ['competition', 'competitive', 'competitors'],
+            'macro risks': ['macro', 'interest rate', 'economic', 'recession'],
+            'technical overbought': ['overbought', 'rsi above', 'pullback']
+        }
+        
+        bull_text = ' '.join(bull_points)
+        bear_text = ' '.join(bear_points)
+        
+        for theme, keywords in agreement_keywords.items():
+            bull_mentions = any(kw in bull_text for kw in keywords)
+            bear_mentions = any(kw in bear_text for kw in keywords)
+            
+            if bull_mentions and bear_mentions:
+                consensus['key_agreements'].append({
+                    'topic': theme,
+                    'description': f"Both sides acknowledge {theme}",
+                    'bull_acknowledges': True,
+                    'bear_acknowledges': True
+                })
+        
+        # =====================================================================
+        # NEW: Extract key conflicts from debate
+        # =====================================================================
+        
+        # Direct recommendation conflict
         recs = list(consensus['recommendations'].values())
-        if 'BUY' in recs and 'SELL' in recs:
-            consensus['key_conflicts'].append("Direct BUY vs SELL conflict between analysts")
+        if 'BUY' in recs and ('SELL' in recs or 'AVOID' in recs):
+            consensus['key_conflicts'].append({
+                'type': 'recommendation',
+                'severity': 'HIGH',
+                'description': "Direct BUY vs SELL/AVOID conflict between analysts",
+                'resolution_needed': True
+            })
+        
+        # Valuation interpretation conflict
+        bull_sees_value = any(term in bull_text for term in ['undervalued', 'fair value', 'justified', 'reasonable'])
+        bear_sees_overvalue = any(term in bear_text for term in ['overvalued', 'expensive', 'premium', 'stretched'])
+        
+        if bull_sees_value and bear_sees_overvalue:
+            consensus['key_conflicts'].append({
+                'type': 'valuation',
+                'severity': 'MEDIUM',
+                'description': "Disagreement on valuation: Bull sees fair value, Bear sees overvaluation",
+                'resolution_needed': True
+            })
+        
+        # Technical interpretation conflict
+        bull_bullish_tech = any(term in bull_text for term in ['uptrend', 'bullish momentum', 'breakout'])
+        bear_bearish_tech = any(term in bear_text for term in ['pullback', 'correction', 'breakdown', 'overbought'])
+        
+        if bull_bullish_tech and bear_bearish_tech:
+            consensus['key_conflicts'].append({
+                'type': 'technical',
+                'severity': 'MEDIUM',
+                'description': "Disagreement on technicals: Bull sees continuation, Bear sees reversal risk",
+                'resolution_needed': True
+            })
+        
+        # Risk tolerance conflict
+        bull_risk_ok = any(term in bull_text for term in ['manageable risk', 'acceptable', 'limited downside'])
+        bear_risk_high = any(term in bear_text for term in ['excessive risk', 'significant downside', 'major risk'])
+        
+        if bull_risk_ok and bear_risk_high:
+            consensus['key_conflicts'].append({
+                'type': 'risk_assessment',
+                'severity': 'HIGH',
+                'description': "Disagreement on risk: Bull sees manageable, Bear sees excessive",
+                'resolution_needed': True
+            })
+        
+        # Fallback if no conflicts found through keyword analysis
+        if not consensus['key_conflicts'] and 'BUY' in recs and 'HOLD' in recs:
+            consensus['key_conflicts'].append({
+                'type': 'conviction',
+                'severity': 'LOW',
+                'description': "Mixed conviction levels between analysts",
+                'resolution_needed': False
+            })
+        
+        # Fallback if no agreements found
+        if not consensus['key_agreements']:
+            consensus['key_agreements'].append({
+                'topic': 'data_quality',
+                'description': "Both sides using same underlying data sources",
+                'bull_acknowledges': True,
+                'bear_acknowledges': True
+            })
         
         return consensus
-    
+        
     def form_conclusion(self, probabilities: Dict, consensus: Dict) -> Dict[str, Any]:
         """Form final investment conclusion"""
         bull_prob = probabilities['bull_case']

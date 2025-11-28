@@ -227,7 +227,13 @@ AGGRESSIVE STANCE: [STRONG BUY/BUY/HOLD/AVOID] - Position Size: X% - Confidence:
         return evaluation
     
     def generate_trading_plan(self, evaluation: Dict, synthesis: Dict) -> Dict[str, Any]:
-        """Generate trading plan"""
+        """
+        Generate context-aware trading plan based on stock characteristics.
+        Adjusts profit targets based on:
+        - Stock volatility (ATR-based if available)
+        - Company type (mega-cap vs growth)
+        - Risk/reward profile from analysis
+        """
         plan = {
             'entry_strategy': '',
             'position_building': '',
@@ -236,24 +242,87 @@ AGGRESSIVE STANCE: [STRONG BUY/BUY/HOLD/AVOID] - Position Size: X% - Confidence:
             'time_frame': ''
         }
         
+        # =====================================================================
+        # NEW: Extract volatility and stock characteristics
+        # =====================================================================
+        bull_thesis = synthesis.get('bull_thesis', {})
+        bear_thesis = synthesis.get('bear_thesis', {})
+        
+        # Try to get upside/downside estimates from thesis
+        rr = bull_thesis.get('risk_reward', {})
+        upside_str = rr.get('upside_potential', '20-30%')
+        downside_str = bear_thesis.get('risk_assessment', {}).get('downside_risk', '10-15%')
+        
+        # Parse percentage ranges
+        import re
+        upside_nums = re.findall(r'\d+', str(upside_str))
+        downside_nums = re.findall(r'\d+', str(downside_str))
+        
+        # Calculate average expected move
+        avg_upside = sum(int(n) for n in upside_nums) / len(upside_nums) if upside_nums else 25
+        avg_downside = sum(int(n) for n in downside_nums) / len(downside_nums) if downside_nums else 15
+        
+        # Estimate volatility class based on expected moves
+        # Low vol (mega-caps like AAPL, GOOGL): upside < 25%
+        # Medium vol (growth stocks): upside 25-40%
+        # High vol (speculative): upside > 40%
+        
+        if avg_upside <= 20:
+            volatility_class = 'LOW'
+            target_multipliers = [0.4, 0.7, 1.0]  # More conservative targets
+            stop_range = "-8 to -10%"
+        elif avg_upside <= 35:
+            volatility_class = 'MEDIUM'
+            target_multipliers = [0.5, 0.8, 1.2]  # Standard targets
+            stop_range = "-10 to -12%"
+        else:
+            volatility_class = 'HIGH'
+            target_multipliers = [0.6, 1.0, 1.5]  # Aggressive targets for high vol
+            stop_range = "-12 to -15%"
+        
+        # Calculate actual profit targets based on expected upside
+        base_target = avg_upside
+        profit_targets = [
+            f"+{int(base_target * target_multipliers[0])}%",
+            f"+{int(base_target * target_multipliers[1])}%",
+            f"+{int(base_target * target_multipliers[2])}%+"
+        ]
+        
+        # =====================================================================
+        # Generate plan based on stance with volatility-adjusted parameters
+        # =====================================================================
+        
         if evaluation['stance'] in ['STRONG BUY', 'BUY']:
             plan['entry_strategy'] = "Aggressive entry on weakness or at market"
             plan['position_building'] = f"{evaluation['position_size']*50:.0f}% initial, double on confirmation"
-            plan['stop_loss'] = "Wide stop -12 to -15%"
-            plan['profit_targets'] = ["+25%", "+40%", "+50%+"]
+            plan['stop_loss'] = f"Wide stop {stop_range}"
+            plan['profit_targets'] = profit_targets
             plan['time_frame'] = "3-6 months"
+            plan['volatility_class'] = volatility_class
+            plan['target_rationale'] = f"Based on {avg_upside:.0f}% expected upside ({volatility_class} volatility)"
+            
         elif evaluation['stance'] == 'AVOID':
             plan['entry_strategy'] = "No entry"
             plan['position_building'] = "Zero"
             plan['stop_loss'] = "N/A"
             plan['profit_targets'] = ["N/A"]
             plan['time_frame'] = "No position"
-        else:
-            plan['entry_strategy'] = "Small pilot"
-            plan['position_building'] = "5% max"
+            plan['volatility_class'] = volatility_class
+            plan['target_rationale'] = "Position avoided"
+            
+        else:  # HOLD/SMALL
+            # Smaller targets for uncertain positions
+            small_targets = [
+                f"+{int(base_target * 0.3)}%",
+                f"+{int(base_target * 0.5)}%"
+            ]
+            plan['entry_strategy'] = "Small pilot position only"
+            plan['position_building'] = "5% max, no adding"
             plan['stop_loss'] = "-8%"
-            plan['profit_targets'] = ["+15%"]
+            plan['profit_targets'] = small_targets if small_targets[0] != "+0%" else ["+8%", "+12%"]
             plan['time_frame'] = "1-2 months"
+            plan['volatility_class'] = volatility_class
+            plan['target_rationale'] = f"Reduced targets for uncertain conviction"
         
         return plan
     

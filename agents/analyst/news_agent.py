@@ -875,7 +875,7 @@ Available Sources:
     parser.add_argument("ticker", help="Stock ticker symbol (e.g., AAPL, MSFT)")
     parser.add_argument("--sources", nargs="+",
                        choices=["yahoo", "reddit", "newsapi", "finnhub", "alphavantage"],
-                       default=["yahoo"],
+                       default=["yahoo", "finnhub"],
                        help="News sources to use (default: yahoo)")
     parser.add_argument("--days", type=int, default=7,
                        help="Number of days to analyze (default: 7)")

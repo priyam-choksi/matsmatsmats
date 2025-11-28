@@ -212,20 +212,92 @@ CONSERVATIVE STANCE: [SMALL BUY/MINIMAL BUY/HOLD/AVOID] - Position Size: X% - Co
         
         return evaluation
     
-    def generate_trading_plan(self, evaluation: Dict) -> Dict:
-        """Generate plan"""
+    def generate_trading_plan(self, evaluation: Dict, synthesis: Dict = None) -> Dict:
+        """
+        Generate ultra-conservative trading plan with tight risk controls.
+        Conservative evaluator prioritizes capital preservation over returns.
+        Targets are scaled down to reflect safety-first approach.
+        """
+        
+        # =====================================================================
+        # NEW: Extract stock characteristics, then apply conservative discount
+        # =====================================================================
+        avg_upside = 20  # Default
+        avg_downside = 15  # Default
+        
+        if synthesis:
+            bull_thesis = synthesis.get('bull_thesis', {})
+            bear_thesis = synthesis.get('bear_thesis', {})
+            
+            import re
+            upside_str = bull_thesis.get('risk_reward', {}).get('upside_potential', '20%')
+            downside_str = bear_thesis.get('risk_assessment', {}).get('downside_risk', '15%')
+            
+            upside_nums = re.findall(r'\d+', str(upside_str))
+            downside_nums = re.findall(r'\d+', str(downside_str))
+            
+            if upside_nums:
+                avg_upside = sum(int(n) for n in upside_nums) / len(upside_nums)
+            if downside_nums:
+                avg_downside = sum(int(n) for n in downside_nums) / len(downside_nums)
+        
+        # Conservative approach: Heavily discount upside, strict on downside
+        # Apply 50% haircut to expected upside
+        conservative_upside = avg_upside * 0.5
+        
         if evaluation['stance'] in ['SMALL BUY', 'MINIMAL BUY']:
+            # Very conservative targets
+            target1 = max(5, int(conservative_upside * 0.5))   # 25% of bull's upside
+            target2 = max(8, int(conservative_upside * 0.75))  # 37.5% of bull's upside
+            target3 = max(10, int(conservative_upside * 1.0))  # 50% of bull's upside (max)
+            
+            # Tight stops - never risk more than the expected gain
+            stop_pct = min(target1, max(3, int(avg_downside * 0.25)))  # 25% of expected downside
+            
             return {
-                'entry_strategy': "Wait for pullback, small tranches",
-                'stop_loss': "-3%",
-                'profit_targets': ["+8%", "+12%", "+15%"],
-                'exit_triggers': ["Any support break", "New red flags"],
-                'safety_rules': ["Never add to losers", "Exit on warnings"]
+                'entry_strategy': "Wait for 5%+ pullback, scale in small tranches",
+                'stop_loss': f"-{stop_pct}%",
+                'profit_targets': [f"+{target1}%", f"+{target2}%", f"+{target3}%"],
+                'exit_triggers': [
+                    "Any support break",
+                    "New red flags emerge",
+                    "Sector weakness",
+                    f"Stop at -{stop_pct}% is non-negotiable"
+                ],
+                'safety_rules': [
+                    "Never add to losing positions",
+                    "Exit immediately on warning signs",
+                    "Take profits early rather than late",
+                    "Position size: max 5% of portfolio"
+                ],
+                'capital_preservation': True,
+                'target_rationale': f"Conservative targets: 50% haircut applied to {avg_upside:.0f}% expected upside"
             }
+            
         elif evaluation['stance'] == 'AVOID':
-            return {'entry_strategy': "No entry", 'stop_loss': "N/A", 'profit_targets': ["N/A"]}
-        else:
-            return {'entry_strategy': "Wait for 4:1 setup", 'stop_loss': "-2%", 'profit_targets': ["+8%"]}
+            return {
+                'entry_strategy': "No entry - capital preservation priority",
+                'stop_loss': "N/A",
+                'profit_targets': ["N/A"],
+                'exit_triggers': ["N/A - no position"],
+                'safety_rules': ["Avoid this trade entirely"],
+                'capital_preservation': True,
+                'target_rationale': f"Risk too high: {avg_downside:.0f}% potential downside exceeds tolerance"
+            }
+            
+        else:  # HOLD
+            # Minimal targets for holding
+            hold_target = max(4, int(conservative_upside * 0.3))
+            
+            return {
+                'entry_strategy': "Wait for 4:1 risk/reward setup minimum",
+                'stop_loss': "-2%",
+                'profit_targets': [f"+{hold_target}%"],
+                'exit_triggers': ["Any adverse news", "Technical breakdown"],
+                'safety_rules': ["No new positions", "Reduce on any rally"],
+                'capital_preservation': True,
+                'target_rationale': "Minimal exposure until better setup emerges"
+            }
     
     def synthesize_with_llm(self, evaluation: Dict, trading_plan: Dict, synthesis: Dict, red_flags: List[str]) -> str:
         """Generate report - token efficient"""
@@ -320,8 +392,8 @@ CONSERVATIVE STANCE: {evaluation['stance']} - Position Size: {evaluation['positi
         
         red_flags = self.identify_red_flags(synthesis)
         evaluation = self.evaluate_opportunity(synthesis, red_flags)
-        trading_plan = self.generate_trading_plan(evaluation)
-        
+        trading_plan = self.generate_trading_plan(evaluation, synthesis) 
+               
         report = self.synthesize_with_llm(evaluation, trading_plan, synthesis, red_flags)
         
         self.evaluation = {
