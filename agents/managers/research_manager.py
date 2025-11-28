@@ -1,11 +1,17 @@
 """
-Research Manager - Enhanced with Debate Synthesis
-Synthesizes bull/bear research and coordinates risk evaluations
+Research Manager - Enhanced with Live Debate Orchestration
+Coordinates bull/bear debate and synthesizes results
 
-Usage: python research_manager.py AAPL --bull-file ../../outputs/bull_thesis.json --bear-file ../../outputs/bear_thesis.json
+Usage: 
+  # Old way (static files)
+  python research_manager.py AAPL --bull-file bull.json --bear-file bear.json
+  
+  # New way (orchestrated debate)
+  python research_manager.py AAPL --mode debate --rounds 3
 """
 
 import os
+from pathlib import Path
 import sys
 import json
 import argparse
@@ -20,18 +26,27 @@ if sys.platform == 'win32':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
+# Import the researchers (you'll need to adjust paths)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from researcher.bull_researcher import BullResearcher
+from researcher.bear_researcher import BearResearcher
+
 
 class ResearchManager:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
+    def _init_(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
         
-        # Enhanced system prompt inspired by reference paper's moderator role
+        # Initialize researchers for debate mode
+        self.bull_researcher = None
+        self.bear_researcher = None
+        
+        # Enhanced system prompt (keeping original)
         self.system_prompt = """You are the Research Manager acting as an objective debate moderator and portfolio manager.
 
-**YOUR CRITICAL ROLE:**
+*YOUR CRITICAL ROLE:*
 You've received comprehensive research from both Bull and Bear analysts. Your job is to:
 1. Critically evaluate BOTH sides of the debate
 2. Make a definitive decision (not default to HOLD unless strongly justified)
@@ -39,64 +54,31 @@ You've received comprehensive research from both Bull and Bear analysts. Your jo
 4. Calculate probability-weighted outcomes
 5. Provide clear, actionable investment recommendation
 
-**DECISION FRAMEWORK:**
+*DECISION FRAMEWORK:*
 
-**When to BUY:**
+*When to BUY:*
 - Bull case significantly stronger than bear case
 - High-probability positive catalysts identified
 - Risk/reward ratio favorable (>2:1)
 - Multiple analysts aligned on upside
 - Bear concerns are minor or temporary
 
-**When to SELL:**
+*When to SELL:*
 - Bear case significantly stronger than bull case
 - High-probability downside triggers identified
 - Risk/reward unfavorable
 - Multiple red flags across analysts
 - Bull optimism ignoring critical risks
 
-**When to HOLD (Only if justified):**
+*When to HOLD (Only if justified):*
 - Arguments genuinely balanced with no edge
 - Need more data/time before catalyst clarity
 - Fair valuation with no strong directional catalyst
 - DO NOT default to HOLD just because both have points
 
-**ANALYSIS REQUIREMENTS:**
-
-## Executive Summary
-[2-3 sentences: What's the definitive conclusion and why?]
-
-## Debate Evaluation
-
-### Bull Case Strengths
-[List 3 strongest bull arguments with supporting data]
-
-### Bear Case Strengths  
-[List 3 strongest bear arguments with supporting data]
-
-### Critical Conflicts
-[Where do they disagree? Who has better evidence?]
-
-## Probability-Weighted Analysis
-- Bull Case Probability: X%
-- Bear Case Probability: Y%
-- Base Case Probability: Z%
-- Expected Value: [Calculate weighted outcome]
-
-## Decision Rationale
-[Why you're choosing BUY/SELL/HOLD - reference specific evidence that tipped the scales]
-
-## Investment Plan
-**Recommendation:** BUY/SELL/HOLD
-**Position Size:** X% of portfolio
-**Entry Strategy:** [Specific approach]
-**Risk Management:** [Stop loss, position limits]
-**Time Horizon:** [Expected holding period]
-**Key Catalysts to Monitor:** [What could change thesis]
-
 RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Medium/Low
 
-**Be decisive.** Commit to the stance supported by strongest evidence. Avoid fence-sitting."""
+*Be decisive.* Commit to the stance supported by strongest evidence. Avoid fence-sitting."""
         
         # Storage
         self.research_inputs = {
@@ -108,9 +90,430 @@ RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Med
                 'conservative': {}
             }
         }
+        
+        # Debate history for orchestration
+        self.debate_history = []
+    
+    def orchestrate_debate(self, discussion_points: Dict, rounds: int = 3, mode: str = 'deep') -> Dict:
+        """
+        NEW METHOD: Orchestrate live debate between bull and bear
+        This replaces static file loading with dynamic interaction
+        """
+        print(f"\n[RESEARCH_MGR] 🎯 ORCHESTRATING {rounds}-ROUND DEBATE\n")
+        print(f"{'='*70}\n")
+        
+        start_time = time.time()
+        
+        # Initialize researchers
+        self.bull_researcher = BullResearcher(self.ticker, api_key=self.api_key, model=self.model)
+        self.bear_researcher = BearResearcher(self.ticker, api_key=self.api_key, model=self.model)
+        
+        # Store arguments for each round
+        bull_arguments = []
+        bear_arguments = []
+        
+        for round_num in range(1, rounds + 1):
+            print(f"[RESEARCH_MGR] 🔄 Round {round_num}/{rounds}")
+            print(f"{'-'*40}")
+            
+            if round_num == 1:
+                # Round 1: Initial arguments based on discussion points
+                print(f"[RESEARCH_MGR] Bull generating opening argument...")
+                bull_arg = self.bull_researcher._generate_initial_argument(
+                    self.bull_researcher.build_bull_thesis(
+                        self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
+                        self.bull_researcher.calculate_risk_reward(discussion_points)
+                    ),
+                    self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
+                    self.bull_researcher.identify_upside_catalysts(discussion_points),
+                    self.bull_researcher.calculate_risk_reward(discussion_points),
+                    discussion_points
+                )
+                
+                print(f"[RESEARCH_MGR] Bear generating opening argument...")
+                bear_arg = self.bear_researcher._generate_initial_argument(
+                    self.bear_researcher.build_bear_thesis(
+                        self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
+                        self.bear_researcher.calculate_risk_assessment(discussion_points)
+                    ),
+                    self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
+                    self.bear_researcher.identify_downside_triggers(discussion_points),
+                    self.bear_researcher.calculate_risk_assessment(discussion_points),
+                    discussion_points
+                )
+            else:
+                # Subsequent rounds: Respond to each other's arguments
+                print(f"[RESEARCH_MGR] Bull responding to bear...")
+                bull_arg = self.bull_researcher._generate_debate_response(
+                    round_num,
+                    rounds,
+                    self.debate_history,
+                    bear_arguments[-1],  # Respond to bear's last argument
+                    self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
+                    discussion_points
+                )
+                
+                print(f"[RESEARCH_MGR] Bear responding to bull...")
+                bear_arg = self.bear_researcher._generate_debate_response(
+                    round_num,
+                    rounds,
+                    self.debate_history,
+                    bull_arguments[-1],  # Respond to bull's last argument
+                    self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
+                    discussion_points
+                )
+            
+            # Store arguments
+            bull_arguments.append(bull_arg)
+            bear_arguments.append(bear_arg)
+            
+            # Update debate history
+            self.debate_history.append({
+                'round': round_num,
+                'speaker': 'bull',
+                'argument': bull_arg
+            })
+            self.debate_history.append({
+                'round': round_num,
+                'speaker': 'bear',
+                'argument': bear_arg
+            })
+            
+            print(f"[RESEARCH_MGR] ✓ Round {round_num} complete")
+            print(f"  Bull: {len(bull_arg)} chars")
+            print(f"  Bear: {len(bear_arg)} chars")
+            print()
+        
+        # Compile final theses with debate history
+        self.research_inputs['bull_thesis'] = {
+            'ticker': self.ticker,
+            'timestamp': datetime.now().isoformat(),
+            'mode': f'DEBATE_{mode.upper()}',
+            'rounds': rounds,
+            'core_thesis': self.bull_researcher.build_bull_thesis(
+                self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
+                self.bull_researcher.calculate_risk_reward(discussion_points)
+            ),
+            'opportunities': self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
+            'catalysts': self.bull_researcher.identify_upside_catalysts(discussion_points),
+            'risk_reward': self.bull_researcher.calculate_risk_reward(discussion_points),
+            'entry_strategies': self.bull_researcher.suggest_entry_strategies(
+                self.bull_researcher.calculate_risk_reward(discussion_points)
+            ),
+            'debate_history': [h for h in self.debate_history if h['speaker'] == 'bull'],
+            'final_argument': bull_arguments[-1]
+        }
+        
+        self.research_inputs['bear_thesis'] = {
+            'ticker': self.ticker,
+            'timestamp': datetime.now().isoformat(),
+            'mode': f'DEBATE_{mode.upper()}',
+            'rounds': rounds,
+            'core_thesis': self.bear_researcher.build_bear_thesis(
+                self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
+                self.bear_researcher.calculate_risk_assessment(discussion_points)
+            ),
+            'risks': self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
+            'downside_triggers': self.bear_researcher.identify_downside_triggers(discussion_points),
+            'risk_assessment': self.bear_researcher.calculate_risk_assessment(discussion_points),
+            'hedging_strategies': self.bear_researcher.suggest_hedging_strategies(
+                self.bear_researcher.calculate_risk_assessment(discussion_points)
+            ),
+            'debate_history': [h for h in self.debate_history if h['speaker'] == 'bear'],
+            'final_argument': bear_arguments[-1]
+        }
+        
+        elapsed = time.time() - start_time
+        print(f"[RESEARCH_MGR] ✓ Debate complete in {elapsed:.2f}s")
+        print(f"{'='*70}\n")
+        
+        return {
+            'debate_complete': True,
+            'rounds': rounds,
+            'duration': elapsed,
+            'bull_thesis': self.research_inputs['bull_thesis'],
+            'bear_thesis': self.research_inputs['bear_thesis']
+        }
+    
+    def enhance_static_with_debate(self) -> bool:
+        """
+        NEW: Enhance existing bull/bear theses with debate rounds
+        This is called when we have static files but want to add debate
+        """
+        bull = self.research_inputs.get('bull_thesis', {})
+        bear = self.research_inputs.get('bear_thesis', {})
+        
+        # Check if these were generated with rounds > 1
+        bull_rounds = bull.get('rounds', 1)
+        bear_rounds = bear.get('rounds', 1)
+        
+        if bull_rounds > 1 or bear_rounds > 1:
+            rounds = max(bull_rounds, bear_rounds)
+            print(f"[RESEARCH_MGR] Enhancing with {rounds}-round debate...")
+            
+            # Load discussion points
+            discussion_file = self.outputs_path / "discussion_points.json"
+            if not discussion_file.exists():
+                discussion_file = Path("../../outputs/discussion_points.json")
+            
+            if discussion_file.exists():
+                with open(discussion_file, 'r') as f:
+                    discussion_points = json.load(f)
+                
+                # Initialize researchers
+                self.bull_researcher = BullResearcher(self.ticker, api_key=self.api_key, model=self.model)
+                self.bear_researcher = BearResearcher(self.ticker, api_key=self.api_key, model=self.model)
+                
+                # Generate debate based on existing theses
+                debate_history = []
+                
+                # Use existing core theses as round 1
+                bull_arg = bull.get('final_argument') or bull.get('core_thesis', '')
+                bear_arg = bear.get('final_argument') or bear.get('core_thesis', '')
+                
+                debate_history.append({'round': 1, 'speaker': 'bull', 'argument': bull_arg})
+                debate_history.append({'round': 1, 'speaker': 'bear', 'argument': bear_arg})
+                
+                # Generate additional rounds if needed
+                for round_num in range(2, rounds + 1):
+                    print(f"[RESEARCH_MGR] Generating debate round {round_num}...")
+                    
+                    # Bull responds to bear
+                    bull_arg = self.bull_researcher._generate_debate_response(
+                        round_num, rounds, debate_history, bear_arg,
+                        bull.get('opportunities', {}), discussion_points
+                    )
+                    
+                    # Bear responds to bull  
+                    bear_arg = self.bear_researcher._generate_debate_response(
+                        round_num, rounds, debate_history, bull_arg,
+                        bear.get('risks', {}), discussion_points
+                    )
+                    
+                    debate_history.append({'round': round_num, 'speaker': 'bull', 'argument': bull_arg})
+                    debate_history.append({'round': round_num, 'speaker': 'bear', 'argument': bear_arg})
+                
+                # Update theses with debate history
+                self.research_inputs['bull_thesis']['debate_history'] = [h for h in debate_history if h['speaker'] == 'bull']
+                self.research_inputs['bear_thesis']['debate_history'] = [h for h in debate_history if h['speaker'] == 'bear']
+                self.research_inputs['bull_thesis']['final_argument'] = bull_arg
+                self.research_inputs['bear_thesis']['final_argument'] = bear_arg
+                
+                print(f"[RESEARCH_MGR] ✓ Enhanced with {rounds}-round debate")
+                return True
+            else:
+                print(f"[RESEARCH_MGR] No discussion points found for debate enhancement")
+                return False
+        else:
+            print(f"[RESEARCH_MGR] Single-round theses, no debate enhancement needed")
+            return False
+        """
+        NEW: Reconstruct debate from bull/bear thesis files
+        This runs when we have thesis files that were generated with deep/research mode
+        """
+        bull = self.research_inputs.get('bull_thesis', {})
+        bear = self.research_inputs.get('bear_thesis', {})
+        
+        # Check if these were generated with debate capability
+        bull_mode = bull.get('mode', 'SHALLOW')
+        bear_mode = bear.get('mode', 'SHALLOW')
+        bull_rounds = bull.get('rounds', 1)
+        bear_rounds = bear.get('rounds', 1)
+        
+        if ('DEEP' in bull_mode or 'RESEARCH' in bull_mode) and bull_rounds > 1:
+            print(f"[RESEARCH_MGR] Detected {bull_rounds}-round capable theses, orchestrating debate...")
+            
+            # Load discussion points if available
+            discussion_file = self.outputs_path / "discussion_points.json"
+            if discussion_file.exists():
+                with open(discussion_file, 'r') as f:
+                    discussion_points = json.load(f)
+                
+                # Initialize researchers
+                self.bull_researcher = BullResearcher(self.ticker, api_key=self.api_key, model=self.model)
+                self.bear_researcher = BearResearcher(self.ticker, api_key=self.api_key, model=self.model)
+                
+                # Reconstruct debate using the existing analysis
+                debate_history = []
+                
+                for round_num in range(1, min(bull_rounds, bear_rounds) + 1):
+                    print(f"[RESEARCH_MGR] Generating debate round {round_num}...")
+                    
+                    if round_num == 1:
+                        # Use initial arguments from the thesis data
+                        bull_arg = bull.get('core_thesis', '')
+                        bear_arg = bear.get('core_thesis', '')
+                    else:
+                        # Generate responses based on previous round
+                        bull_arg = self.bull_researcher._generate_debate_response(
+                            round_num, bull_rounds, debate_history,
+                            debate_history[-1]['argument'] if debate_history and debate_history[-1]['speaker'] == 'bear' else None,
+                            bull.get('opportunities', {}), discussion_points
+                        )
+                        
+                        bear_arg = self.bear_researcher._generate_debate_response(
+                            round_num, bear_rounds, debate_history,
+                            debate_history[-1]['argument'] if debate_history and debate_history[-1]['speaker'] == 'bull' else None,
+                            bear.get('risks', {}), discussion_points
+                        )
+                    
+                    debate_history.append({'round': round_num, 'speaker': 'bull', 'argument': bull_arg})
+                    debate_history.append({'round': round_num, 'speaker': 'bear', 'argument': bear_arg})
+                
+                # Update the theses with debate history
+                self.research_inputs['bull_thesis']['debate_history'] = [h for h in debate_history if h['speaker'] == 'bull']
+                self.research_inputs['bear_thesis']['debate_history'] = [h for h in debate_history if h['speaker'] == 'bear']
+                
+                print(f"[RESEARCH_MGR] ✓ Debate reconstruction complete")
+                return True
+            else:
+                print(f"[RESEARCH_MGR] No discussion points found, using static theses")
+                return False
+        else:
+            print(f"[RESEARCH_MGR] Theses are shallow mode, no debate needed")
+            return False
+        """
+        NEW METHOD: Orchestrate live debate between bull and bear
+        This replaces static file loading with dynamic interaction
+        """
+        print(f"\n[RESEARCH_MGR] 🎯 ORCHESTRATING {rounds}-ROUND DEBATE\n")
+        print(f"{'='*70}\n")
+        
+        start_time = time.time()
+        
+        # Initialize researchers
+        self.bull_researcher = BullResearcher(self.ticker, api_key=self.api_key, model=self.model)
+        self.bear_researcher = BearResearcher(self.ticker, api_key=self.api_key, model=self.model)
+        
+        # Store arguments for each round
+        bull_arguments = []
+        bear_arguments = []
+        
+        for round_num in range(1, rounds + 1):
+            print(f"[RESEARCH_MGR] 🔄 Round {round_num}/{rounds}")
+            print(f"{'-'*40}")
+            
+            if round_num == 1:
+                # Round 1: Initial arguments based on discussion points
+                print(f"[RESEARCH_MGR] Bull generating opening argument...")
+                bull_arg = self.bull_researcher._generate_initial_argument(
+                    self.bull_researcher.build_bull_thesis(
+                        self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
+                        self.bull_researcher.calculate_risk_reward(discussion_points)
+                    ),
+                    self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
+                    self.bull_researcher.identify_upside_catalysts(discussion_points),
+                    self.bull_researcher.calculate_risk_reward(discussion_points),
+                    discussion_points
+                )
+                
+                print(f"[RESEARCH_MGR] Bear generating opening argument...")
+                bear_arg = self.bear_researcher._generate_initial_argument(
+                    self.bear_researcher.build_bear_thesis(
+                        self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
+                        self.bear_researcher.calculate_risk_assessment(discussion_points)
+                    ),
+                    self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
+                    self.bear_researcher.identify_downside_triggers(discussion_points),
+                    self.bear_researcher.calculate_risk_assessment(discussion_points),
+                    discussion_points
+                )
+            else:
+                # Subsequent rounds: Respond to each other's arguments
+                print(f"[RESEARCH_MGR] Bull responding to bear...")
+                bull_arg = self.bull_researcher._generate_debate_response(
+                    round_num,
+                    rounds,
+                    self.debate_history,
+                    bear_arguments[-1],  # Respond to bear's last argument
+                    self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
+                    discussion_points
+                )
+                
+                print(f"[RESEARCH_MGR] Bear responding to bull...")
+                bear_arg = self.bear_researcher._generate_debate_response(
+                    round_num,
+                    rounds,
+                    self.debate_history,
+                    bull_arguments[-1],  # Respond to bull's last argument
+                    self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
+                    discussion_points
+                )
+            
+            # Store arguments
+            bull_arguments.append(bull_arg)
+            bear_arguments.append(bear_arg)
+            
+            # Update debate history
+            self.debate_history.append({
+                'round': round_num,
+                'speaker': 'bull',
+                'argument': bull_arg
+            })
+            self.debate_history.append({
+                'round': round_num,
+                'speaker': 'bear',
+                'argument': bear_arg
+            })
+            
+            print(f"[RESEARCH_MGR] ✓ Round {round_num} complete")
+            print(f"  Bull: {len(bull_arg)} chars")
+            print(f"  Bear: {len(bear_arg)} chars")
+            print()
+        
+        # Compile final theses with debate history
+        self.research_inputs['bull_thesis'] = {
+            'ticker': self.ticker,
+            'timestamp': datetime.now().isoformat(),
+            'mode': f'DEBATE_{mode.upper()}',
+            'rounds': rounds,
+            'core_thesis': self.bull_researcher.build_bull_thesis(
+                self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
+                self.bull_researcher.calculate_risk_reward(discussion_points)
+            ),
+            'opportunities': self.bull_researcher.extract_bull_signals_from_full_reports(discussion_points),
+            'catalysts': self.bull_researcher.identify_upside_catalysts(discussion_points),
+            'risk_reward': self.bull_researcher.calculate_risk_reward(discussion_points),
+            'entry_strategies': self.bull_researcher.suggest_entry_strategies(
+                self.bull_researcher.calculate_risk_reward(discussion_points)
+            ),
+            'debate_history': [h for h in self.debate_history if h['speaker'] == 'bull'],
+            'final_argument': bull_arguments[-1]
+        }
+        
+        self.research_inputs['bear_thesis'] = {
+            'ticker': self.ticker,
+            'timestamp': datetime.now().isoformat(),
+            'mode': f'DEBATE_{mode.upper()}',
+            'rounds': rounds,
+            'core_thesis': self.bear_researcher.build_bear_thesis(
+                self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
+                self.bear_researcher.calculate_risk_assessment(discussion_points)
+            ),
+            'risks': self.bear_researcher.extract_bear_signals_from_full_reports(discussion_points),
+            'downside_triggers': self.bear_researcher.identify_downside_triggers(discussion_points),
+            'risk_assessment': self.bear_researcher.calculate_risk_assessment(discussion_points),
+            'hedging_strategies': self.bear_researcher.suggest_hedging_strategies(
+                self.bear_researcher.calculate_risk_assessment(discussion_points)
+            ),
+            'debate_history': [h for h in self.debate_history if h['speaker'] == 'bear'],
+            'final_argument': bear_arguments[-1]
+        }
+        
+        elapsed = time.time() - start_time
+        print(f"[RESEARCH_MGR] ✓ Debate complete in {elapsed:.2f}s")
+        print(f"{'='*70}\n")
+        
+        return {
+            'debate_complete': True,
+            'rounds': rounds,
+            'duration': elapsed,
+            'bull_thesis': self.research_inputs['bull_thesis'],
+            'bear_thesis': self.research_inputs['bear_thesis']
+        }
     
     def load_research_files(self, bull_file: str, bear_file: str):
-        """Load bull and bear theses"""
+        """Original method - load from static files"""
         print(f"[RESEARCH_MGR] Loading research files...")
         
         # Load bull thesis
@@ -119,7 +522,7 @@ RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Med
                 self.research_inputs['bull_thesis'] = json.load(f)
             print(f"[RESEARCH_MGR] ✓ Bull thesis loaded ({bull_file})")
         else:
-            print(f"[RESEARCH_MGR] ⚠️  Bull thesis not found: {bull_file}")
+            print(f"[RESEARCH_MGR] ⚠  Bull thesis not found: {bull_file}")
         
         # Load bear thesis
         if os.path.exists(bear_file):
@@ -127,8 +530,78 @@ RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Med
                 self.research_inputs['bear_thesis'] = json.load(f)
             print(f"[RESEARCH_MGR] ✓ Bear thesis loaded ({bear_file})")
         else:
-            print(f"[RESEARCH_MGR] ⚠️  Bear thesis not found: {bear_file}")
+            print(f"[RESEARCH_MGR] ⚠  Bear thesis not found: {bear_file}")
     
+    def synthesize(self, load_risk_evals: bool = True) -> tuple:
+        """
+        Main synthesis workflow - works with both static and debate modes
+        Returns (report, synthesis_data)
+        """
+        start_time = time.time()
+        
+        print(f"\n{'='*70}")
+        print(f"RESEARCH SYNTHESIS: {self.ticker}")
+        print(f"{'='*70}\n")
+        
+        # Load risk evaluations (optional)
+        if load_risk_evals:
+            self.load_risk_evaluations()
+        
+        # Format debate
+        print(f"[RESEARCH_MGR] Formatting debate...")
+        debate_formatted = self.format_debate_for_analysis()
+        
+        # Calculate probabilities
+        probabilities = self.calculate_probabilities()
+        
+        # Analyze consensus
+        consensus = self.analyze_consensus()
+        
+        # Form conclusion
+        conclusion = self.form_conclusion(consensus, probabilities)
+        
+        # Generate LLM synthesis
+        print(f"\n[RESEARCH_MGR] Synthesizing final decision...\n")
+        report = self.synthesize_with_llm(debate_formatted, consensus, probabilities, conclusion)
+        
+        # Compile synthesis data
+        synthesis_data = {
+            'ticker': self.ticker,
+            'timestamp': datetime.now().isoformat(),
+            'consensus': consensus,
+            'probabilities': probabilities,
+            'conclusion': conclusion,
+            'research_inputs_summary': {
+                'bull_thesis': bool(self.research_inputs['bull_thesis']),
+                'bear_thesis': bool(self.research_inputs['bear_thesis']),
+                'bull_mode': self.research_inputs['bull_thesis'].get('mode', 'unknown'),
+                'bear_mode': self.research_inputs['bear_thesis'].get('mode', 'unknown'),
+                'risk_evals': sum(1 for e in self.research_inputs['risk_evaluations'].values() if e)
+            }
+        }
+        
+        # Save synthesis.json for downstream components
+        synthesis_output = {
+            'ticker': self.ticker,
+            'timestamp': datetime.now().isoformat(),
+            'bull_thesis': self.research_inputs['bull_thesis'].get('final_argument', 
+                          self.research_inputs['bull_thesis'].get('core_thesis', '')),
+            'bear_thesis': self.research_inputs['bear_thesis'].get('final_argument',
+                          self.research_inputs['bear_thesis'].get('core_thesis', '')),
+            'consensus': consensus,
+            'probabilities': probabilities,
+            'conclusion': conclusion,
+            'recommendation': conclusion['recommendation'],
+            'confidence': conclusion['confidence']
+        }
+        
+        elapsed = time.time() - start_time
+        print(f"\n[RESEARCH_MGR] ✓ Synthesis complete in {elapsed:.2f}s")
+        print(f"{'='*70}\n")
+        
+        return report, synthesis_data, synthesis_output
+    
+    # Keep all other existing methods unchanged
     def load_risk_evaluations(self):
         """Load risk debator evaluations (optional)"""
         print(f"[RESEARCH_MGR] Loading risk evaluations...")
@@ -148,7 +621,7 @@ RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Med
                         self.research_inputs['risk_evaluations'][risk_type] = json.load(f)
                     loaded_count += 1
                 except Exception as e:
-                    print(f"[RESEARCH_MGR] ⚠️  Error loading {risk_type}: {e}")
+                    print(f"[RESEARCH_MGR] ⚠  Error loading {risk_type}: {e}")
         
         print(f"[RESEARCH_MGR] ✓ Loaded {loaded_count}/3 risk evaluations")
     
@@ -161,10 +634,10 @@ RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Med
 
 ## BULL ANALYST POSITION
 
-**Core Thesis:**
+*Core Thesis:*
 {bull.get('core_thesis', 'Not available')}
 
-**Key Opportunities:**
+*Key Opportunities:*
 """
         # Add bull opportunities
         for category, opps in bull.get('opportunities', {}).items():
@@ -174,18 +647,18 @@ RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Med
                     debate += f"- {opp}\n"
         
         # Add bull catalysts
-        debate += "\n**Upside Catalysts:**\n"
+        debate += "\n*Upside Catalysts:*\n"
         for catalyst in bull.get('catalysts', [])[:5]:
             debate += f"- {catalyst.get('description', '')} ({catalyst.get('timeline', 'TBD')})\n"
         
         # Add bull R/R
         rr = bull.get('risk_reward', {})
-        debate += f"\n**Risk/Reward:** {rr.get('upside_potential', 'N/A')} upside, {rr.get('downside_risk', 'N/A')} downside"
+        debate += f"\n*Risk/Reward:* {rr.get('upside_potential', 'N/A')} upside, {rr.get('downside_risk', 'N/A')} downside"
         debate += f" (Ratio: {rr.get('reward_risk_ratio', 0):.1f}:1)\n"
         
         # If debate history exists (from deep/research mode)
         if 'debate_history' in bull:
-            debate += "\n**Debate Arguments:**\n"
+            debate += "\n*Debate Arguments:*\n"
             for entry in bull['debate_history']:
                 debate += f"\nRound {entry['round']}: {entry['argument'][:400]}...\n"
         
@@ -193,10 +666,10 @@ RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Med
         
         debate += "## BEAR ANALYST POSITION\n\n"
         
-        debate += f"**Core Thesis:**\n{bear.get('core_thesis', 'Not available')}\n\n"
+        debate += f"*Core Thesis:*\n{bear.get('core_thesis', 'Not available')}\n\n"
         
         # Add bear risks
-        debate += "**Risk Factors:**\n"
+        debate += "*Risk Factors:*\n"
         for category, risks in bear.get('risks', {}).items():
             if risks:
                 debate += f"\n### {category.title()}:\n"
@@ -204,18 +677,18 @@ RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Med
                     debate += f"- {risk}\n"
         
         # Add bear triggers
-        debate += "\n**Downside Triggers:**\n"
+        debate += "\n*Downside Triggers:*\n"
         for trigger in bear.get('downside_triggers', [])[:5]:
             debate += f"- {trigger.get('description', '')} ({trigger.get('timeline', 'TBD')})\n"
         
         # Add bear risk assessment
         ra = bear.get('risk_assessment', {})
-        debate += f"\n**Risk Assessment:** {ra.get('downside_risk', 'N/A')} downside, {ra.get('limited_upside', 'N/A')} upside"
+        debate += f"\n*Risk Assessment:* {ra.get('downside_risk', 'N/A')} downside, {ra.get('limited_upside', 'N/A')} upside"
         debate += f" (Risk Level: {ra.get('risk_level', 'N/A')})\n"
         
         # If debate history exists
         if 'debate_history' in bear:
-            debate += "\n**Debate Arguments:**\n"
+            debate += "\n*Debate Arguments:*\n"
             for entry in bear['debate_history']:
                 debate += f"\nRound {entry['round']}: {entry['argument'][:400]}...\n"
         
@@ -463,12 +936,9 @@ RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Med
         return expected_value
     
     def synthesize_with_llm(self, debate_formatted: str, consensus: Dict, probabilities: Dict, conclusion: Dict) -> str:
-        """
-        Generate comprehensive synthesis using LLM
-        Like the reference paper's moderator decision
-        """
+        """Generate comprehensive synthesis using LLM"""
         if not self.client:
-            print("[RESEARCH_MGR] ⚠️  No API key - using fallback")
+            print("[RESEARCH_MGR] ⚠  No API key - using fallback")
             return self._create_fallback_report(consensus, probabilities, conclusion)
         
         try:
@@ -482,13 +952,13 @@ RESEARCH CONCLUSION: Strong Buy/Buy/Hold/Sell/Strong Sell - Confidence: High/Med
 
 ## Preliminary Analysis
 
-**Probability Assessment:**
+*Probability Assessment:*
 {json.dumps(probabilities, indent=2)}
 
-**Consensus Summary:**
+*Consensus Summary:*
 {json.dumps(consensus, indent=2)}
 
-**Initial Conclusion:**
+*Initial Conclusion:*
 {json.dumps(conclusion, indent=2)}
 
 {'='*70}
@@ -501,7 +971,7 @@ As Research Manager, provide your definitive investment decision. Evaluate both 
                     {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": context}
                 ],
-                temperature=0.6,  # Moderate temp for balanced decision
+                temperature=0.6,
                 max_tokens=3000
             )
             
@@ -526,141 +996,192 @@ As Research Manager, provide your definitive investment decision. Evaluate both 
         report = f"""
 # RESEARCH SYNTHESIS: {self.ticker}
 {'='*70}
-*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*
-*Mode: Fallback (LLM unavailable)*
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Mode: Fallback (LLM unavailable)
 
 ## Probability Assessment
 """
         for scenario in probabilities['scenarios']:
-            report += f"\n**{scenario['name']}:** {scenario['probability']}\n"
+            report += f"\n*{scenario['name']}:* {scenario['probability']}\n"
             report += f"  Outcome: {scenario['outcome']}\n"
             report += f"  {scenario['description']}\n"
         
         report += f"""
 ## Consensus Analysis
 
-**Recommendations:**
+*Recommendations:*
 """
         for source, rec in consensus['recommendations'].items():
             report += f"  - {source}: {rec}\n"
         
         if consensus['key_agreements']:
-            report += f"\n**Agreement:** {consensus['key_agreements'][0]}\n"
+            report += f"\n*Agreement:* {consensus['key_agreements'][0]}\n"
         
         if consensus['key_conflicts']:
-            report += f"**Conflict:** {consensus['key_conflicts'][0]}\n"
+            report += f"*Conflict:* {consensus['key_conflicts'][0]}\n"
         
         report += f"""
 ## Final Conclusion
 
-**Recommendation:** {conclusion['recommendation']}
-**Confidence:** {conclusion['confidence']}
-**Position Size:** {conclusion['position_size_range']}
-**Time Horizon:** {conclusion['time_horizon']}
+*Recommendation:* {conclusion['recommendation']}
+*Confidence:* {conclusion['confidence']}
+*Position Size:* {conclusion['position_size_range']}
+*Time Horizon:* {conclusion['time_horizon']}
 
-**Rationale:** {conclusion['rationale']}
+*Rationale:* {conclusion['rationale']}
 
-**Expected Value:** {conclusion['expected_value']:+.1f}%
+*Expected Value:* {conclusion['expected_value']:+.1f}%
 
 RESEARCH CONCLUSION: {conclusion['recommendation']} - Confidence: {conclusion['confidence']}
 """
         return report
-    
-    def synthesize(self, load_risk_evals: bool = True) -> tuple:
-        """
-        Main synthesis workflow
-        Returns (report, synthesis_data)
-        """
-        start_time = time.time()
-        
-        print(f"\n{'='*70}")
-        print(f"RESEARCH MANAGER: {self.ticker}")
-        print(f"{'='*70}\n")
-        
-        # Load risk evaluations (optional)
-        if load_risk_evals:
-            self.load_risk_evaluations()
-        
-        # Format debate
-        print(f"[RESEARCH_MGR] Formatting debate...")
-        debate_formatted = self.format_debate_for_analysis()
-        
-        # Calculate probabilities
-        probabilities = self.calculate_probabilities()
-        
-        # Analyze consensus
-        consensus = self.analyze_consensus()
-        
-        # Form conclusion
-        conclusion = self.form_conclusion(consensus, probabilities)
-        
-        # Generate LLM synthesis
-        print(f"\n[RESEARCH_MGR] Synthesizing final decision...\n")
-        report = self.synthesize_with_llm(debate_formatted, consensus, probabilities, conclusion)
-        
-        # Compile synthesis data
-        synthesis_data = {
-            'ticker': self.ticker,
-            'timestamp': datetime.now().isoformat(),
-            'consensus': consensus,
-            'probabilities': probabilities,
-            'conclusion': conclusion,
-            'research_inputs_summary': {
-                'bull_thesis': bool(self.research_inputs['bull_thesis']),
-                'bear_thesis': bool(self.research_inputs['bear_thesis']),
-                'bull_mode': self.research_inputs['bull_thesis'].get('mode', 'unknown'),
-                'bear_mode': self.research_inputs['bear_thesis'].get('mode', 'unknown'),
-                'risk_evals': sum(1 for e in self.research_inputs['risk_evaluations'].values() if e)
-            }
-        }
-        
-        elapsed = time.time() - start_time
-        print(f"\n[RESEARCH_MGR] ✓ Synthesis complete in {elapsed:.2f}s")
-        print(f"{'='*70}\n")
-        
-        return report, synthesis_data
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Research Manager - Synthesizes bull/bear debate and makes final decision",
+        description="Research Manager - Orchestrates debate and synthesizes decision",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Operation Modes:
+  auto    - Auto-detect: debate if no bull/bear files exist, static if they do
+  static  - Load pre-generated bull/bear files (original behavior)
+  debate  - Orchestrate live debate between bull and bear
+
 Examples:
+  # Auto mode (default) - works with your current orchestrator!
   python research_manager.py AAPL
-  python research_manager.py AAPL --bull-file ../../outputs/bull_thesis.json
-  python research_manager.py AAPL --skip-evaluations --output synthesis.txt
+  
+  # Force static files
+  python research_manager.py AAPL --mode static
+  
+  # Force debate mode
+  python research_manager.py AAPL --mode debate --rounds 3
         """
     )
     
     parser.add_argument("ticker", help="Stock ticker")
+    
+    # Mode selection with static default for backward compatibility
+    parser.add_argument("--mode", choices=['auto', 'static', 'debate'], default='static',
+                       help="Operation mode: auto-detect, static files, or live debate (default: static)")
+    
+    # Debate-specific options
+    parser.add_argument("--rounds", type=int, default=3,
+                       help="Number of debate rounds (for debate mode, default: 3)")
+    parser.add_argument("--debate-mode", choices=['shallow', 'deep', 'research'], default='deep',
+                       help="Debate depth (for debate mode, default: deep)")
+    parser.add_argument("--discussion-file", default="../../outputs/discussion_points.json",
+                       help="Discussion points file (for debate mode)")
+    
+    # Static mode options
     parser.add_argument("--bull-file", default="../../outputs/bull_thesis.json",
-                       help="Bull thesis JSON file")
+                       help="Bull thesis JSON file (for static mode)")
     parser.add_argument("--bear-file", default="../../outputs/bear_thesis.json",
-                       help="Bear thesis JSON file")
+                       help="Bear thesis JSON file (for static mode)")
+    
+    # Common options
     parser.add_argument("--skip-evaluations", action="store_true",
                        help="Skip loading risk evaluations")
     parser.add_argument("--api-key", help="OpenAI API key")
     parser.add_argument("--model", default="gpt-4o-mini", help="Model")
-    parser.add_argument("--output", help="Output file")
-    parser.add_argument("--save-synthesis", help="Save synthesis JSON")
+    parser.add_argument("--output", help="Output file for report")
+    parser.add_argument("--save-synthesis", default="../../outputs/synthesis.json",
+                       help="Save synthesis JSON (default: ../../outputs/synthesis.json)")
     
     args = parser.parse_args()
     
     try:
         manager = ResearchManager(ticker=args.ticker, api_key=args.api_key, model=args.model)
         
-        # Load research files
-        manager.load_research_files(args.bull_file, args.bear_file)
+        # SMART AUTO-DETECTION LOGIC
+        if args.mode == 'auto':
+            # Detect if called by master orchestrator
+            # Master orch always passes --bull-file and --bear-file
+            called_by_orchestrator = ('--bull-file' in sys.argv and '--bear-file' in sys.argv)
+            
+            # Check if bull/bear thesis files exist
+            bull_exists = os.path.exists(args.bull_file)
+            bear_exists = os.path.exists(args.bear_file)
+            discussion_exists = os.path.exists(args.discussion_file)
+            
+            if called_by_orchestrator and not (bull_exists and bear_exists):
+                # Called by orchestrator but files don't exist yet
+                # This means Phase 2 failed or we should run debate
+                if discussion_exists:
+                    print(f"[MAIN] AUTO: Orchestrator call without bull/bear files - running DEBATE mode")
+                    args.mode = 'debate'
+                else:
+                    print(f"[MAIN] AUTO: Missing prerequisites - need Phase 1 first")
+                    sys.exit(1)
+            elif bull_exists and bear_exists:
+                # Files exist - use static mode (normal orchestrator flow)
+                print(f"[MAIN] AUTO: Found bull/bear files, using STATIC mode")
+                args.mode = 'static'
+            elif discussion_exists:
+                # No bull/bear but have discussion - use debate mode
+                print(f"[MAIN] AUTO: No bull/bear files but found discussion, using DEBATE mode")
+                args.mode = 'debate'
+            else:
+                # Fallback to static, will error appropriately
+                print(f"[MAIN] AUTO: No files found, defaulting to STATIC mode")
+                args.mode = 'static'
         
-        # Check we have minimum data
-        if not manager.research_inputs['bull_thesis'] or not manager.research_inputs['bear_thesis']:
-            print("\n❌ Error: Both bull and bear theses required")
-            print("Run bull_researcher.py and bear_researcher.py first!")
-            sys.exit(1)
+        if args.mode == 'debate':
+            # NEW: Debate mode
+            print(f"[MAIN] Running in DEBATE mode")
+            
+            # Load discussion points
+            if not os.path.exists(args.discussion_file):
+                # Try to find it in standard location
+                alt_discussion = "../../outputs/discussion_points.json"
+                if os.path.exists(alt_discussion):
+                    args.discussion_file = alt_discussion
+                    print(f"[MAIN] Found discussion points at {alt_discussion}")
+                else:
+                    print(f"\n❌ Error: Discussion points file not found: {args.discussion_file}")
+                    print("Run Phase 1 analysts first to generate discussion points!")
+                    sys.exit(1)
+            
+            with open(args.discussion_file, 'r', encoding='utf-8') as f:
+                discussion_points = json.load(f)
+            
+            # Orchestrate the debate
+            debate_result = manager.orchestrate_debate(
+                discussion_points,
+                rounds=args.rounds,
+                mode=args.debate_mode
+            )
+            
+            print(f"[MAIN] Debate complete, synthesizing...")
+            
+        else:
+            # ORIGINAL: Static mode (or enhanced static with debate)
+            print(f"[MAIN] Running in STATIC mode")
+            
+            # Load research files
+            manager.load_research_files(args.bull_file, args.bear_file)
+            
+            # Check we have minimum data
+            if not manager.research_inputs['bull_thesis'] or not manager.research_inputs['bear_thesis']:
+                print("\n❌ Error: Both bull and bear theses required")
+                print("Run bull_researcher.py and bear_researcher.py first!")
+                sys.exit(1)
+            
+            # NEW: Check if we can enhance with debate
+            bull_rounds = manager.research_inputs['bull_thesis'].get('rounds', 1)
+            bear_rounds = manager.research_inputs['bear_thesis'].get('rounds', 1)
+            
+            if max(bull_rounds, bear_rounds) > 1:
+                print(f"[MAIN] Detected multi-round capable theses ({max(bull_rounds, bear_rounds)} rounds)")
+                print(f"[MAIN] Enhancing with debate interactions...")
+                manager.enhance_static_with_debate()
+            else:
+                print(f"[MAIN] Single-round theses, proceeding without debate")
         
-        # Run synthesis
-        report, synthesis_data = manager.synthesize(load_risk_evals=not args.skip_evaluations)
+        # Run synthesis (works for both modes)
+        report, synthesis_data, synthesis_output = manager.synthesize(
+            load_risk_evals=not args.skip_evaluations
+        )
         
         print(report)
         
@@ -670,13 +1191,26 @@ Examples:
                 f.write(report)
             print(f"\n✓ Report saved to {args.output}")
         
-        if args.save_synthesis:
-            with open(args.save_synthesis, 'w', encoding='utf-8') as f:
-                json.dump(synthesis_data, f, indent=2)
-            print(f"✓ Synthesis data saved to {args.save_synthesis}")
+        # Always save synthesis.json for downstream components
+        with open(args.save_synthesis, 'w', encoding='utf-8') as f:
+            json.dump(synthesis_output, f, indent=2)
+        print(f"✓ Synthesis data saved to {args.save_synthesis}")
+        
+        # Optionally save bull/bear theses from debate
+        if args.mode == 'debate':
+            bull_path = args.bull_file or "../../outputs/bull_thesis.json"
+            bear_path = args.bear_file or "../../outputs/bear_thesis.json"
+            
+            with open(bull_path, 'w', encoding='utf-8') as f:
+                json.dump(manager.research_inputs['bull_thesis'], f, indent=2)
+            print(f"✓ Bull thesis saved to {bull_path}")
+            
+            with open(bear_path, 'w', encoding='utf-8') as f:
+                json.dump(manager.research_inputs['bear_thesis'], f, indent=2)
+            print(f"✓ Bear thesis saved to {bear_path}")
         
     except KeyboardInterrupt:
-        print("\n\n⚠️  Interrupted")
+        print("\n\n⚠  Interrupted")
         sys.exit(1)
     except Exception as e:
         print(f"\n❌ Error: {e}")

@@ -751,8 +751,8 @@ Examples:
                        help="Discussion points JSON")
     parser.add_argument("--mode", choices=['shallow', 'deep', 'research'], default='shallow',
                        help="Analysis depth (default: shallow)")
-    parser.add_argument("--rounds", type=int, default=3,
-                       help="Debate rounds for deep/research mode (default: 3)")
+    parser.add_argument("--rounds", type=int, default=1,
+                       help="Debate rounds for deep/research mode (default: 1)")
     parser.add_argument("--bull-thesis", help="Bull thesis for debate (optional)")
     parser.add_argument("--api-key", help="OpenAI API key")
     parser.add_argument("--model", default="gpt-4o-mini", help="Model")

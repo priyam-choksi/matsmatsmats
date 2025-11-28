@@ -460,6 +460,51 @@ class MasterOrchestrator:
                 self.log(f"Error: {stderr[:200]}", "phase6", "ERROR")
             self.phase_results['phase6'] = {'status': 'FAILED'}
             return False
+        
+
+    def run_output_organizer(self) -> bool:
+        """Organize the output after all phases are complete for the game theory agents to refer"""
+        self.log("Output Organizer", "outputs", "RUNNING")
+        
+        # Check prerequisites
+
+        bear_file = self.outputs_path / "bear_thesis.json"
+        bull_file = self.outputs_path / "bull_thesis.json"
+        if not bear_file.exists() or not bull_file.exists():
+            self.log("Missing bear or bull thesis files", "phase3", "ERROR")
+            return False
+        
+        script_path = self.paths['managers'] / "research_manager.py"
+        if not script_path.exists():
+            self.log(f"Script not found: {script_path}", "phase3", "ERROR")
+            return False
+        
+        cmd = [
+            sys.executable,
+            str(script_path),
+            self.ticker,
+            "--bull-file", str(bull_file),
+            "--bear-file", str(bear_file),
+            "--save-synthesis", str(self.outputs_path / "research_synthesis.json")
+        ]
+        
+        success, stdout, stderr = self.run_command(
+            cmd,
+            cwd=self.paths['managers'],
+            timeout=120
+        )
+        
+        output_file = self.outputs_path / "research_synthesis.json"
+        if success and output_file.exists():
+            self.log("Research Manager complete", "phase3", "SUCCESS")
+            self.phase_results['phase3'] = {'status': 'SUCCESS'}
+            return True
+        else:
+            self.log(f"Research Manager failed", "phase3", "ERROR")
+            if stderr:
+                self.log(f"Error: {stderr[:200]}", "phase3", "ERROR")
+            self.phase_results['phase3'] = {'status': 'FAILED'}
+            return False
     
     def run_complete_workflow(self, include_game_theory: bool = True) -> Dict:
         """Run complete workflow"""

@@ -804,7 +804,7 @@ def display_synthesis(data):
     ))
     
     fig.update_layout(height=250, margin=dict(l=20, r=20, t=40, b=20))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig,key=f"bear_gauge_{datetime.now()}", use_container_width=True)
     
     # Confidence and recommendation
     col1, col2 = st.columns(2)
@@ -961,7 +961,7 @@ def display_game_theory(data):
         fig.update_yaxes(title_text="Position ($)", row=1, col=1)
         fig.update_yaxes(title_text="Confidence (%)", row=1, col=2)
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig,key=f"chart_{datetime.now()}", use_container_width=True)
 
 def display_risk_eval(data, eval_type):
     """Display risk evaluation from each stance aligned to JSON schema."""
@@ -1136,8 +1136,8 @@ with st.sidebar:
     portfolio_value = st.number_input(
         "Portfolio Value ($)",
         min_value=1000,
-        max_value=10000000,
-        value=100000,
+        max_value=10_000_000,
+        value=10000,
         step=1000,
         disabled=st.session_state.running
     )

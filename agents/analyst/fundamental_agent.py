@@ -18,6 +18,7 @@ import requests
 import yfinance as yf
 import pandas as pd
 import numpy as np
+from typing import Tuple, List, Dict
 from openai import OpenAI
 
 # FIX: Force UTF-8 encoding for Windows
@@ -26,7 +27,7 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 class FundamentalAgent:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini", use_cache: bool = True):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-5-nano", use_cache: bool = True):
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
@@ -595,9 +596,13 @@ Be specific and quantitative. Every claim should reference actual numbers from t
             analysis = response.choices[0].message.content
             
             # Validate response has required recommendation
+            # NEW CODE (intelligent extraction)
             if "RECOMMENDATION:" not in analysis:
-                print("[FUNDAMENTALS] ⚠️  Response missing recommendation, appending...")
-                analysis += "\n\nRECOMMENDATION: HOLD - Confidence: Low\n(Note: Analysis generated but recommendation format was missing)"
+                print(f"[FUNDEMENTALS] ⚠️  Response missing formal recommendation, extracting...")
+                
+                # Try to extract the actual recommendation from the content
+                recommendation, confidence = self._extract_recommendation_from_content(analysis)
+                analysis += f"\n\nRECOMMENDATION: {recommendation} - Confidence: {confidence}"
             
             print(f"[FUNDAMENTALS] ✓ Analysis generated ({len(analysis)} chars)")
             return analysis
@@ -607,6 +612,32 @@ Be specific and quantitative. Every claim should reference actual numbers from t
             import traceback
             traceback.print_exc()
             return self._create_fallback_analysis(formatted_data)
+
+    def _extract_recommendation_from_content(self, analysis: str) -> Tuple[str, str]:
+        """Extract recommendation from LLM response even without formal format"""
+        analysis_lower = analysis.lower()
+        
+        # Look for explicit recommendations
+        if any(phrase in analysis_lower for phrase in ["recommend buy", "should buy", "buy signal", "bullish setup"]):
+            return "BUY", "Medium"
+        elif any(phrase in analysis_lower for phrase in ["recommend sell", "should sell", "sell signal", "bearish setup"]):
+            return "SELL", "Medium"
+        elif any(phrase in analysis_lower for phrase in ["recommend hold", "should hold", "wait", "neutral"]):
+            return "HOLD", "Low"
+        
+        # Count sentiment indicators
+        buy_indicators = ["bullish", "uptrend", "oversold", "support", "undervalued", "growth", "positive"]
+        sell_indicators = ["bearish", "downtrend", "overbought", "resistance", "overvalued", "declining", "negative"]
+        
+        buy_count = sum(1 for word in buy_indicators if word in analysis_lower)
+        sell_count = sum(1 for word in sell_indicators if word in analysis_lower)
+        
+        if buy_count > sell_count + 2:
+            return "BUY", "Medium"
+        elif sell_count > buy_count + 2:
+            return "SELL", "Medium"
+        else:
+            return "HOLD", "Low"
 
     def _create_fallback_analysis(self, formatted_data: str) -> str:
         """
