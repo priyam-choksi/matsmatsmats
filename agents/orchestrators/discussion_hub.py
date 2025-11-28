@@ -68,7 +68,8 @@ You have access to complete reports from 4 analysts (technical, fundamental, new
    - What needs deeper investigation?
    - Any time-sensitive catalysts?
 
-Be balanced and objective. Your synthesis will guide the bull and bear researchers."""
+Be balanced and objective. Stick to a formal and professional tone to geenrate the synthesis. Ensure all technical details and perspectives are captured in the synthesis.
+ Your synthesis will guide the bull and bear researchers."""
         
         # Storage
         self.analyst_reports = {}
