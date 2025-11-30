@@ -1,107 +1,110 @@
 {
-  "ticker": "GOOGL",
-  "timestamp": "2025-11-27T22:42:56.148455",
+  "ticker": "NVDA",
+  "timestamp": "2025-11-29T11:16:36.868688",
+  "analysis_date": null,
+  "historical_mode": false,
   "portfolio_value": 100000.0,
-  "verdict": "APPROVE",
-  "final_position_dollars": 7875.0,
-  "final_position_pct": 0.07875,
-  "confidence": "LOW",
-  "reasoning": [
-    "Research Manager recommends HOLD with LOW confidence",
-    "Risk consensus: Mixed views across analysts",
-    "Moderate positioning: 11.2% avg recommendation",
-    "Balanced probabilities: Bull 38% vs Bear 38%"
+  "verdict": "MODIFY",
+  "final_position_pct": 0.03,
+  "final_position_dollars": 3000.0,
+  "confidence": "MEDIUM",
+  "reasoning": "While NVDA has strong fundamentals and growth potential in the AI sector, the concerns regarding overvaluation and competition warrant a cautious approach. A moderate position size allows for potential upside while managing the inherent risks.",
+  "key_factors": [
+    "Strong revenue growth",
+    "High valuation concerns",
+    "Mixed evaluator opinions"
   ],
   "conditions": [
-    "Strict stop loss at -7%",
-    "Maximum holding: 6 months",
-    "Review frequency: Bi-weekly",
-    "Exit immediately if new red flags emerge"
+    "Stop loss at -15%",
+    "Take profit at +10%, +20%, +30%",
+    "Review weekly"
   ],
+  "stop_loss_pct": 15,
+  "profit_targets": [
+    10,
+    20,
+    30
+  ],
+  "guardrail_corrections": [],
+  "is_llm_decision": true,
   "risk_controls": {
     "stop_loss": {
-      "percentage": 7.000000000000001,
-      "max_dollar_loss": 551.25,
-      "type": "FIXED",
-      "reasoning": "Stop at -7% limits loss to $551"
+      "percentage": 15,
+      "dollar_amount": 326.4705882352941
     },
-    "take_profit": [
-      {
-        "level": 1,
-        "target_pct": 10,
-        "exit_pct": 33,
-        "reasoning": "Take 1/3 at +10% (lock in quick gain)"
-      },
-      {
-        "level": 2,
-        "target_pct": 20,
-        "exit_pct": 33,
-        "reasoning": "Take 1/3 at +20% (solid profit)"
-      },
-      {
-        "level": 3,
-        "target_pct": 30,
-        "exit_pct": 34,
-        "reasoning": "Final 1/3 at +30% (let winners run)"
-      }
-    ],
-    "time_limit": {
-      "max_holding_period": "6 months",
-      "review_frequency": "Bi-weekly",
-      "mandatory_review": "30 days",
-      "reasoning": "Prevent indefinite holding, force re-evaluation"
-    },
-    "monitoring": {
-      "daily_checks": [
-        "Price vs stop/target",
-        "Volume",
-        "News alerts"
+    "take_profit": {
+      "targets": [
+        12.5,
+        18.75,
+        25
       ],
-      "weekly_checks": [
-        "Technical levels",
-        "Sentiment shifts",
-        "Thesis validity"
-      ],
-      "monthly_checks": [
-        "Fundamental review",
-        "Position sizing",
-        "Risk/reward update"
+      "scale_out": [
+        0.33,
+        0.33,
+        0.34
       ]
     },
-    "exit_triggers": []
-  },
-  "position_sizing_breakdown": {
-    "base_size": 0.1125,
-    "confidence_multiplier": 0.7,
-    "probability_multiplier": 1.0,
-    "final_size_pct": 0.07875,
-    "final_size_dollars": 7875.0,
-    "reasoning": [
-      "Base: 11.2% (avg of risk analysts)",
-      "Confidence adj: \u00d70.7 (LOW)",
-      "Probability adj: \u00d71.0",
-      "Reduced to 7.9% after adjustments"
-    ]
+    "time_limit": {
+      "max_holding_period": "90 days",
+      "review_frequency": "weekly"
+    }
   },
   "risk_consensus": {
     "stances": {
-      "aggressive": "BUY",
-      "neutral": "HOLD",
+      "aggressive": "HOLD",
+      "neutral": "SMALL BUY",
       "conservative": "AVOID"
     },
     "position_sizes": {
-      "aggressive": 0.195,
-      "neutral": 0.03,
-      "conservative": 0.0
+      "aggressive": 5.0,
+      "neutral": 1.4,
+      "conservative": 0
     },
     "agreements": [],
     "conflicts": [
-      "No clear consensus - all 3 disagree",
-      "Direct conflict: Some say BUY, others say SELL/AVOID"
+      "Mixed views: 1 buy, 1 avoid"
     ],
-    "avg_position_size": 0.1125
+    "avg_position_size": 0.021333333333333333,
+    "red_flags": [
+      {
+        "flag": "Max allowed for any position exceeded",
+        "severity": "HIGH",
+        "source": "Red Flag Count"
+      },
+      {
+        "flag": "Downside risk exceeds acceptable threshold",
+        "severity": "HIGH",
+        "source": "Downside Risk"
+      },
+      {
+        "flag": "Risk/Reward ratio below conservative minimum",
+        "severity": "HIGH",
+        "source": "Risk/Reward Ratio"
+      },
+      {
+        "flag": "High trailing P/E indicating overvaluation",
+        "severity": "HIGH",
+        "source": "Bear Thesis"
+      },
+      {
+        "flag": "Elevated Debt/Equity ratio raising financial leverage concerns",
+        "severity": "MEDIUM",
+        "source": "Bear Thesis"
+      },
+      {
+        "flag": "Strong downtrend with price below all moving averages",
+        "severity": "HIGH",
+        "source": "Key Risk Signals"
+      }
+    ]
   },
-  "research_recommendation": "HOLD",
-  "analysis_date": "2024-06-15",
-  "historical_mode": true
+  "position_sizing": {
+    "base_size_pct": 0.02176470588235294,
+    "confidence_multiplier": 1.0,
+    "adjusted_size_pct": 0.02176470588235294,
+    "final_size_pct": 0.02176470588235294,
+    "final_size_dollars": 2176.470588235294
+  },
+  "research_recommendation": "BUY",
+  "report": "\n======================================================================\nRISK MANAGER FINAL DECISION: NVDA\n======================================================================\n\n**Portfolio:** $100,000\n\n## VERDICT: MODIFY\n**Position:** 3.0% ($3,000)\n**Confidence:** MEDIUM\n\n## REASONING\nWhile NVDA has strong fundamentals and growth potential in the AI sector, the concerns regarding overvaluation and competition warrant a cautious approach. A moderate position size allows for potential upside while managing the inherent risks.\n\n## KEY DECIDING FACTORS\n\u2022 Strong revenue growth\n\u2022 High valuation concerns\n\u2022 Mixed evaluator opinions\n\n## OPPORTUNITY ASSESSMENT\nThe opportunity lies in NVDA's leadership in AI technologies and potential for significant revenue growth despite current market fluctuations.\n\n## RISK ASSESSMENT\nRisks include potential overvaluation, competition in the AI space, and market volatility.\n\n## VS EVALUATORS\nMy view differs from the conservative evaluator who suggests avoiding NVDA entirely; I see enough growth potential to justify a smaller position despite the risks.\n\n## EVALUATOR SUMMARY\n- Aggressive: HOLD @ 5%\n- Neutral: SMALL BUY @ 1.4%\n- Conservative: AVOID @ 0%\n\n## CONSENSUS\n- Average Position: 2.1%\n- Weighted Average: 2.2%\n- Agreements: None\n- Disagreements: Mixed views: 1 buy, 1 avoid\n\n## RISK CONTROLS\n- Stop Loss: -15%\n- Profit Targets: +10%, +20%, +30%\n\n## CONDITIONS\n\u2022 Stop loss at -15%\n\u2022 Take profit at +10%, +20%, +30%\n\u2022 Review weekly\n\n\n======================================================================\n"
 }

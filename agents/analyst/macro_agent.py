@@ -3,6 +3,7 @@ Macro Economic Analysis Agent - Enhanced with Intelligent Tool Calling
 Comprehensive macroeconomic and market analysis with adaptive data gathering
 
 MODIFIED: Now supports historical backtesting via analysis_date parameter
+ENHANCED: Added _get_llm_decision() for better recommendation extraction
 
 Usage: 
   python macro_agent.py --sector technology --days 7
@@ -26,23 +27,23 @@ if sys.platform == 'win32':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
+
 class MacroAgent:
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-5-nano",
+    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o-mini",
                  analysis_date: Optional[str] = None):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
         
-        # NEW: Historical backtesting support
+        # Historical backtesting support
         self.analysis_date = analysis_date
         
-        # Log mode
         if self.analysis_date:
             print(f"[MACRO] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
         else:
             print(f"[MACRO] Running in LIVE mode (current data)")
         
-        # Enhanced system prompt with reference-level detail
+        # Enhanced system prompt
         self.system_prompt = """You are an expert macroeconomic analyst evaluating market conditions for trading decisions.
 
 **YOUR ROLE:**
@@ -131,15 +132,11 @@ RECOMMENDATION: RISK-ON/RISK-OFF/NEUTRAL - Confidence: High/Medium/Low
 Be quantitative - reference actual numbers and percentages from the data."""
 
     def _fetch_historical_data(self, symbol: str, days: int) -> Optional[pd.DataFrame]:
-        """
-        Helper method to fetch data with historical date support.
-        Used by all data-fetching methods.
-        """
+        """Helper method to fetch data with historical date support."""
         try:
             ticker = yf.Ticker(symbol)
             
             if self.analysis_date:
-                # === HISTORICAL MODE ===
                 end_date = datetime.strptime(self.analysis_date, '%Y-%m-%d')
                 start_date = end_date - timedelta(days=days * 2)
                 
@@ -148,7 +145,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
                     end=(end_date + timedelta(days=1)).strftime('%Y-%m-%d')
                 )
             else:
-                # === CURRENT MODE ===
                 period = "7d" if days <= 7 else "1mo" if days <= 30 else "3mo"
                 hist = ticker.history(period=period)
             
@@ -159,10 +155,7 @@ Be quantitative - reference actual numbers and percentages from the data."""
             return None
 
     def get_market_indicators(self, days: int = 7) -> str:
-        """
-        Tool: Gather major market indicators
-        Returns formatted analysis string
-        """
+        """Tool: Gather major market indicators"""
         print(f"[MACRO] 🔧 Tool: get_market_indicators (days={days})")
         
         indices = {
@@ -176,7 +169,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
         
         result = f"## Market Indicators ({days}-Day Analysis)\n\n"
         
-        # NEW: Add date note if historical
         if self.analysis_date:
             result += f"**⚠️ Historical Data as of: {self.analysis_date}**\n\n"
         
@@ -184,7 +176,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
         
         for symbol, name in indices.items():
             try:
-                # Use helper method for historical support
                 hist = self._fetch_historical_data(symbol, days)
                 
                 if hist is None or len(hist) < 2:
@@ -194,11 +185,9 @@ Be quantitative - reference actual numbers and percentages from the data."""
                 start = hist['Close'].iloc[0]
                 change = ((current/start - 1) * 100)
                 
-                # Volatility
                 returns = hist['Close'].pct_change().dropna()
                 vol = returns.std() * np.sqrt(252) * 100
                 
-                # Trend
                 if len(hist) >= 3:
                     x = np.arange(len(hist))
                     slope = np.polyfit(x, hist['Close'].values, 1)[0]
@@ -227,10 +216,7 @@ Be quantitative - reference actual numbers and percentages from the data."""
         return result + "\n"
 
     def get_sector_performance(self, days: int = 7) -> str:
-        """
-        Tool: Analyze sector ETF performance
-        Returns formatted analysis string
-        """
+        """Tool: Analyze sector ETF performance"""
         print(f"[MACRO] 🔧 Tool: get_sector_performance (days={days})")
         
         sectors = {
@@ -249,7 +235,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
         
         for symbol, name in sectors.items():
             try:
-                # Use helper method for historical support
                 hist = self._fetch_historical_data(symbol, days)
                 
                 if hist is None or len(hist) < 2:
@@ -259,7 +244,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
                 start = hist['Close'].iloc[0]
                 change = ((current/start - 1) * 100)
                 
-                # Momentum
                 if len(hist) >= 4:
                     recent = hist['Close'].iloc[-2:].mean()
                     older = hist['Close'].iloc[:-2].mean()
@@ -272,12 +256,10 @@ Be quantitative - reference actual numbers and percentages from the data."""
             except:
                 continue
         
-        # Sort and format
         sorted_sectors = sorted(sector_data.items(), key=lambda x: x[1]['change'], reverse=True)
         
         result = f"## Sector Performance ({days}-Day)\n\n"
         
-        # NEW: Add date note if historical
         if self.analysis_date:
             result += f"**⚠️ Historical Data as of: {self.analysis_date}**\n\n"
         
@@ -289,7 +271,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
         for name, data in sorted_sectors[-3:]:
             result += f"- {name}: {data['change']:+.2f}% (Momentum: {data['momentum']:+.2f}%)\n"
         
-        # Rotation analysis
         cyclical = ['Technology', 'Consumer Discretionary', 'Financials', 'Industrials']
         defensive = ['Utilities', 'Consumer Staples', 'Healthcare']
         
@@ -308,10 +289,7 @@ Be quantitative - reference actual numbers and percentages from the data."""
         return result + "\n"
 
     def get_economic_indicators(self, days: int = 7) -> str:
-        """
-        Tool: Get key economic indicators
-        Returns formatted analysis string
-        """
+        """Tool: Get key economic indicators"""
         print(f"[MACRO] 🔧 Tool: get_economic_indicators (days={days})")
         
         indicators = {
@@ -325,13 +303,11 @@ Be quantitative - reference actual numbers and percentages from the data."""
         
         result = f"## Economic Indicators ({days}-Day)\n\n"
         
-        # NEW: Add date note if historical
         if self.analysis_date:
             result += f"**⚠️ Historical Data as of: {self.analysis_date}**\n\n"
         
         for symbol, (name, sentiment) in indicators.items():
             try:
-                # Use helper method for historical support
                 hist = self._fetch_historical_data(symbol, days)
                 
                 if hist is None or len(hist) < 2:
@@ -343,7 +319,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
                 
                 result += f"**{name}:** ${current:.2f} | {change:+.2f}% "
                 
-                # Interpretation
                 if sentiment == 'risk-on' and change > 2:
                     result += "→ Risk appetite ✓\n"
                 elif sentiment == 'risk-on' and change < -2:
@@ -362,20 +337,15 @@ Be quantitative - reference actual numbers and percentages from the data."""
         return result + "\n"
 
     def get_market_breadth(self, days: int = 7) -> str:
-        """
-        Tool: Analyze market breadth (small vs large cap)
-        Returns formatted analysis string
-        """
+        """Tool: Analyze market breadth (small vs large cap)"""
         print(f"[MACRO] 🔧 Tool: get_market_breadth (days={days})")
         
         result = f"## Market Breadth ({days}-Day)\n\n"
         
-        # NEW: Add date note if historical
         if self.analysis_date:
             result += f"**⚠️ Historical Data as of: {self.analysis_date}**\n\n"
         
         try:
-            # Use helper method for historical support
             spy_hist = self._fetch_historical_data('^GSPC', days)
             iwm_hist = self._fetch_historical_data('^RUT', days)
             
@@ -404,18 +374,107 @@ Be quantitative - reference actual numbers and percentages from the data."""
         
         return result + "\n"
 
+    def _get_llm_decision(self, analysis: str) -> Tuple[str, str]:
+        """
+        NEW: Use LLM to extract/determine recommendation from analysis.
+        This avoids the HOLD/NEUTRAL default bias problem.
+        """
+        if not self.client:
+            return self._extract_recommendation_from_content(analysis)
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": """You are a trading decision extractor. 
+Given a macro/market analysis, extract or determine the final recommendation.
+
+RULES:
+1. If there's an explicit "RECOMMENDATION: X" line, extract it
+2. If not explicit, analyze the content and determine the most appropriate recommendation
+3. Consider: VIX levels, sector rotation, market breadth, risk indicators
+4. Do NOT default to NEUTRAL - make an actual decision based on the evidence
+5. MACRO-SPECIFIC signals:
+   - Low VIX + cyclicals leading + small cap outperformance = RISK-ON
+   - High VIX + defensives leading + flight to quality = RISK-OFF
+   - Bull market conditions = RISK-ON (favor growth)
+   - Bear market conditions = RISK-OFF (favor defense)
+
+Respond in EXACTLY this format (no other text):
+RECOMMENDATION: RISK-ON|RISK-OFF|NEUTRAL
+CONFIDENCE: High|Medium|Low"""},
+                    {"role": "user", "content": f"Extract/determine recommendation from:\n\n{analysis[:3000]}"}
+                ],
+                temperature=0.3,
+                max_completion_tokens=50
+            )
+            
+            result = response.choices[0].message.content.strip()
+            
+            rec = "NEUTRAL"
+            conf = "Medium"
+            
+            for line in result.split('\n'):
+                if 'RECOMMENDATION:' in line.upper():
+                    if 'RISK-ON' in line.upper() or 'RISK ON' in line.upper():
+                        rec = "RISK-ON"
+                    elif 'RISK-OFF' in line.upper() or 'RISK OFF' in line.upper():
+                        rec = "RISK-OFF"
+                    else:
+                        rec = "NEUTRAL"
+                elif 'CONFIDENCE:' in line.upper():
+                    if 'HIGH' in line.upper():
+                        conf = "High"
+                    elif 'LOW' in line.upper():
+                        conf = "Low"
+                    else:
+                        conf = "Medium"
+            
+            print(f"[MACRO] LLM Decision: {rec} ({conf})")
+            return rec, conf
+            
+        except Exception as e:
+            print(f"[MACRO] ⚠️ LLM decision error: {e}, using fallback")
+            return self._extract_recommendation_from_content(analysis)
+
+    def _extract_recommendation_from_content(self, analysis: str) -> Tuple[str, str]:
+        """Fallback: Extract recommendation using keyword analysis"""
+        analysis_lower = analysis.lower()
+        
+        specific_buy_signals = ['risk-on', 'risk on', 'bullish environment', 'favorable macro', 'cyclicals leading']
+        specific_sell_signals = ['risk-off', 'risk off', 'bearish environment', 'defensive positioning', 'defensives leading']
+        
+        if any(phrase in analysis_lower for phrase in ["risk-on", "risk on", "bullish"]):
+            return "RISK-ON", "Medium"
+        elif any(phrase in analysis_lower for phrase in ["risk-off", "risk off", "bearish", "defensive"]):
+            return "RISK-OFF", "Medium"
+        
+        buy_count = sum(1 for signal in specific_buy_signals if signal in analysis_lower)
+        sell_count = sum(1 for signal in specific_sell_signals if signal in analysis_lower)
+        
+        general_buy = ["bullish", "positive", "upside", "growth", "strong"]
+        general_sell = ["bearish", "negative", "downside", "decline", "weak"]
+        
+        buy_count += sum(0.5 for word in general_buy if word in analysis_lower)
+        sell_count += sum(0.5 for word in general_sell if word in analysis_lower)
+        
+        if buy_count > sell_count + 1.5:
+            confidence = "High" if buy_count > 4 else "Medium"
+            return "RISK-ON", confidence
+        elif sell_count > buy_count + 1.5:
+            confidence = "High" if sell_count > 4 else "Medium"
+            return "RISK-OFF", confidence
+        else:
+            return "NEUTRAL", "Low"
+
     def analyze_with_llm_iterative(self, days: int = 7, sector: Optional[str] = None) -> str:
-        """
-        Use iterative tool calling pattern from reference code
-        LLM decides which tools to call and when to stop
-        """
+        """Use iterative tool calling pattern - LLM decides which tools to call"""
         if not self.client:
             print("[MACRO] ⚠️ No API key - gathering all data for fallback")
             return self._run_without_llm(days, sector)
         
         print(f"[MACRO] Starting iterative analysis...")
         
-        # Tool registry for LLM to call
         tools = [
             {
                 "type": "function",
@@ -471,18 +530,15 @@ Be quantitative - reference actual numbers and percentages from the data."""
             }
         ]
         
-        # NEW: Add date context to initial message
         date_context = ""
         if self.analysis_date:
             date_context = f" **HISTORICAL ANALYSIS AS OF {self.analysis_date}** - All data is historical ending on this date."
         
-        # Initial message
         messages = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": f"Analyze current macro environment ({days}-day view){date_context}" + (f" with focus on {sector} sector" if sector else "")}
         ]
         
-        # Iterative tool calling (like reference code)
         max_iterations = 10
         iteration = 0
         tool_failures = []
@@ -493,7 +549,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
                 iteration += 1
                 print(f"[MACRO] Iteration {iteration}/{max_iterations}")
                 
-                # Call LLM
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
@@ -504,18 +559,19 @@ Be quantitative - reference actual numbers and percentages from the data."""
                 
                 message = response.choices[0].message
                 
-                # Check if done (no tool calls)
                 if not message.tool_calls:
                     print(f"[MACRO] ✓ Analysis complete after {iteration} iterations")
                     
-                    # Validate recommendation
                     content = message.content
+                    
+                    # Use new LLM decision extraction if no formal recommendation
                     if "RECOMMENDATION:" not in content:
-                        content += "\n\nRECOMMENDATION: NEUTRAL - Confidence: Low"
+                        print(f"[MACRO] ⚠️ Response missing formal recommendation, extracting...")
+                        recommendation, confidence = self._get_llm_decision(content)
+                        content += f"\n\nRECOMMENDATION: {recommendation} - Confidence: {confidence}"
                     
                     return content
                 
-                # Execute tool calls
                 messages.append(message)
                 
                 for tool_call in message.tool_calls:
@@ -524,7 +580,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
                     
                     print(f"[MACRO] 🔧 Executing: {tool_name}")
                     
-                    # Execute the tool
                     try:
                         if tool_name == "get_market_indicators":
                             tool_result = self.get_market_indicators(tool_args.get('days', days))
@@ -548,17 +603,14 @@ Be quantitative - reference actual numbers and percentages from the data."""
                         tool_failures.append(tool_name)
                         print(f"[MACRO] ⚠️ Tool error: {str(e)}")
                     
-                    # Add tool result to messages
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tool_call.id,
                         "content": tool_result
                     })
             
-            # Max iterations reached
             print(f"[MACRO] ⚠️ Max iterations reached")
             
-            # Get final response
             final_response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages + [{"role": "user", "content": "Please provide your final macro analysis and recommendation."}],
@@ -566,16 +618,20 @@ Be quantitative - reference actual numbers and percentages from the data."""
                 max_tokens=2000
             )
             
-            return final_response.choices[0].message.content
+            content = final_response.choices[0].message.content
+            
+            if "RECOMMENDATION:" not in content:
+                recommendation, confidence = self._get_llm_decision(content)
+                content += f"\n\nRECOMMENDATION: {recommendation} - Confidence: {confidence}"
+            
+            return content
             
         except Exception as e:
             print(f"[MACRO] ❌ Error in iterative analysis: {e}")
             import traceback
             traceback.print_exc()
             
-            # Fallback: gather all data manually
             if successful_tools:
-                # We got some data, create manual report
                 return self._create_manual_report(days, sector, successful_tools, tool_failures)
             else:
                 return self._run_without_llm(days, sector)
@@ -587,7 +643,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
         report = f"# Macro Analysis ({days}-Day)\n"
         report += f"*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}*\n"
         
-        # NEW: Add historical note
         if self.analysis_date:
             report += f"**⚠️ HISTORICAL ANALYSIS AS OF {self.analysis_date}**\n"
         
@@ -613,7 +668,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
         report = f"# Macro Analysis (Partial)\n"
         report += f"*Analysis Period: {days} days*\n"
         
-        # NEW: Add historical note
         if self.analysis_date:
             report += f"**⚠️ HISTORICAL ANALYSIS AS OF {self.analysis_date}**\n"
         
@@ -629,9 +683,7 @@ Be quantitative - reference actual numbers and percentages from the data."""
         return report
 
     def run(self, sector: Optional[str] = None, days: int = 7) -> str:
-        """
-        Execute complete macro analysis with iterative tool calling
-        """
+        """Execute complete macro analysis with iterative tool calling"""
         start_time = time.time()
         
         print(f"\n{'='*70}")
@@ -642,7 +694,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
         print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'='*70}\n")
         
-        # Run iterative analysis
         result = self.analyze_with_llm_iterative(days, sector)
         
         elapsed = time.time() - start_time
@@ -650,45 +701,6 @@ Be quantitative - reference actual numbers and percentages from the data."""
         print(f"{'='*70}\n")
         
         return result
-
-
-    def _extract_recommendation_from_content(self, analysis: str) -> Tuple[str, str]:
-        """Extract recommendation from LLM response even without formal format"""
-        analysis_lower = analysis.lower()
-        
-        # Agent-specific indicators for macro
-        specific_buy_signals = ['risk-on', 'risk on', 'bullish environment', 'favorable macro']
-        specific_sell_signals = ['risk-off', 'risk off', 'bearish environment', 'defensive positioning']
-        
-        # Look for explicit recommendations first
-        if any(phrase in analysis_lower for phrase in ["recommend buy", "should buy", "buy signal", "final decision: buy"]):
-            return "BUY", "Medium"
-        elif any(phrase in analysis_lower for phrase in ["recommend sell", "should sell", "sell signal", "final decision: sell"]):
-            return "SELL", "Medium"
-        elif any(phrase in analysis_lower for phrase in ["recommend hold", "should hold", "wait", "neutral position"]):
-            return "HOLD", "Low"
-        
-        # Check agent-specific signals
-        buy_count = sum(1 for signal in specific_buy_signals if signal in analysis_lower)
-        sell_count = sum(1 for signal in specific_sell_signals if signal in analysis_lower)
-        
-        # General sentiment indicators
-        general_buy = ["bullish", "positive", "upside", "growth", "strong"]
-        general_sell = ["bearish", "negative", "downside", "decline", "weak"]
-        
-        buy_count += sum(0.5 for word in general_buy if word in analysis_lower)
-        sell_count += sum(0.5 for word in general_sell if word in analysis_lower)
-        
-        # Decision based on signal strength
-        if buy_count > sell_count + 1.5:
-            confidence = "High" if buy_count > 4 else "Medium"
-            return "BUY", confidence
-        elif sell_count > buy_count + 1.5:
-            confidence = "High" if sell_count > 4 else "Medium"
-            return "SELL", confidence
-        else:
-            # Default to HOLD only if truly neutral
-            return "HOLD", "Low"
 
 
 def main():
@@ -704,14 +716,13 @@ Examples:
         """
     )
     
-    parser.add_argument("--sector", help="Specific sector (technology, healthcare, energy, etc.)")
+    parser.add_argument("--sector", help="Specific sector focus")
     parser.add_argument("--days", type=int, default=7, help="Analysis period (default: 7)")
     parser.add_argument("--api-key", help="OpenAI API key")
     parser.add_argument("--model", default="gpt-4o-mini", help="Model (default: gpt-4o-mini)")
     parser.add_argument("--output", help="Save to file")
-    # NEW: Historical backtesting support
     parser.add_argument("--analysis-date", type=str, default=None,
-                       help="Historical analysis date (YYYY-MM-DD format). If set, fetches data ending on this date.")
+                       help="Historical analysis date (YYYY-MM-DD)")
     
     args = parser.parse_args()
     
@@ -719,7 +730,7 @@ Examples:
         agent = MacroAgent(
             api_key=args.api_key, 
             model=args.model,
-            analysis_date=args.analysis_date  # NEW
+            analysis_date=args.analysis_date
         )
         result = agent.run(sector=args.sector, days=args.days)
         

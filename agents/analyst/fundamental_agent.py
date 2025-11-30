@@ -5,6 +5,7 @@ Provides comprehensive fundamental analysis for trading decisions
 MODIFIED: Now supports historical backtesting via analysis_date parameter
 - Calculates historical P/E, P/B, Current Ratio from quarterly financials
 - Marks unavailable metrics as N/A instead of using current (invalid) values
+ENHANCED: Added _get_llm_decision() for better recommendation extraction
 
 Usage: 
   python fundamental_agent.py AAPL
@@ -41,10 +42,9 @@ class FundamentalAgent:
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
         self.use_cache = use_cache
         
-        # NEW: Historical backtesting support
+        # Historical backtesting support
         self.analysis_date = analysis_date
         
-        # Log mode
         if self.analysis_date:
             print(f"[FUNDAMENTALS] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
         else:
@@ -200,7 +200,6 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
                     "fifty_two_week_high": safe_get('fiftyTwoWeekHigh', format_type="currency"),
                     "fifty_two_week_low": safe_get('fiftyTwoWeekLow', format_type="currency"),
                 },
-                # Store raw values for calculations
                 "_raw": {
                     "shares_outstanding": info.get('sharesOutstanding'),
                     "current_price": info.get('currentPrice'),
@@ -265,7 +264,6 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
             quarterly_bs = stock.quarterly_balance_sheet
             shares = fundamentals.get('_raw', {}).get('shares_outstanding') or stock.info.get('sharesOutstanding')
             
-            # Get valid quarters before analysis date
             valid_fin_quarters = []
             valid_bs_quarters = []
             
@@ -281,132 +279,88 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
                     reverse=True
                 )
             
-            # === 3. TTM NET INCOME & P/E ===
-            ttm_net_income = None
-            if valid_fin_quarters and 'Net Income' in quarterly_fin.index:
-                ttm_quarters = valid_fin_quarters[:4]
-                print(f"[FUNDAMENTALS] Using income data from quarters ending: {ttm_quarters[0].strftime('%Y-%m-%d')}")
-                
-                ttm_net_income = sum(
-                    quarterly_fin.loc['Net Income', q] 
-                    for q in ttm_quarters 
-                    if pd.notna(quarterly_fin.loc['Net Income', q])
-                )
-                
-                if historical_close and shares and ttm_net_income:
-                    eps_ttm = ttm_net_income / shares
-                    if eps_ttm > 0:
-                        hist_pe = historical_close / eps_ttm
-                        fundamentals['valuation']['trailing_pe'] = f"{hist_pe:.2f}"
-                        calculated.append(f"P/E: {hist_pe:.2f}")
+            # === 3. CALCULATE HISTORICAL P/E ===
+            if historical_close and valid_fin_quarters and shares:
+                try:
+                    ttm_earnings = 0
+                    for q in valid_fin_quarters[:4]:
+                        net_income = quarterly_fin.loc['Net Income', q] if 'Net Income' in quarterly_fin.index else None
+                        if net_income and not pd.isna(net_income):
+                            ttm_earnings += net_income
+                    
+                    if ttm_earnings > 0:
+                        eps = ttm_earnings / shares
+                        historical_pe = historical_close / eps
+                        fundamentals['valuation']['trailing_pe'] = f"{historical_pe:.2f}"
+                        calculated.append(f"P/E: {historical_pe:.2f}")
                     else:
                         fundamentals['valuation']['trailing_pe'] = "N/A (negative earnings)"
-                else:
-                    fundamentals['valuation']['trailing_pe'] = "N/A (historical)"
+                except Exception as e:
+                    fundamentals['valuation']['trailing_pe'] = "N/A (calculation error)"
+                    print(f"[FUNDAMENTALS] ⚠️ P/E calculation error: {e}")
             else:
-                fundamentals['valuation']['trailing_pe'] = "N/A (no quarterly data)"
+                fundamentals['valuation']['trailing_pe'] = "N/A (historical)"
             
-            # === 4. TTM REVENUE & P/S ===
-            ttm_revenue = None
-            if valid_fin_quarters and 'Total Revenue' in quarterly_fin.index:
-                ttm_quarters = valid_fin_quarters[:4]
-                ttm_revenue = sum(
-                    quarterly_fin.loc['Total Revenue', q] 
-                    for q in ttm_quarters 
-                    if pd.notna(quarterly_fin.loc['Total Revenue', q])
-                )
-                
-                if historical_close and shares and ttm_revenue:
-                    market_cap = historical_close * shares
-                    hist_ps = market_cap / ttm_revenue
-                    fundamentals['valuation']['price_to_sales'] = f"{hist_ps:.2f}"
-                    fundamentals['valuation']['market_cap'] = f"${market_cap/1e9:.2f}B"
-                    calculated.append(f"P/S: {hist_ps:.2f}")
-            
-            # === 5. BALANCE SHEET METRICS ===
-            def get_bs_value(possible_names, quarter):
-                for name in possible_names:
-                    if name in quarterly_bs.index:
-                        val = quarterly_bs.loc[name, quarter]
-                        if pd.notna(val):
-                            return val
-                return None
-            
-            if valid_bs_quarters:
-                latest_bs = valid_bs_quarters[0]
-                print(f"[FUNDAMENTALS] Using balance sheet from: {latest_bs.strftime('%Y-%m-%d')}")
-                
-                # Current Ratio
-                current_assets = get_bs_value(['Current Assets', 'Total Current Assets'], latest_bs)
-                current_liab = get_bs_value(['Current Liabilities', 'Total Current Liabilities'], latest_bs)
-                
-                if current_assets and current_liab and current_liab != 0:
-                    hist_cr = current_assets / current_liab
-                    fundamentals['financial_health']['current_ratio'] = f"{hist_cr:.2f}"
-                    calculated.append(f"Current Ratio: {hist_cr:.2f}")
-                else:
-                    fundamentals['financial_health']['current_ratio'] = "N/A (historical)"
-                
-                # Quick Ratio
-                inventory = get_bs_value(['Inventory'], latest_bs)
-                if current_assets and current_liab and current_liab != 0:
-                    quick_assets = current_assets - (inventory or 0)
-                    hist_qr = quick_assets / current_liab
-                    fundamentals['financial_health']['quick_ratio'] = f"{hist_qr:.2f}"
-                    calculated.append(f"Quick Ratio: {hist_qr:.2f}")
-                
-                # Total Debt & Debt/Equity
-                total_debt = get_bs_value(['Total Debt', 'Long Term Debt', 'Total Long Term Debt'], latest_bs)
-                total_equity = get_bs_value(['Stockholders Equity', 'Total Stockholders Equity', 'Total Equity Gross Minority Interest'], latest_bs)
-                
-                if total_debt:
-                    fundamentals['financial_health']['total_debt'] = f"${total_debt/1e9:.2f}B"
-                
-                if total_debt and total_equity and total_equity != 0:
-                    hist_de = (total_debt / total_equity) * 100
-                    fundamentals['financial_health']['debt_to_equity'] = f"{hist_de:.2f}"
-                    calculated.append(f"D/E: {hist_de:.2f}")
-                else:
-                    fundamentals['financial_health']['debt_to_equity'] = "N/A (historical)"
-                
-                # Price/Book
-                if historical_close and total_equity and shares:
-                    bvps = total_equity / shares
-                    if bvps > 0:
-                        hist_pb = historical_close / bvps
-                        fundamentals['valuation']['price_to_book'] = f"{hist_pb:.2f}"
-                        calculated.append(f"P/B: {hist_pb:.2f}")
+            # === 4. CALCULATE HISTORICAL P/B ===
+            if historical_close and valid_bs_quarters and shares:
+                try:
+                    latest_bs = valid_bs_quarters[0]
+                    total_equity = None
+                    
+                    for equity_field in ['Stockholders Equity', 'Total Stockholder Equity', 'Total Equity Gross Minority Interest']:
+                        if equity_field in quarterly_bs.index:
+                            total_equity = quarterly_bs.loc[equity_field, latest_bs]
+                            if not pd.isna(total_equity):
+                                break
+                    
+                    if total_equity and total_equity > 0:
+                        bvps = total_equity / shares
+                        historical_pb = historical_close / bvps
+                        fundamentals['valuation']['price_to_book'] = f"{historical_pb:.2f}"
+                        calculated.append(f"P/B: {historical_pb:.2f}")
                     else:
-                        fundamentals['valuation']['price_to_book'] = "N/A (negative book value)"
-                else:
-                    fundamentals['valuation']['price_to_book'] = "N/A (historical)"
-                
-                # Total Cash
-                total_cash = get_bs_value(['Cash And Cash Equivalents', 'Cash Cash Equivalents And Short Term Investments'], latest_bs)
-                if total_cash:
-                    fundamentals['financial_health']['total_cash'] = f"${total_cash/1e9:.2f}B"
+                        fundamentals['valuation']['price_to_book'] = "N/A (no equity data)"
+                except Exception as e:
+                    fundamentals['valuation']['price_to_book'] = "N/A (calculation error)"
+                    print(f"[FUNDAMENTALS] ⚠️ P/B calculation error: {e}")
             else:
-                # No balance sheet - mark all as unavailable
-                fundamentals['financial_health']['current_ratio'] = "N/A (no historical data)"
-                fundamentals['financial_health']['quick_ratio'] = "N/A (no historical data)"
-                fundamentals['financial_health']['debt_to_equity'] = "N/A (no historical data)"
-                fundamentals['valuation']['price_to_book'] = "N/A (no historical data)"
+                fundamentals['valuation']['price_to_book'] = "N/A (historical)"
             
-            # === 6. METRICS THAT CANNOT BE CALCULATED HISTORICALLY ===
-            fundamentals['valuation']['forward_pe'] = "N/A (requires current estimates)"
-            fundamentals['valuation']['peg_ratio'] = "N/A (requires current estimates)"
-            fundamentals['valuation']['ev_to_revenue'] = "N/A (requires current EV)"
-            fundamentals['valuation']['ev_to_ebitda'] = "N/A (requires current EV)"
-            fundamentals['valuation']['enterprise_value'] = "N/A (requires current calculation)"
+            # === 5. CALCULATE HISTORICAL CURRENT RATIO ===
+            if valid_bs_quarters:
+                try:
+                    latest_bs = valid_bs_quarters[0]
+                    current_assets = None
+                    current_liab = None
+                    
+                    for ca_field in ['Current Assets', 'Total Current Assets']:
+                        if ca_field in quarterly_bs.index:
+                            current_assets = quarterly_bs.loc[ca_field, latest_bs]
+                            if not pd.isna(current_assets):
+                                break
+                    
+                    for cl_field in ['Current Liabilities', 'Total Current Liabilities']:
+                        if cl_field in quarterly_bs.index:
+                            current_liab = quarterly_bs.loc[cl_field, latest_bs]
+                            if not pd.isna(current_liab):
+                                break
+                    
+                    if current_assets and current_liab and current_liab > 0:
+                        historical_cr = current_assets / current_liab
+                        fundamentals['financial_health']['current_ratio'] = f"{historical_cr:.2f}"
+                        calculated.append(f"Current Ratio: {historical_cr:.2f}")
+                    else:
+                        fundamentals['financial_health']['current_ratio'] = "N/A (missing data)"
+                except Exception as e:
+                    fundamentals['financial_health']['current_ratio'] = "N/A (calculation error)"
+                    print(f"[FUNDAMENTALS] ⚠️ Current Ratio calculation error: {e}")
+            else:
+                fundamentals['financial_health']['current_ratio'] = "N/A (historical)"
             
-            # Analyst targets are always current
-            fundamentals['analyst']['target_mean'] = "N/A (current only)"
-            fundamentals['analyst']['target_high'] = "N/A (current only)"
-            fundamentals['analyst']['target_low'] = "N/A (current only)"
-            fundamentals['analyst']['implied_upside'] = "N/A (current only)"
-            fundamentals['analyst']['recommendation'] = "N/A (current only)"
+            # === 6. Mark other valuation metrics as N/A for historical ===
+            fundamentals['valuation']['forward_pe'] = "N/A (historical - forward-looking)"
+            fundamentals['valuation']['peg_ratio'] = "N/A (historical)"
             
-            # === 7. SUMMARY ===
             print(f"[FUNDAMENTALS] ✓ Historical metrics calculated: {len(calculated)}")
             for item in calculated:
                 print(f"[FUNDAMENTALS]   - {item}")
@@ -476,7 +430,6 @@ RECOMMENDATION: BUY/HOLD/SELL - Confidence: High/Medium/Low
             beat_rate = (beats / (beats + misses) * 100) if (beats + misses) > 0 else 0
             avg_surprise = np.mean(surprises) if surprises else 0
             
-            # Determine trend
             if len(surprises) >= 2:
                 if surprises[0] > surprises[-1]:
                     trend = "Improving"
@@ -616,65 +569,171 @@ Only analyze metrics with actual values.
 
 """
         
-        report = f"""{date_header}# Fundamental Analysis Data for {self.ticker}
+        report = f"""{date_header}# Fundamental Data for {self.ticker}
 
 ## Company Information
-- Name: {fundamentals['company_info']['name']}
-- Sector: {fundamentals['company_info']['sector']}
-- Industry: {fundamentals['company_info']['industry']}
+- **Name:** {fundamentals['company_info']['name']}
+- **Sector:** {fundamentals['company_info']['sector']}
+- **Industry:** {fundamentals['company_info']['industry']}
+
+## Current Price
+- **Price:** {fundamentals['price_info']['current_price']}
+- **52-Week High:** {fundamentals['price_info']['fifty_two_week_high']}
+- **52-Week Low:** {fundamentals['price_info']['fifty_two_week_low']}
 
 ## Valuation Metrics
-- Market Cap: {fundamentals['valuation']['market_cap']}
-- P/E Ratio (Trailing): {fundamentals['valuation']['trailing_pe']}
-- P/E Ratio (Forward): {fundamentals['valuation']['forward_pe']}
-- PEG Ratio: {fundamentals['valuation']['peg_ratio']}
-- Price/Book: {fundamentals['valuation']['price_to_book']}
-- Price/Sales: {fundamentals['valuation']['price_to_sales']}
+- **Market Cap:** {fundamentals['valuation']['market_cap']}
+- **Enterprise Value:** {fundamentals['valuation']['enterprise_value']}
+- **Trailing P/E:** {fundamentals['valuation']['trailing_pe']}
+- **Forward P/E:** {fundamentals['valuation']['forward_pe']}
+- **PEG Ratio:** {fundamentals['valuation']['peg_ratio']}
+- **Price/Book:** {fundamentals['valuation']['price_to_book']}
+- **Price/Sales:** {fundamentals['valuation']['price_to_sales']}
+- **EV/Revenue:** {fundamentals['valuation']['ev_to_revenue']}
+- **EV/EBITDA:** {fundamentals['valuation']['ev_to_ebitda']}
 
 ## Growth Metrics
-- Revenue Growth (YoY): {fundamentals['growth']['revenue_growth']}
-- Earnings Growth (YoY): {fundamentals['growth']['earnings_growth']}
+- **Revenue Growth:** {fundamentals['growth']['revenue_growth']}
+- **Earnings Growth:** {fundamentals['growth']['earnings_growth']}
+- **Quarterly Revenue Growth:** {fundamentals['growth']['quarterly_revenue_growth']}
+- **Quarterly Earnings Growth:** {fundamentals['growth']['quarterly_earnings_growth']}
 
-## Profitability Metrics
-- Profit Margin: {fundamentals['profitability']['profit_margin']}
-- Operating Margin: {fundamentals['profitability']['operating_margin']}
-- Gross Margin: {fundamentals['profitability']['gross_margin']}
-- ROE: {fundamentals['profitability']['roe']}
-- ROA: {fundamentals['profitability']['roa']}
+## Profitability
+- **Profit Margin:** {fundamentals['profitability']['profit_margin']}
+- **Operating Margin:** {fundamentals['profitability']['operating_margin']}
+- **Gross Margin:** {fundamentals['profitability']['gross_margin']}
+- **ROE:** {fundamentals['profitability']['roe']}
+- **ROA:** {fundamentals['profitability']['roa']}
 
 ## Financial Health
-- Current Ratio: {fundamentals['financial_health']['current_ratio']}
-- Quick Ratio: {fundamentals['financial_health']['quick_ratio']}
-- Debt/Equity: {fundamentals['financial_health']['debt_to_equity']}
-- Total Cash: {fundamentals['financial_health']['total_cash']}
-- Total Debt: {fundamentals['financial_health']['total_debt']}
-- Free Cash Flow: {fundamentals['financial_health']['free_cash_flow']}
+- **Current Ratio:** {fundamentals['financial_health']['current_ratio']}
+- **Quick Ratio:** {fundamentals['financial_health']['quick_ratio']}
+- **Debt/Equity:** {fundamentals['financial_health']['debt_to_equity']}
+- **Total Cash:** {fundamentals['financial_health']['total_cash']}
+- **Total Debt:** {fundamentals['financial_health']['total_debt']}
+- **Free Cash Flow:** {fundamentals['financial_health']['free_cash_flow']}
 
-## Price Information
-- Current Price: {fundamentals['price_info']['current_price']}
-
-## Analyst Consensus
-- Recommendation: {fundamentals['analyst']['recommendation']}
-- Number of Analysts: {fundamentals['analyst']['num_analysts']}
-- Target Price (Mean): {fundamentals['analyst']['target_mean']}
+## Analyst Opinions
+- **Recommendation:** {fundamentals['analyst']['recommendation']}
+- **Number of Analysts:** {fundamentals['analyst']['num_analysts']}
+- **Target (Mean):** {fundamentals['analyst']['target_mean']}
+- **Target (High):** {fundamentals['analyst']['target_high']}
+- **Target (Low):** {fundamentals['analyst']['target_low']}
+- **Implied Upside:** {fundamentals['analyst'].get('implied_upside', 'N/A')}
 
 """
         
-        # Add earnings history
+        # Add earnings data
         if earnings['available']:
-            report += "## Earnings History (Last 4 Quarters)\n\n"
+            report += f"## Earnings History (Last 4 Quarters)\n"
             for q in earnings['quarters']:
-                symbol = "✓" if q['beat'] else "✗"
-                report += f"- {symbol} {q['period']}: Actual ${q['actual']:.2f} vs Est ${q['estimate']:.2f} ({q['surprise_pct']:+.1f}%)\n"
-            report += f"\n**Summary:** Beat Rate: {earnings['summary']['beat_rate']:.0f}%, Trend: {earnings['summary']['trend']}\n\n"
+                beat_miss = "✓ Beat" if q['beat'] else "✗ Miss"
+                report += f"- {q['period']}: Actual ${q['actual']:.2f} vs Est ${q['estimate']:.2f} ({q['surprise_pct']:+.1f}%) {beat_miss}\n"
+            report += f"\n**Summary:** Beat Rate: {earnings['summary']['beat_rate']:.0f}%, Trend: {earnings['summary']['trend']}, Quality: {earnings['summary']['quality']}\n\n"
         
         # Add SEC data
         if sec_data['available']:
             report += f"## SEC 10-K Filing Data\n"
-            report += f"- Total Assets: {sec_data['total_assets_formatted']}\n"
-            report += f"- Filing Date: {sec_data['filing_date']}\n\n"
+            report += f"- **Total Assets:** {sec_data['total_assets_formatted']}\n"
+            report += f"- **Filing Date:** {sec_data['filing_date']}\n\n"
         
         return report
+
+    def _get_llm_decision(self, analysis: str) -> Tuple[str, str]:
+        """
+        NEW: Use LLM to extract/determine recommendation from analysis.
+        This avoids the HOLD default bias problem.
+        """
+        if not self.client:
+            return self._extract_recommendation_from_content(analysis)
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": """You are a trading decision extractor. 
+Given a fundamental analysis, extract or determine the final recommendation.
+
+RULES:
+1. If there's an explicit "RECOMMENDATION: X" line, extract it
+2. If not explicit, analyze the content and determine the most appropriate recommendation
+3. Consider: valuation metrics, growth rates, profitability, financial health, analyst targets
+4. Do NOT default to HOLD - make an actual decision based on the evidence
+5. FUNDAMENTAL-SPECIFIC signals:
+   - Low P/E + high growth = BUY signal
+   - High P/E + slowing growth = SELL signal  
+   - Strong balance sheet + beat streak = BUY signal
+   - High debt + margin compression = SELL signal
+
+Respond in EXACTLY this format (no other text):
+RECOMMENDATION: BUY|HOLD|SELL
+CONFIDENCE: High|Medium|Low"""},
+                    {"role": "user", "content": f"Extract/determine recommendation from:\n\n{analysis[:3000]}"}
+                ],
+                temperature=0.3,
+                max_completion_tokens=50
+            )
+            
+            result = response.choices[0].message.content.strip()
+            
+            rec = "HOLD"
+            conf = "Medium"
+            
+            for line in result.split('\n'):
+                if 'RECOMMENDATION:' in line.upper():
+                    if 'BUY' in line.upper():
+                        rec = "BUY"
+                    elif 'SELL' in line.upper():
+                        rec = "SELL"
+                    else:
+                        rec = "HOLD"
+                elif 'CONFIDENCE:' in line.upper():
+                    if 'HIGH' in line.upper():
+                        conf = "High"
+                    elif 'LOW' in line.upper():
+                        conf = "Low"
+                    else:
+                        conf = "Medium"
+            
+            print(f"[FUNDAMENTALS] LLM Decision: {rec} ({conf})")
+            return rec, conf
+            
+        except Exception as e:
+            print(f"[FUNDAMENTALS] ⚠️ LLM decision error: {e}, using fallback")
+            return self._extract_recommendation_from_content(analysis)
+
+    def _extract_recommendation_from_content(self, analysis: str) -> Tuple[str, str]:
+        """Fallback: Extract recommendation using keyword analysis"""
+        analysis_lower = analysis.lower()
+        
+        # Fundamental-specific signals
+        specific_buy_signals = ['undervalued', 'strong growth', 'beat expectations', 'expanding margins', 'healthy balance sheet', 'positive cash flow']
+        specific_sell_signals = ['overvalued', 'slowing growth', 'missed expectations', 'margin pressure', 'high debt', 'negative cash flow']
+        
+        if any(phrase in analysis_lower for phrase in ["recommend buy", "should buy", "buy rating", "strong buy"]):
+            return "BUY", "Medium"
+        elif any(phrase in analysis_lower for phrase in ["recommend sell", "should sell", "sell rating", "underperform"]):
+            return "SELL", "Medium"
+        elif any(phrase in analysis_lower for phrase in ["recommend hold", "neutral rating", "wait", "fairly valued"]):
+            return "HOLD", "Low"
+        
+        buy_count = sum(1 for signal in specific_buy_signals if signal in analysis_lower)
+        sell_count = sum(1 for signal in specific_sell_signals if signal in analysis_lower)
+        
+        general_buy = ["bullish", "positive", "upside", "growth", "strong", "attractive"]
+        general_sell = ["bearish", "negative", "downside", "decline", "weak", "expensive"]
+        
+        buy_count += sum(0.5 for word in general_buy if word in analysis_lower)
+        sell_count += sum(0.5 for word in general_sell if word in analysis_lower)
+        
+        if buy_count > sell_count + 1.5:
+            confidence = "High" if buy_count > 4 else "Medium"
+            return "BUY", confidence
+        elif sell_count > buy_count + 1.5:
+            confidence = "High" if sell_count > 4 else "Medium"
+            return "SELL", confidence
+        else:
+            return "HOLD", "Low"
 
     def analyze_with_llm(self, formatted_data: str) -> str:
         """Send data to LLM for analysis"""
@@ -701,8 +760,11 @@ Only analyze metrics with actual values.
             
             analysis = response.choices[0].message.content
             
+            # Use new LLM decision extraction if no formal recommendation
             if "RECOMMENDATION:" not in analysis:
-                analysis += "\n\nRECOMMENDATION: HOLD - Confidence: Low"
+                print(f"[FUNDAMENTALS] ⚠️ Response missing formal recommendation, extracting...")
+                recommendation, confidence = self._get_llm_decision(analysis)
+                analysis += f"\n\nRECOMMENDATION: {recommendation} - Confidence: {confidence}"
             
             print(f"[FUNDAMENTALS] ✓ Analysis generated ({len(analysis)} chars)")
             return analysis
@@ -712,6 +774,7 @@ Only analyze metrics with actual values.
             return self._create_fallback_analysis(formatted_data)
 
     def _create_fallback_analysis(self, formatted_data: str) -> str:
+        """Fallback analysis when LLM unavailable"""
         return f"""## Fundamental Analysis Summary
 *Generated using fallback analysis (LLM unavailable)*
 
