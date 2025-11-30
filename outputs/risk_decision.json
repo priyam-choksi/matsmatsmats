@@ -1,101 +1,105 @@
 {
-  "ticker": "AAPL",
-  "timestamp": "2025-11-15T08:30:08.539230",
+  "ticker": "SIVB",
+  "timestamp": "2025-11-29T21:42:05.375574",
+  "analysis_date": "2023-03-01",
+  "historical_mode": true,
   "portfolio_value": 100000.0,
-  "verdict": "MODIFY",
-  "final_position_dollars": 5625.0,
-  "final_position_pct": 0.05625,
-  "confidence": "LOW",
-  "reasoning": [
-    "Research says AVOID but weak conviction - downgrading to HOLD"
+  "verdict": "REJECT",
+  "final_position_pct": 0,
+  "final_position_dollars": 0.0,
+  "confidence": "HIGH",
+  "reasoning": "The consensus strongly recommends avoiding SIVB due to significant downside risks and a lack of critical financial data, which raises transparency concerns. Given the high probability of bearish outcomes and the absence of compelling bullish catalysts, it is prudent to preserve capital at this time.",
+  "key_factors": [
+    "High bearish probability (40%)",
+    "Lack of critical financial data",
+    "Strong consensus to avoid investment"
   ],
   "conditions": [
-    "Strict stop loss at -5%",
-    "Maximum holding: 6 months",
-    "Review frequency: Weekly",
-    "Exit immediately if new red flags emerge"
+    "No position - continue monitoring"
   ],
+  "stop_loss_pct": 5,
+  "profit_targets": [
+    10,
+    20,
+    30
+  ],
+  "guardrail_corrections": [
+    "Stop loss too tight: 0% \u2192 5%"
+  ],
+  "is_llm_decision": true,
   "risk_controls": {
     "stop_loss": {
-      "percentage": 5.0,
-      "max_dollar_loss": 562.5,
-      "type": "TRAILING",
-      "reasoning": "Stop at -5% limits loss to $562"
+      "percentage": 15,
+      "dollar_amount": 485.29411764705884
     },
-    "take_profit": [
-      {
-        "level": 1,
-        "target_pct": 10,
-        "exit_pct": 33,
-        "reasoning": "Take 1/3 at +10% (lock in quick gain)"
-      },
-      {
-        "level": 2,
-        "target_pct": 20,
-        "exit_pct": 33,
-        "reasoning": "Take 1/3 at +20% (solid profit)"
-      },
-      {
-        "level": 3,
-        "target_pct": 30,
-        "exit_pct": 34,
-        "reasoning": "Final 1/3 at +30% (let winners run)"
-      }
-    ],
-    "time_limit": {
-      "max_holding_period": "6 months",
-      "review_frequency": "Weekly",
-      "mandatory_review": "30 days",
-      "reasoning": "Prevent indefinite holding, force re-evaluation"
-    },
-    "monitoring": {
-      "daily_checks": [
-        "Price vs stop/target",
-        "Volume",
-        "News alerts"
+    "take_profit": {
+      "targets": [
+        12.5,
+        18.75,
+        25
       ],
-      "weekly_checks": [
-        "Technical levels",
-        "Sentiment shifts",
-        "Thesis validity"
-      ],
-      "monthly_checks": [
-        "Fundamental review",
-        "Position sizing",
-        "Risk/reward update"
+      "scale_out": [
+        0.33,
+        0.33,
+        0.34
       ]
     },
-    "exit_triggers": []
-  },
-  "position_sizing_breakdown": {
-    "base_size": 0.1125,
-    "confidence_multiplier": 1.0,
-    "probability_multiplier": 1.0,
-    "final_size_pct": 0.1125,
-    "final_size_dollars": 11250.0,
-    "reasoning": [
-      "Base: 11.2% (avg of risk analysts)",
-      "Confidence adj: \u00d71.0 (MEDIUM)",
-      "Probability adj: \u00d71.0"
-    ]
+    "time_limit": {
+      "max_holding_period": "90 days",
+      "review_frequency": "weekly"
+    }
   },
   "risk_consensus": {
     "stances": {
-      "aggressive": "BUY",
-      "neutral": "HOLD",
+      "aggressive": "HOLD",
+      "neutral": "AVOID",
       "conservative": "AVOID"
     },
     "position_sizes": {
-      "aggressive": 0.195,
-      "neutral": 0.03,
-      "conservative": 0.0
+      "aggressive": 10.0,
+      "neutral": 0,
+      "conservative": 0
     },
     "agreements": [],
     "conflicts": [
-      "No clear consensus - all 3 disagree",
-      "Direct conflict: Some say BUY, others say SELL/AVOID"
+      "Mixed views: 0 buy, 2 avoid"
     ],
-    "avg_position_size": 0.1125
+    "avg_position_size": 0.03333333333333333,
+    "red_flags": [
+      {
+        "flag": "Max allowed for any position exceeded",
+        "severity": "HIGH",
+        "source": "Red Flag Count"
+      },
+      {
+        "flag": "Downside risk exceeds acceptable threshold",
+        "severity": "HIGH",
+        "source": "Downside Risk"
+      },
+      {
+        "flag": "Risk/reward ratio below conservative minimum",
+        "severity": "HIGH",
+        "source": "Risk/Reward Ratio"
+      },
+      {
+        "flag": "Conservative expected value is negative",
+        "severity": "HIGH",
+        "source": "Conservative EV"
+      },
+      {
+        "flag": "Bear risk score indicates high risk",
+        "severity": "HIGH",
+        "source": "Bear Risk Score"
+      }
+    ]
   },
-  "research_recommendation": "AVOID"
+  "position_sizing": {
+    "base_size_pct": 0.029411764705882353,
+    "confidence_multiplier": 1.1,
+    "adjusted_size_pct": 0.03235294117647059,
+    "final_size_pct": 0.03235294117647059,
+    "final_size_dollars": 3235.294117647059
+  },
+  "research_recommendation": "SELL",
+  "report": "\n======================================================================\nRISK MANAGER FINAL DECISION: SIVB\n======================================================================\n**Analysis Date:** 2023-03-01 (HISTORICAL)\n\n**Portfolio:** $100,000\n\n## VERDICT: REJECT\n**Position:** 0.0% ($0)\n**Confidence:** HIGH\n\n## REASONING\nThe consensus strongly recommends avoiding SIVB due to significant downside risks and a lack of critical financial data, which raises transparency concerns. Given the high probability of bearish outcomes and the absence of compelling bullish catalysts, it is prudent to preserve capital at this time.\n\n## KEY DECIDING FACTORS\n\u2022 High bearish probability (40%)\n\u2022 Lack of critical financial data\n\u2022 Strong consensus to avoid investment\n\n## OPPORTUNITY ASSESSMENT\nWhile there is a theoretical upside based on SIVB's market position, the risks far outweigh the potential benefits given current uncertainties.\n\n## RISK ASSESSMENT\nThe primary risks include potential significant losses due to the unclear financial position and macroeconomic headwinds.\n\n## VS EVALUATORS\nI align with the conservative and neutral evaluators who recommend avoiding the stock, as the risk/reward profile is unfavorable and the potential for significant downside is concerning.\n\n## EVALUATOR SUMMARY\n- Aggressive: HOLD @ 10%\n- Neutral: AVOID @ 0%\n- Conservative: AVOID @ 0%\n\n## CONSENSUS\n- Average Position: 3.3%\n- Weighted Average: 2.9%\n- Agreements: None\n- Disagreements: Mixed views: 0 buy, 2 avoid\n\n## RISK CONTROLS\n- Stop Loss: -5%\n- Profit Targets: +10%, +20%, +30%\n\n## CONDITIONS\n\u2022 No position - continue monitoring\n\n**Guardrail Corrections:**\n- Stop loss too tight: 0% \u2192 5%\n\n======================================================================\n"
 }

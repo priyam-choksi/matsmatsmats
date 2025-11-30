@@ -1,7 +1,34 @@
 """
-Fixed Master Orchestrator - Properly handles paths and encoding
-Usage: python agents/orchestrators/master_orchestrator.py AAPL --run-all --research-mode deep
+Master Orchestrator - Complete Trading System Pipeline
+Coordinates all phases: Analysts → Researchers → Debate → Risk Team → Decision
+
+MODIFIED: Now supports historical backtesting via analysis_date parameter
+
+Usage: 
+  python master_orchestrator.py AAPL
+  python master_orchestrator.py AAPL --research-mode deep
+  python master_orchestrator.py AAPL --research-mode research --research-rounds 5
+  python master_orchestrator.py AAPL --analysis-date 2024-06-15
+
+Research Modes:
+  shallow  - Quick analysis, no debate (~2 minutes)
+  deep     - 3 debate rounds (~5 minutes)
+  research - 5 debate rounds (~8 minutes)
+
+Historical Backtesting:
+  --analysis-date YYYY-MM-DD  - Analyze using data from specified date
 """
+
+import os
+import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
+    
+# Find .env in project root (2 levels up from orchestration folder)
+current_file = Path(__file__).resolve()
+project_root = current_file.parent.parent.parent  # Goes up: orchestration → src → TradingAgent
+env_path = project_root / '.env'
 
 import os
 import sys
@@ -17,28 +44,31 @@ from typing import Dict, Any, Optional, List
 if sys.platform == 'win32':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    # Set console code page to UTF-8
     os.system('chcp 65001 > nul')
 
 
 class MasterOrchestrator:
-    def __init__(self, ticker: str, portfolio_value: float = 100000, research_mode: str = 'shallow', research_rounds: int = 1):
+    def __init__(self, ticker: str, portfolio_value: float = 100000, 
+                 research_mode: str = 'shallow', research_rounds: int = 0,
+                 analysis_date: Optional[str] = None):  # <-- NEW PARAMETER
         self.ticker = ticker.upper()
         self.portfolio_value = portfolio_value
         self.research_mode = research_mode
+        self.analysis_date = analysis_date  # <-- NEW: Store analysis date
+        self.market_context = None  # <-- NEW: Will hold full context if loaded
         
-        # Map research mode to rounds if not specified
-        if research_rounds == 1:
+        # Map research mode to debate rounds if not explicitly specified
+        if research_rounds == 0:
             if research_mode == 'deep':
                 self.research_rounds = 3
             elif research_mode == 'research':
                 self.research_rounds = 5
-            else:
-                self.research_rounds = 1
+            else:  # shallow
+                self.research_rounds = 0  # No debate for shallow mode
         else:
             self.research_rounds = research_rounds
         
-        # Track execution
+        # Execution tracking
         self.execution_log = []
         self.phase_results = {}
         self.errors = []
@@ -50,20 +80,16 @@ class MasterOrchestrator:
     
     def setup_paths(self):
         """Setup all paths properly"""
-        # Find project root by looking for key directories
         current = Path.cwd()
         
-        # Check if we're in orchestrators directory
+        # Find project root
         if current.name == 'orchestrators':
             self.project_root = current.parent.parent
-        # Check if we're in agents directory
         elif current.name == 'agents':
             self.project_root = current.parent
-        # Check if we have agents subdirectory (we're in project root)
         elif (current / 'agents').exists():
             self.project_root = current
         else:
-            # Try to find project root by looking up
             temp = current
             while temp.parent != temp:
                 if (temp / 'agents' / 'orchestrators').exists():
@@ -71,14 +97,13 @@ class MasterOrchestrator:
                     break
                 temp = temp.parent
             else:
-                # Default to current directory
                 self.project_root = current
         
         self.agents_root = self.project_root / "agents"
         self.outputs_path = self.project_root / "outputs"
         self.outputs_path.mkdir(exist_ok=True)
         
-        # Define agent paths
+        # Agent paths
         self.paths = {
             'orchestrators': self.agents_root / "orchestrators",
             'researcher': self.agents_root / "researcher",
@@ -87,51 +112,55 @@ class MasterOrchestrator:
         }
         
         print(f"[SETUP] Project root: {self.project_root}")
-        print(f"[SETUP] Agents root: {self.agents_root}")
         print(f"[SETUP] Outputs: {self.outputs_path}")
-        
-        # Verify critical paths exist
-        if not self.agents_root.exists():
-            raise FileNotFoundError(f"Agents directory not found at {self.agents_root}")
-        
-        for name, path in self.paths.items():
-            if not path.exists():
-                print(f"[WARNING] {name} path not found: {path}")
+    
+    # ============================================================
+    # NEW METHOD: Load market context for historical backtesting
+    # ============================================================
+    def load_market_context(self):
+        """
+        Load market context if available (for batch runs).
+        This is written by batch_collect_all.py before running the orchestrator.
+        """
+        context_file = self.outputs_path / "market_context.json"
+        if context_file.exists():
+            try:
+                with open(context_file, 'r', encoding='utf-8') as f:
+                    context = json.load(f)
+                
+                # Extract analysis date from context (only if not already set via CLI)
+                if not self.analysis_date:
+                    self.analysis_date = context.get('analysis_date')
+                self.market_context = context
+                
+                self.log(f"Loaded market context: {self.analysis_date}", "setup", "INFO")
+                return context
+            except Exception as e:
+                self.log(f"Failed to load market context: {e}", "setup", "ERROR")
+        return None
     
     def log(self, message: str, phase: Optional[str] = None, status: str = 'INFO'):
         """Log execution progress"""
         timestamp = datetime.now().strftime('%H:%M:%S')
-        log_entry = {
+        self.execution_log.append({
             'timestamp': timestamp,
             'phase': phase,
             'message': message,
             'status': status
-        }
-        self.execution_log.append(log_entry)
+        })
         
-        icons = {
-            'ERROR': '[ERROR]',
-            'SUCCESS': '[OK]',
-            'RUNNING': '[RUN]',
-            'INFO': '[INFO]'
-        }
-        icon = icons.get(status, '[*]')
-        print(f"{icon} [{timestamp}] {message}")
+        icons = {'ERROR': '[ERROR]', 'SUCCESS': '[OK]', 'RUNNING': '[RUN]', 'INFO': '[INFO]'}
+        print(f"{icons.get(status, '[*]')} [{timestamp}] {message}")
     
     def run_command(self, cmd: List[str], cwd: Path, timeout: int = 120) -> tuple:
-        """Execute command with proper encoding and Python interpreter"""
+        """Execute command with proper encoding"""
         try:
-            # Use sys.executable instead of "python"
             if cmd[0] == "python":
                 cmd[0] = sys.executable
             
-            # Set environment for UTF-8
             env = os.environ.copy()
             env['PYTHONIOENCODING'] = 'utf-8'
             env['PYTHONUTF8'] = '1'
-            
-            # Debug: Show actual command being run
-            self.log(f"Running: {' '.join(cmd[:3])}...", status='INFO')
             
             result = subprocess.run(
                 cmd,
@@ -144,26 +173,20 @@ class MasterOrchestrator:
                 errors='replace'
             )
             
-            # Show some output for debugging
-            if result.stdout and len(result.stdout) > 0:
-                preview = result.stdout[:200].replace('\n', ' ')
-                self.log(f"Output preview: {preview}...", status='INFO')
-            
             return result.returncode == 0, result.stdout, result.stderr
             
         except subprocess.TimeoutExpired:
-            self.log(f"Command timed out after {timeout}s", status='ERROR')
             return False, "", f"Timeout after {timeout}s"
-        except FileNotFoundError as e:
-            self.log(f"File not found: {e}", status='ERROR')
-            return False, "", str(e)
         except Exception as e:
-            self.log(f"Command error: {e}", status='ERROR')
             return False, "", str(e)
     
     def run_phase1_analysts(self) -> bool:
-        """Phase 1: Run discussion hub"""
-        self.log("Phase 1: Running Analysts (4)", "phase1", "RUNNING")
+        """Phase 1: Run analyst discussion hub"""
+        self.log("Phase 1: Running Analysts (4 specialists)", "phase1", "RUNNING")
+        
+        # NEW: Log if using historical mode
+        if self.analysis_date:
+            self.log(f"Historical mode: {self.analysis_date}", "phase1", "INFO")
         
         script_path = self.paths['orchestrators'] / "discussion_hub.py"
         if not script_path.exists():
@@ -171,7 +194,7 @@ class MasterOrchestrator:
             return False
         
         cmd = [
-            sys.executable, 
+            sys.executable,
             str(script_path),
             self.ticker,
             "--run-analysts",
@@ -179,111 +202,100 @@ class MasterOrchestrator:
             "--format", "json"
         ]
         
-        success, stdout, stderr = self.run_command(
-            cmd,
-            cwd=self.paths['orchestrators'],
-            timeout=180
-        )
+        # ============================================================
+        # NEW: Pass analysis date to discussion hub
+        # ============================================================
+        if self.analysis_date:
+            cmd.extend(["--analysis-date", self.analysis_date])
         
-        if success:
-            # Verify output file was created
-            output_file = self.outputs_path / "discussion_points.json"
-            if output_file.exists():
-                self.log("Analysts complete - output file created", "phase1", "SUCCESS")
-                self.phase_results['phase1'] = {'status': 'SUCCESS'}
-                return True
-            else:
-                self.log("Analysts ran but no output file created", "phase1", "ERROR")
-                self.phase_results['phase1'] = {'status': 'FAILED'}
-                return False
+        success, stdout, stderr = self.run_command(cmd, self.paths['orchestrators'], timeout=180)
+        
+        output_file = self.outputs_path / "discussion_points.json"
+        if success and output_file.exists():
+            self.log("Analysts complete", "phase1", "SUCCESS")
+            self.phase_results['phase1'] = {'status': 'SUCCESS'}
+            return True
         else:
             self.log(f"Analysts failed: {stderr[:200]}", "phase1", "ERROR")
-            self.errors.append(f"Analysts: {stderr[:500]}")
             self.phase_results['phase1'] = {'status': 'FAILED'}
             return False
     
     def run_phase2_researchers(self) -> bool:
-        """Phase 2: Run researchers"""
-        self.log(f"Phase 2: Researchers ({self.research_mode}, {self.research_rounds} rounds)", "phase2", "RUNNING")
+        """Phase 2: Run bull and bear researchers (single-pass analysis)"""
+        self.log("Phase 2: Bull & Bear Researchers", "phase2", "RUNNING")
         
-        # Check if discussion points exist
         discussion_file = self.outputs_path / "discussion_points.json"
         if not discussion_file.exists():
-            self.log("Discussion points file not found", "phase2", "ERROR")
+            self.log("Discussion points not found", "phase2", "ERROR")
             return False
         
-        # Bear researcher
-        bear_script = self.paths['researcher'] / "bear_researcher.py"
-        if not bear_script.exists():
-            self.log(f"Bear script not found: {bear_script}", "phase2", "ERROR")
-            return False
-        
-        bear_cmd = [
-            sys.executable,
-            str(bear_script),
-            self.ticker,
-            "--discussion-file", str(discussion_file),
-            "--mode", self.research_mode,
-            "--rounds", str(self.research_rounds),
-            "--save-data", str(self.outputs_path / "bear_thesis.json")
-        ]
-        
-        self.log("Running Bear Researcher...", "phase2", "INFO")
-        success_bear, out_bear, err_bear = self.run_command(
-            bear_cmd,
-            cwd=self.paths['researcher'],
-            timeout=300
-        )
-        
-        # Bull researcher
+        # Run Bull Researcher
         bull_script = self.paths['researcher'] / "bull_researcher.py"
-        if not bull_script.exists():
+        if bull_script.exists():
+            self.log("Running Bull Researcher...", "phase2", "INFO")
+            cmd = [
+                sys.executable,
+                str(bull_script),
+                self.ticker,
+                "--discussion-file", str(discussion_file),
+                "--save-data", str(self.outputs_path / "bull_thesis.json")
+            ]
+            
+            # NEW: Pass analysis date
+            if self.analysis_date:
+                cmd.extend(["--analysis-date", self.analysis_date])
+            
+            success, _, stderr = self.run_command(cmd, self.paths['researcher'], timeout=120)
+            if not success:
+                self.log(f"Bull researcher error: {stderr[:100]}", "phase2", "ERROR")
+        else:
             self.log(f"Bull script not found: {bull_script}", "phase2", "ERROR")
-            return False
         
-        bull_cmd = [
-            sys.executable,
-            str(bull_script),
-            self.ticker,
-            "--discussion-file", str(discussion_file),
-            "--mode", self.research_mode,
-            "--rounds", str(self.research_rounds),
-            "--save-data", str(self.outputs_path / "bull_thesis.json")
-        ]
-        
-        self.log("Running Bull Researcher...", "phase2", "INFO")
-        success_bull, out_bull, err_bull = self.run_command(
-            bull_cmd,
-            cwd=self.paths['researcher'],
-            timeout=300
-        )
+        # Run Bear Researcher
+        bear_script = self.paths['researcher'] / "bear_researcher.py"
+        if bear_script.exists():
+            self.log("Running Bear Researcher...", "phase2", "INFO")
+            cmd = [
+                sys.executable,
+                str(bear_script),
+                self.ticker,
+                "--discussion-file", str(discussion_file),
+                "--save-data", str(self.outputs_path / "bear_thesis.json")
+            ]
+            
+            # NEW: Pass analysis date
+            if self.analysis_date:
+                cmd.extend(["--analysis-date", self.analysis_date])
+            
+            success, _, stderr = self.run_command(cmd, self.paths['researcher'], timeout=120)
+            if not success:
+                self.log(f"Bear researcher error: {stderr[:100]}", "phase2", "ERROR")
+        else:
+            self.log(f"Bear script not found: {bear_script}", "phase2", "ERROR")
         
         # Check results
-        bear_file = self.outputs_path / "bear_thesis.json"
         bull_file = self.outputs_path / "bull_thesis.json"
+        bear_file = self.outputs_path / "bear_thesis.json"
         
-        if bear_file.exists() and bull_file.exists():
-            self.log("Both researchers complete with output files", "phase2", "SUCCESS")
+        if bull_file.exists() and bear_file.exists():
+            self.log("Both researchers complete", "phase2", "SUCCESS")
             self.phase_results['phase2'] = {'status': 'SUCCESS'}
             return True
         else:
-            if not bear_file.exists():
-                self.log("Bear thesis file not created", "phase2", "ERROR")
-            if not bull_file.exists():
-                self.log("Bull thesis file not created", "phase2", "ERROR")
-            self.phase_results['phase2'] = {'status': 'PARTIAL'}
+            self.log("One or both researchers failed", "phase2", "ERROR")
+            self.phase_results['phase2'] = {'status': 'PARTIAL' if bull_file.exists() or bear_file.exists() else 'FAILED'}
             return False
     
     def run_phase3_research_manager(self) -> bool:
-        """Phase 3: Research Manager"""
-        self.log("Phase 3: Research Manager", "phase3", "RUNNING")
+        """Phase 3: Research Manager - Debate & Synthesis"""
+        debate_desc = f"{self.research_rounds} debate rounds" if self.research_rounds > 0 else "direct synthesis"
+        self.log(f"Phase 3: Research Manager ({debate_desc})", "phase3", "RUNNING")
         
-        # Check prerequisites
-        bear_file = self.outputs_path / "bear_thesis.json"
         bull_file = self.outputs_path / "bull_thesis.json"
+        bear_file = self.outputs_path / "bear_thesis.json"
         
-        if not bear_file.exists() or not bull_file.exists():
-            self.log("Missing bear or bull thesis files", "phase3", "ERROR")
+        if not bull_file.exists() or not bear_file.exists():
+            self.log("Missing bull or bear thesis files", "phase3", "ERROR")
             return False
         
         script_path = self.paths['managers'] / "research_manager.py"
@@ -291,41 +303,53 @@ class MasterOrchestrator:
             self.log(f"Script not found: {script_path}", "phase3", "ERROR")
             return False
         
+        # Build command - pass debate-rounds to research manager
         cmd = [
             sys.executable,
             str(script_path),
             self.ticker,
             "--bull-file", str(bull_file),
             "--bear-file", str(bear_file),
+            "--debate-rounds", str(self.research_rounds),  # KEY: Route rounds here
             "--save-synthesis", str(self.outputs_path / "research_synthesis.json")
         ]
         
-        success, stdout, stderr = self.run_command(
-            cmd,
-            cwd=self.paths['managers'],
-            timeout=120
-        )
+        # NEW: Pass analysis date
+        if self.analysis_date:
+            cmd.extend(["--analysis-date", self.analysis_date])
+        
+        # Adjust timeout based on debate rounds
+        timeout = 120 + (self.research_rounds * 45)  # ~45s per debate round
+        
+        success, stdout, stderr = self.run_command(cmd, self.paths['managers'], timeout=timeout)
         
         output_file = self.outputs_path / "research_synthesis.json"
         if success and output_file.exists():
+            # Log debate info if available
+            try:
+                with open(output_file, 'r', encoding='utf-8') as f:
+                    synthesis = json.load(f)
+                debate_conducted = synthesis.get('debate_conducted', False)
+                if debate_conducted:
+                    self.log(f"Debate complete ({self.research_rounds} rounds)", "phase3", "INFO")
+            except:
+                pass
+            
             self.log("Research Manager complete", "phase3", "SUCCESS")
-            self.phase_results['phase3'] = {'status': 'SUCCESS'}
+            self.phase_results['phase3'] = {'status': 'SUCCESS', 'debate_rounds': self.research_rounds}
             return True
         else:
-            self.log(f"Research Manager failed", "phase3", "ERROR")
-            if stderr:
-                self.log(f"Error: {stderr[:200]}", "phase3", "ERROR")
+            self.log(f"Research Manager failed: {stderr[:200]}", "phase3", "ERROR")
             self.phase_results['phase3'] = {'status': 'FAILED'}
             return False
     
     def run_phase4_risk_team(self) -> bool:
-        """Phase 4: Risk Team"""
-        self.log("Phase 4: Risk Team (3 debators)", "phase4", "RUNNING")
+        """Phase 4: Risk Team (3 debators)"""
+        self.log("Phase 4: Risk Team (3 evaluators)", "phase4", "RUNNING")
         
-        # Check prerequisites
         synthesis_file = self.outputs_path / "research_synthesis.json"
         if not synthesis_file.exists():
-            self.log("Research synthesis file not found", "phase4", "ERROR")
+            self.log("Research synthesis not found", "phase4", "ERROR")
             return False
         
         success_count = 0
@@ -334,7 +358,6 @@ class MasterOrchestrator:
             script_path = self.paths['risk_management'] / f"{analyst}_debator.py"
             
             if not script_path.exists():
-                self.log(f"Script not found: {script_path}", "phase4", "ERROR")
                 continue
             
             cmd = [
@@ -345,44 +368,40 @@ class MasterOrchestrator:
                 "--save-evaluation", str(self.outputs_path / f"{analyst}_eval.json")
             ]
             
-            # Add optional files if they exist
-            bear_file = self.outputs_path / "bear_thesis.json"
+            # Add optional thesis files
             bull_file = self.outputs_path / "bull_thesis.json"
-            if bear_file.exists():
-                cmd.extend(["--bear-file", str(bear_file)])
+            bear_file = self.outputs_path / "bear_thesis.json"
             if bull_file.exists():
                 cmd.extend(["--bull-file", str(bull_file)])
+            if bear_file.exists():
+                cmd.extend(["--bear-file", str(bear_file)])
             
-            self.log(f"Running {analyst.capitalize()} debator...", "phase4", "INFO")
-            success, stdout, stderr = self.run_command(
-                cmd,
-                cwd=self.paths['risk_management'],
-                timeout=90
-            )
+            # NEW: Pass analysis date
+            if self.analysis_date:
+                cmd.extend(["--analysis-date", self.analysis_date])
             
-            output_file = self.outputs_path / f"{analyst}_eval.json"
-            if success and output_file.exists():
+            self.log(f"Running {analyst.capitalize()} evaluator...", "phase4", "INFO")
+            success, _, _ = self.run_command(cmd, self.paths['risk_management'], timeout=90)
+            
+            if success and (self.outputs_path / f"{analyst}_eval.json").exists():
                 success_count += 1
-                self.log(f"  ✓ {analyst.capitalize()} complete", "phase4", "SUCCESS")
-            else:
-                self.log(f"  ✗ {analyst.capitalize()} failed", "phase4", "ERROR")
         
         if success_count >= 2:
             self.log(f"Risk team complete ({success_count}/3)", "phase4", "SUCCESS")
-            self.phase_results['phase4'] = {'status': 'SUCCESS'}
+            self.phase_results['phase4'] = {'status': 'SUCCESS', 'evaluators': success_count}
             return True
         else:
-            self.log("Risk team failed (need at least 2/3)", "phase4", "ERROR")
+            self.log(f"Risk team failed ({success_count}/3)", "phase4", "ERROR")
             self.phase_results['phase4'] = {'status': 'FAILED'}
             return False
     
     def run_phase5_risk_manager(self) -> bool:
-        """Phase 5: Risk Manager"""
-        self.log("Phase 5: Risk Manager", "phase5", "RUNNING")
+        """Phase 5: Risk Manager - Final Decision"""
+        self.log("Phase 5: Risk Manager (Final Decision)", "phase5", "RUNNING")
         
         synthesis_file = self.outputs_path / "research_synthesis.json"
         if not synthesis_file.exists():
-            self.log("Research synthesis file not found", "phase5", "ERROR")
+            self.log("Research synthesis not found", "phase5", "ERROR")
             return False
         
         script_path = self.paths['managers'] / "risk_manager.py"
@@ -399,11 +418,11 @@ class MasterOrchestrator:
             "--save-decision", str(self.outputs_path / "risk_decision.json")
         ]
         
-        success, stdout, stderr = self.run_command(
-            cmd,
-            cwd=self.paths['managers'],
-            timeout=120
-        )
+        # NEW: Pass analysis date
+        if self.analysis_date:
+            cmd.extend(["--analysis-date", self.analysis_date])
+        
+        success, stdout, stderr = self.run_command(cmd, self.paths['managers'], timeout=120)
         
         output_file = self.outputs_path / "risk_decision.json"
         if success and output_file.exists():
@@ -419,63 +438,37 @@ class MasterOrchestrator:
             self.phase_results['phase5'] = {'status': 'SUCCESS'}
             return True
         else:
-            self.log("Risk Manager failed", "phase5", "ERROR")
-            if stderr:
-                self.log(f"Error: {stderr[:200]}", "phase5", "ERROR")
+            self.log(f"Risk Manager failed: {stderr[:200]}", "phase5", "ERROR")
             self.phase_results['phase5'] = {'status': 'FAILED'}
             return False
-    
-    def run_phase6_game_theory(self) -> bool:
-        """Phase 6: Game Theory Tournament"""
-        self.log("Phase 6: Game Theory Tournament", "phase6", "RUNNING")
-        
-        script_path = self.paths['orchestrators'] / "game_theory_orchestrator.py"
-        
-        if not script_path.exists():
-            self.log("Game theory script not available", "phase6", "INFO")
-            self.phase_results['phase6'] = {'status': 'SKIPPED'}
-            return True
-        
-        cmd = [
-            sys.executable,
-            str(script_path),
-            self.ticker,
-            "--outputs-dir", str(self.outputs_path)
-        ]
-        
-        success, stdout, stderr = self.run_command(
-            cmd,
-            cwd=self.paths['orchestrators'],
-            timeout=90
-        )
-        
-        output_file = self.outputs_path / "game_theory_tournament.json"
-        if success and output_file.exists():
-            self.log("Game theory tournament complete", "phase6", "SUCCESS")
-            self.phase_results['phase6'] = {'status': 'SUCCESS'}
-            return True
-        else:
-            self.log("Game theory failed", "phase6", "ERROR")
-            if stderr:
-                self.log(f"Error: {stderr[:200]}", "phase6", "ERROR")
-            self.phase_results['phase6'] = {'status': 'FAILED'}
-            return False
-    
-    def run_complete_workflow(self, include_game_theory: bool = True) -> Dict:
-        """Run complete workflow"""
+       
+    def run_complete_workflow(self) -> Dict:
+        """Run complete workflow (Phases 1–5 only)"""
         self.start_time = datetime.now()
         
+        # ============================================================
+        # NEW: Load market context first (for batch/historical runs)
+        # ============================================================
+        self.load_market_context()
+        
         print(f"\n{'='*80}")
-        print("MASTER ORCHESTRATOR - COMPLETE TRADING SYSTEM")
+        print("MASTER ORCHESTRATOR - TRADING SYSTEM PIPELINE")
         print(f"{'='*80}")
         print(f"Ticker: {self.ticker}")
         print(f"Portfolio: ${self.portfolio_value:,.0f}")
-        print(f"Research: {self.research_mode} ({self.research_rounds} rounds)")
-        print(f"Python: {sys.executable}")
+        print(f"Research Mode: {self.research_mode}")
+        print(f"Debate Rounds: {self.research_rounds if self.research_rounds > 0 else 'None (shallow)'}")
+        
+        # NEW: Show analysis date prominently
+        if self.analysis_date:
+            print(f"{'='*80}")
+            print(f"*** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+            print(f"{'='*80}")
+        
         print(f"Started: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'='*80}\n")
         
-        # Run phases sequentially
+        # Only phases 1–5
         phases = [
             (1, self.run_phase1_analysts, "Critical"),
             (2, self.run_phase2_researchers, "Critical"),
@@ -484,69 +477,63 @@ class MasterOrchestrator:
             (5, self.run_phase5_risk_manager, "Critical"),
         ]
         
-        if include_game_theory:
-            phases.append((6, self.run_phase6_game_theory, "Optional"))
-        
         for phase_num, phase_func, importance in phases:
-            print(f"\n--- Phase {phase_num} ---")
+            print(f"\n{'─'*40}")
+            print(f"PHASE {phase_num}")
+            print(f"{'─'*40}")
+            
             success = phase_func()
             
-            # Stop on critical failures
             if not success and importance == "Critical":
-                self.log(f"Stopping due to critical failure in Phase {phase_num}", status="ERROR")
+                self.log(f"Stopping: Critical Phase {phase_num} failed", status="ERROR")
                 break
             
-            # Add delay between phases
-            time.sleep(1)
+            time.sleep(0.5)
         
         self.end_time = datetime.now()
-        
-        # Print summary
         self.print_summary()
         self.save_logs()
         
         return self.phase_results
+
     
     def print_summary(self):
         """Print execution summary"""
-        if not self.end_time:
-            self.end_time = datetime.now()
-            
         elapsed = (self.end_time - self.start_time).total_seconds()
         
         print(f"\n{'='*80}")
         print("EXECUTION SUMMARY")
         print(f"{'='*80}\n")
+        
         print(f"Total Time: {elapsed:.1f}s ({elapsed/60:.1f} minutes)")
+        print(f"Research Mode: {self.research_mode} ({self.research_rounds} debate rounds)")
         
-        # Count successes
+        # NEW: Show analysis date in summary
+        if self.analysis_date:
+            print(f"Analysis Date: {self.analysis_date} (HISTORICAL)")
+        
         success_count = sum(1 for r in self.phase_results.values() if r.get('status') == 'SUCCESS')
-        total_count = len(self.phase_results)
-        
-        print(f"Phases Completed: {success_count}/{total_count}\n")
+        print(f"Phases Completed: {success_count}/{len(self.phase_results)}\n")
         
         print("Phase Results:")
         for phase, result in self.phase_results.items():
             status = result.get('status', 'UNKNOWN')
-            icon = "✓" if status == 'SUCCESS' else "⚠" if status == 'PARTIAL' else "✗"
-            print(f"  {icon} {phase}: {status}")
+            icon = "✓" if status == 'SUCCESS' else "⚠" if status in ['PARTIAL', 'SKIPPED'] else "✗"
+            extra = f" ({result.get('debate_rounds', '')} rounds)" if result.get('debate_rounds') else ""
+            print(f"  {icon} {phase}: {status}{extra}")
         
-        # Show final decision if available
+        # Show final decision
         try:
             decision_file = self.outputs_path / "risk_decision.json"
             if decision_file.exists():
                 with open(decision_file, 'r', encoding='utf-8') as f:
                     decision = json.load(f)
-                print(f"\nFINAL DECISION: {decision.get('verdict', 'N/A')}")
+                print(f"\n{'─'*40}")
+                print(f"FINAL DECISION: {decision.get('verdict', 'N/A')}")
                 print(f"Position Size: ${decision.get('final_position_dollars', 0):,.0f}")
+                print(f"{'─'*40}")
         except:
             pass
-        
-        # Show errors if any
-        if self.errors:
-            print(f"\nErrors Encountered: {len(self.errors)}")
-            for error in self.errors[:3]:  # Show first 3 errors
-                print(f"  - {error[:100]}...")
         
         print(f"\n{'='*80}\n")
     
@@ -558,15 +545,17 @@ class MasterOrchestrator:
                 json.dump({
                     'ticker': self.ticker,
                     'research_mode': self.research_mode,
-                    'research_rounds': self.research_rounds,
+                    'debate_rounds': self.research_rounds,
                     'portfolio_value': self.portfolio_value,
+                    'analysis_date': self.analysis_date,  # NEW: Include in logs
+                    'historical_mode': self.analysis_date is not None,  # NEW
                     'start_time': self.start_time.isoformat() if self.start_time else None,
                     'end_time': self.end_time.isoformat() if self.end_time else None,
+                    'duration_seconds': (self.end_time - self.start_time).total_seconds() if self.end_time and self.start_time else None,
                     'phases': self.phase_results,
                     'errors': self.errors,
                     'log': self.execution_log
                 }, f, indent=2)
-            print(f"Logs saved to: {log_file}")
         except Exception as e:
             print(f"Failed to save logs: {e}")
 
@@ -578,70 +567,65 @@ def main():
         epilog="""
 Examples:
   python master_orchestrator.py AAPL
-  python master_orchestrator.py AAPL --run-all
-  python master_orchestrator.py AAPL --run-all --research-mode deep
-  python master_orchestrator.py AAPL --run-all --research-mode research --research-rounds 5
-  
+  python master_orchestrator.py AAPL --research-mode deep
+  python master_orchestrator.py AAPL --research-mode research --research-rounds 5
+  python master_orchestrator.py AAPL --analysis-date 2024-06-15
+
 Research Modes:
-  shallow  - Quick analysis (1 round, ~2 minutes)
-  deep     - Detailed analysis (3 rounds, ~5 minutes)  
-  research - Comprehensive analysis (5+ rounds, ~10 minutes)
+  shallow  - Quick analysis, no debate (~2 minutes)
+  deep     - 3 debate rounds (~5 minutes)
+  research - 5 debate rounds (~8 minutes)
+
+Historical Backtesting:
+  --analysis-date YYYY-MM-DD  - Analyze using data from specified date
         """
     )
     
-    parser.add_argument("ticker", help="Stock ticker symbol (e.g., AAPL, MSFT, GOOGL)")
-    parser.add_argument("--run-all", action="store_true", 
-                       help="Include Phase 6 (Game Theory Tournament)")
+    parser.add_argument("ticker", help="Stock ticker symbol")
     parser.add_argument("--research-mode", 
-                       choices=['shallow', 'deep', 'research'], 
+                       choices=['shallow', 'deep', 'research'],
                        default='shallow',
                        help="Research depth (default: shallow)")
-    parser.add_argument("--research-rounds", 
-                       type=int, 
+    parser.add_argument("--research-rounds",
+                       type=int,
                        default=0,
-                       help="Number of debate rounds (default: auto based on mode)")
-    parser.add_argument("--portfolio-value", 
-                       type=float, 
+                       help="Override debate rounds (0=auto based on mode)")
+    parser.add_argument("--portfolio-value",
+                       type=float,
                        default=100000,
-                       help="Portfolio value for position sizing (default: 100000)")
+                       help="Portfolio value (default: 100000)")
+    
+    # ============================================================
+    # NEW: Add analysis-date argument for historical backtesting
+    # ============================================================
+    parser.add_argument("--analysis-date",
+                       type=str,
+                       default=None,
+                       help="Historical analysis date (YYYY-MM-DD format)")
     
     args = parser.parse_args()
     
-    # Auto-set rounds based on mode if not specified
-    if args.research_rounds == 0:
-        if args.research_mode == 'deep':
-            args.research_rounds = 3
-        elif args.research_mode == 'research':
-            args.research_rounds = 5
-        else:
-            args.research_rounds = 1
-    
-    print(f"Starting orchestrator from: {os.getcwd()}")
+    print(f"Starting from: {os.getcwd()}")
     
     try:
         orchestrator = MasterOrchestrator(
             ticker=args.ticker,
             portfolio_value=args.portfolio_value,
             research_mode=args.research_mode,
-            research_rounds=args.research_rounds
+            research_rounds=args.research_rounds,
+            analysis_date=args.analysis_date  # NEW: Pass to orchestrator
         )
         
-        results = orchestrator.run_complete_workflow(
-            include_game_theory=args.run_all
-        )
+        results = orchestrator.run_complete_workflow()
         
-        # Exit with appropriate code
         success_count = sum(1 for r in results.values() if r.get('status') == 'SUCCESS')
-        if success_count == len(results):
-            sys.exit(0)  # All successful
-        else:
-            sys.exit(1)  # Some failures
+        sys.exit(0 if success_count == len(results) else 1)
         
     except KeyboardInterrupt:
-        print("\n\n[!] Interrupted by user")
+        print("\n\n[!] Interrupted")
         sys.exit(130)
     except Exception as e:
-        print(f"\n[ERROR] Fatal error: {e}")
+        print(f"\n[ERROR] {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

@@ -1,891 +1,624 @@
 """
-Bull Researcher - Enhanced with Multi-Round Debate Support
-Builds comprehensive bullish case with shallow/deep/research modes
+Bull Researcher - LLM-Driven Analysis
+LLM does the heavy lifting: reads reports, extracts insights, decides metrics
+Code only provides guardrails to catch unrealistic outputs
+
+Philosophy:
+  LLM = Brain (analyzes, decides, reasons)
+  Code = Safety net (validates bounds, catches errors)
 
 Usage: 
-  python bull_researcher.py AAPL --mode shallow
-  python bull_researcher.py AAPL --mode deep --rounds 3
-  python bull_researcher.py AAPL --mode research --rounds 5
+  python bull_researcher.py AAPL --discussion-file ../../outputs/discussion_points.json
+  python bull_researcher.py AAPL --discussion-file ../../outputs/discussion_points.json --analysis-date 2024-06-15
 """
 
 import os
 import sys
 import json
 import argparse
-import subprocess
+import re
 import time
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from openai import OpenAI
 
-# Force UTF-8 for Windows
 if sys.platform == 'win32':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 
 class BullResearcher:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini",
+                 analysis_date: Optional[str] = None):
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
         
-        # Enhanced system prompt combining reference paper's debate style
-        self.base_system_prompt = """You are a Bull Analyst making the strongest possible case FOR investing in this stock.
-
-**YOUR MISSION:**
-Build a compelling, well-reasoned argument emphasizing opportunities, strengths, and positive catalysts. You are building a thesis that will be debated against the Bear Analyst, so your arguments must be:
-1. Data-driven and specific (reference actual numbers)
-2. Logically sound (optimistic but not naive)
-3. Comprehensive (technical, fundamental, sentiment, macro tailwinds)
-4. Actionable (provide specific price targets and catalysts)
-
-**ANALYSIS FRAMEWORK:**
-
-1. **Opportunity Identification:**
-   - Technical: Uptrends, support levels, bullish patterns, momentum
-   - Fundamental: Undervaluation, accelerating growth, margin expansion, strong balance sheet
-   - Sentiment: Positive shifts, upgrades, institutional accumulation
-   - Macro: Favorable rates, sector rotation into, economic tailwinds
-
-2. **Counter Bear Arguments:**
-   - For each major bearish concern, provide logical rebuttal
-   - Use data to show why fears are overblown or temporary
-   - Identify what bears are missing or overweighting
-
-3. **Upside Catalysts & Drivers:**
-   - Specific events that could drive price appreciation
-   - Timeline and probability for each
-   - Quantify potential upside impact
-
-4. **Risk/Reward Assessment:**
-   - Quantify upside potential (% and $ targets)
-   - Acknowledge but minimize downside risk
-   - Calculate favorable risk/reward ratios (aim for 3:1+)
-
-5. **Actionable Recommendations:**
-   - Entry strategies (immediate, scale-in, wait for pullback)
-   - Specific price levels for entry
-   - Position sizing recommendations
-
-**OUTPUT REQUIREMENTS:**
-
-## Bull Case Summary
-[2-3 sentence thesis of why this is a BUY]
-
-## Critical Opportunity Factors
-
-### Technical Catalysts
-[List 3-5 technical positives with specific levels]
-
-### Fundamental Strengths
-[List 3-5 fundamental drivers with metrics]
-
-### Sentiment & News Catalysts
-[Positive shifts, upcoming events]
-
-### Macro Tailwinds
-[Favorable economic/market conditions]
-
-## Counter to Bear Arguments
-[For top 3 bear concerns, provide data-driven rebuttals]
-
-## Upside Catalysts & Timeline
-[List 5+ specific events with timeline and probability]
-
-## Risk/Reward Assessment
-- **Upside Target:** $X (+Y%)
-- **Downside Risk:** $X (-Y%)
-- **Risk/Reward Ratio:** Favorable (X:1)
-- **Conviction Level:** High/Medium/Low
-
-## Recommended Entry Strategy
-[Specific trading recommendations: buy now, scale-in, wait]
-
-BULL CASE STRENGTH: Strong/Moderate/Weak - Confidence: High/Medium/Low
-
-**CRITICAL:** Be intellectually honest. If opportunities are limited, say so. Your job is rigorous analysis, not blind optimism."""
+        self.analysis_date = analysis_date
         
-        # Storage
+        if self.analysis_date:
+            print(f"[BULL] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+        else:
+            print(f"[BULL] Running in LIVE mode (current data)")
+        
+        # Guardrails - comprehensive validation to catch fabrication and errors
+        self.guardrails = {
+            # Percentage bounds
+            'max_upside_pct': 100,      # Flag if LLM says >100% upside
+            'min_upside_pct': 1,        # Flag if <1%
+            'max_downside_pct': 50,     # Flag if >50% downside
+            'min_downside_pct': 1,      # Flag if <1%
+            'max_rr_ratio': 10,         # Flag if R/R > 10:1
+            'min_rr_ratio': 0.1,        # Flag if R/R < 0.1:1
+            
+            # Valid enums
+            'valid_convictions': ['HIGH', 'MEDIUM', 'LOW'],
+            'valid_recommendations': ['STRONG BUY', 'BUY', 'HOLD', 'SELL', 'STRONG SELL'],
+            'valid_signal_strengths': ['strong', 'moderate', 'weak'],
+            'valid_impact_levels': ['high', 'medium', 'low'],
+            'valid_data_quality': ['strong', 'moderate', 'weak'],
+            
+            # Consistency rules
+            'high_conviction_requires_strong_data': True,
+            'strong_buy_requires_min_rr': 1.5,
+            'max_signals_without_source': 0,  # All signals must have source
+            
+            # Required fields
+            'required_fields': ['core_thesis', 'risk_reward', 'conviction', 'recommendation'],
+            'required_rr_fields': ['upside_pct', 'downside_pct', 'rationale'],
+            'required_conviction_fields': ['level', 'data_quality'],
+        }
+        
         self.bull_thesis = {}
-        self.debate_history = []
+        self.validation_warnings = []  # Track all warnings
     
     def load_discussion_points(self, filepath: str) -> Optional[Dict]:
-        """Load discussion points with validation"""
+        """Load discussion points from analysts"""
         print(f"[BULL] Loading discussion points from {filepath}...")
-        
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
+            print(f"[BULL] ✓ Loaded discussion for {data.get('ticker', 'unknown')}")
             
-            required_keys = ['ticker', 'summary', 'full_analyst_reports']
-            missing = [k for k in required_keys if k not in data]
-            
-            if missing:
-                print(f"[BULL] ⚠️  Missing keys: {missing}")
-                return None
-            
-            print(f"[BULL] ✓ Loaded discussion for {data['ticker']}")
-            print(f"[BULL] ✓ Full reports: {len(data.get('full_analyst_reports', {}))}")
+            if data.get('analysis_date'):
+                print(f"[BULL] Discussion data is from historical date: {data.get('analysis_date')}")
             
             return data
-            
         except FileNotFoundError:
-            print(f"[BULL] ❌ File not found: {filepath}")
+            print(f"[BULL] ✗ File not found: {filepath}")
             return None
         except json.JSONDecodeError as e:
-            print(f"[BULL] ❌ Invalid JSON: {e}")
+            print(f"[BULL] ✗ Invalid JSON: {e}")
             return None
         except Exception as e:
-            print(f"[BULL] ❌ Load error: {e}")
+            print(f"[BULL] ✗ Load error: {e}")
             return None
-    
-    def extract_bull_signals_from_full_reports(self, discussion_points: Dict) -> Dict[str, List[str]]:
-        """Extract bullish signals from full analyst reports"""
-        print(f"[BULL] Analyzing full analyst reports...")
-        
+
+    def _build_analysis_prompt(self, discussion_points: Dict) -> str:
+        """Build the prompt for LLM to analyze and decide everything"""
         full_reports = discussion_points.get('full_analyst_reports', {})
-        
-        opportunity_categories = {
-            'technical': [],
-            'fundamental': [],
-            'sentiment': [],
-            'macro': []
-        }
-        
-        # Keyword sets for bullish signals
-        keywords = {
-            'technical': ['uptrend', 'support', 'bullish', 'momentum', 'breakout', 'oversold', 'golden cross'],
-            'fundamental': ['growth', 'undervalued', 'strong', 'beat', 'expanding', 'improving', 'positive cash flow'],
-            'sentiment': ['bullish', 'upgrade', 'positive', 'buy rating', 'optimistic', 'favorable'],
-            'macro': ['risk-on', 'tailwind', 'favorable', 'growth', 'supportive', 'cyclical strength']
-        }
-        
-        # Extract from each report
-        for report_type, kw_list in keywords.items():
-            report_text = full_reports.get(report_type, '')
-            
-            for keyword in kw_list:
-                if keyword in report_text.lower():
-                    sentences = report_text.split('.')
-                    for sent in sentences:
-                        if keyword in sent.lower() and 20 < len(sent.strip()) < 300:
-                            opportunity_categories[report_type].append(sent.strip())
-                            break
-        
-        # Add extracted bull evidence
-        for evidence in discussion_points.get('bull_evidence', [])[:10]:
-            source = evidence.get('source', 'unknown')
-            signal = evidence.get('signal', '')
-            
-            if source in opportunity_categories:
-                opportunity_categories[source].append(signal)
-        
-        # Deduplicate
-        for category in opportunity_categories:
-            opportunity_categories[category] = list(set(opportunity_categories[category]))[:10]
-        
-        total_opportunities = sum(len(v) for v in opportunity_categories.values())
-        print(f"[BULL] ✓ Extracted {total_opportunities} opportunity factors")
-        
-        return opportunity_categories
-    
-    def counter_bear_arguments(self, discussion_points: Dict) -> List[Dict]:
-        """Build rebuttals to bearish arguments"""
-        print(f"[BULL] Developing rebuttals to bear arguments...")
-        
-        bear_evidence = discussion_points.get('bear_evidence', [])
-        rebuttals = []
-        
-        for evidence in bear_evidence[:5]:
-            signal = evidence.get('signal', '')
-            source = evidence.get('source', '')
-            
-            rebuttal = {
-                'bear_concern': signal,
-                'source': source,
-                'counter_argument': self._generate_smart_rebuttal(signal)
-            }
-            rebuttals.append(rebuttal)
-        
-        print(f"[BULL] ✓ Created {len(rebuttals)} rebuttals")
-        return rebuttals
-    
-    def _generate_smart_rebuttal(self, bear_signal: str) -> str:
-        """Generate context-aware rebuttals to bear concerns"""
-        signal_lower = bear_signal.lower()
-        
-        rebuttals = {
-            'overbought': 'Overbought can persist in strong uptrends - momentum often continues further than expected',
-            'resistance': 'Previous resistance becomes support after breakout - levels are meant to be broken',
-            'overvalued': 'Growth companies often trade at premium multiples - justified by future potential',
-            'debt': 'Debt is manageable with strong cash flow generation and low rates',
-            'risk': 'Risk is already priced in - market looks forward not backward',
-            'concern': 'Temporary concerns often create buying opportunities',
-            'weakness': 'Short-term weakness in strong trends offers better entry points',
-            'bearish': 'Excessive bearish sentiment is often a contrarian buy signal',
-            'downgrade': 'Analyst downgrades frequently mark bottoms - they lag price action',
-            'expensive': 'Quality deserves premium - you get what you pay for',
-            'high': 'High metrics reflect quality and growth potential',
-            'declining': 'Cyclical declines are temporary in secular growth stories'
-        }
-        
-        for keyword, rebuttal in rebuttals.items():
-            if keyword in signal_lower:
-                return rebuttal
-        
-        return "This concern appears overblown given the positive fundamental momentum"
-    
-    def identify_upside_catalysts(self, discussion_points: Dict) -> List[Dict]:
-        """Identify catalysts that could drive price higher"""
-        print(f"[BULL] Identifying upside catalysts...")
-        
-        catalysts = []
-        
-        # Urgent positive catalysts from priorities
-        for priority in discussion_points.get('research_priorities', []):
-            if priority.get('priority') == 'URGENT' and 'time_sensitive' in priority.get('focus', ''):
-                catalysts.append({
-                    'type': 'immediate_catalyst',
-                    'description': priority.get('description', ''),
-                    'impact': 'HIGH',
-                    'timeline': 'Imminent',
-                    'probability': 'Medium to High'
-                })
-        
-        # Standard positive catalysts
-        standard_catalysts = [
-            {
-                'type': 'earnings_beat',
-                'description': 'Quarterly earnings beat and guidance raise',
-                'impact': 'HIGH',
-                'timeline': '1-3 months',
-                'probability': 'Medium to High'
-            },
-            {
-                'type': 'technical_breakout',
-                'description': 'Breakout above resistance triggering momentum buying',
-                'impact': 'MEDIUM',
-                'timeline': '1-2 weeks',
-                'probability': 'Medium'
-            },
-            {
-                'type': 'macro_tailwind',
-                'description': 'Favorable sector rotation or rate environment',
-                'impact': 'MEDIUM',
-                'timeline': 'Ongoing',
-                'probability': 'Medium'
-            },
-            {
-                'type': 'product_innovation',
-                'description': 'New product launch or market expansion',
-                'impact': 'MEDIUM to HIGH',
-                'timeline': '3-6 months',
-                'probability': 'Medium'
-            },
-            {
-                'type': 'institutional_accumulation',
-                'description': 'Increased institutional buying or analyst upgrades',
-                'impact': 'MEDIUM',
-                'timeline': '1-3 months',
-                'probability': 'Low to Medium'
-            }
-        ]
-        
-        # Add based on bull strength
-        bull_count = discussion_points.get('summary', {}).get('bull_signal_count', 0)
-        bear_count = discussion_points.get('summary', {}).get('bear_signal_count', 0)
-        
-        if bull_count > bear_count:
-            catalysts.extend(standard_catalysts[:4])
-        else:
-            catalysts.extend(standard_catalysts[:2])
-        
-        print(f"[BULL] ✓ Identified {len(catalysts)} catalysts")
-        return catalysts
-    
-    def calculate_risk_reward(self, discussion_points: Dict) -> Dict[str, Any]:
-        """Calculate risk/reward metrics from bull perspective"""
-        print(f"[BULL] Calculating risk/reward...")
-        
         summary = discussion_points.get('summary', {})
-        recs = summary.get('recommendations', {})
         
-        bull_count = sum(1 for r in recs.values() if r == 'BUY')
-        hold_count = sum(1 for r in recs.values() if r == 'HOLD')
-        bear_count = sum(1 for r in recs.values() if r == 'SELL')
-        total = len(recs)
-        
-        # Bull percentage (HOLD counts as 0.5 bullish)
-        bull_pct = ((bull_count + hold_count * 0.5) / total) * 100 if total > 0 else 50
-        
-        # Estimate upside/downside from bull perspective
-        if bull_pct >= 75:
-            upside = "30-50%"
-            downside = "5-10%"
-            rr_ratio = 4.0
-            conviction = "HIGH"
-        elif bull_pct >= 50:
-            upside = "20-30%"
-            downside = "10-15%"
-            rr_ratio = 2.0
-            conviction = "MEDIUM"
-        else:
-            upside = "10-20%"
-            downside = "15-20%"
-            rr_ratio = 1.0
-            conviction = "LOW"
-        
-        assessment = {
-            'upside_potential': upside,
-            'downside_risk': downside,
-            'reward_risk_ratio': rr_ratio,
-            'bull_percentage': bull_pct,
-            'conviction_level': conviction,
-            'analyst_breakdown': {'buy': bull_count, 'hold': hold_count, 'sell': bear_count}
-        }
-        
-        print(f"[BULL] ✓ R/R Ratio: {rr_ratio:.1f}:1, Bull%: {bull_pct:.0f}%")
-        return assessment
-    
-    def suggest_entry_strategies(self, risk_reward: Dict) -> List[Dict]:
-        """Generate entry and position building strategies"""
-        conviction = risk_reward['conviction_level']
-        
-        strategies = {
-            'HIGH': [
-                {
-                    'strategy': 'AGGRESSIVE_ENTRY',
-                    'description': 'Enter full position immediately',
-                    'timing': 'IMMEDIATE',
-                    'rationale': 'Strong upside with limited downside - high conviction setup'
-                },
-                {
-                    'strategy': 'BUY_WEAKNESS',
-                    'description': 'Add on any pullbacks to support',
-                    'timing': 'OPPORTUNISTIC',
-                    'rationale': 'Scale up on temporary weakness in strong trend'
-                },
-                {
-                    'strategy': 'LARGE_POSITION',
-                    'description': 'Position size 10-15% of portfolio',
-                    'timing': 'IMMEDIATE',
-                    'rationale': 'High conviction warrants larger allocation'
-                }
-            ],
-            'MEDIUM': [
-                {
-                    'strategy': 'SCALE_IN',
-                    'description': 'Build position over 2-3 entries',
-                    'timing': 'GRADUAL',
-                    'rationale': 'Reduce timing risk while building exposure'
-                },
-                {
-                    'strategy': 'WAIT_FOR_PULLBACK',
-                    'description': 'Wait for 3-5% pullback to support',
-                    'timing': 'PATIENT',
-                    'rationale': 'Better risk/reward by waiting for dip'
-                },
-                {
-                    'strategy': 'MODERATE_POSITION',
-                    'description': 'Position size 5-8% of portfolio',
-                    'timing': 'GRADUAL',
-                    'rationale': 'Moderate conviction = moderate sizing'
-                }
-            ],
-            'LOW': [
-                {
-                    'strategy': 'PILOT_POSITION',
-                    'description': 'Small starter position only',
-                    'timing': 'WATCH',
-                    'rationale': 'Low conviction - wait for more evidence'
-                },
-                {
-                    'strategy': 'WAIT_FOR_CATALYST',
-                    'description': 'Wait for clear catalyst before entry',
-                    'timing': 'PATIENT',
-                    'rationale': 'Need better setup or confirmation'
-                },
-                {
-                    'strategy': 'SMALL_POSITION',
-                    'description': 'Position size 2-3% maximum',
-                    'timing': 'GRADUAL',
-                    'rationale': 'Limited conviction = limited exposure'
-                }
-            ]
-        }
-        
-        return strategies.get(conviction, strategies['LOW'])
-    
-    def build_bull_thesis(self, opportunity_categories: Dict, risk_reward: Dict) -> str:
-        """Build core bull thesis statement"""
-        components = []
-        
-        if opportunity_categories['technical']:
-            components.append("Technical momentum and trend structure favor further upside")
-        if opportunity_categories['fundamental']:
-            components.append("Fundamental strength supports higher valuation levels")
-        if opportunity_categories['sentiment']:
-            components.append("Positive sentiment shift creating buying pressure")
-        if opportunity_categories['macro']:
-            components.append("Macroeconomic tailwinds provide systematic support")
-        
-        if not components:
-            components.append("Multiple positive factors align for potential appreciation")
-        
-        thesis = f"""The bull case for {self.ticker} rests on {len(components)} key pillars:
-
-{chr(10).join(f'{i+1}. {c}' for i, c in enumerate(components))}
-
-**Risk/Reward Analysis:**
-- Upside Potential: {risk_reward['upside_potential']}
-- Downside Risk: {risk_reward['downside_risk']}
-- Reward/Risk Ratio: {risk_reward['reward_risk_ratio']:.1f}:1
-- Conviction: {risk_reward['conviction_level']} ({risk_reward['bull_percentage']:.0f}% bullish/neutral)
+        date_context = ""
+        if self.analysis_date:
+            date_context = f"""
+⚠️ HISTORICAL ANALYSIS MODE ⚠️
+You are analyzing as of {self.analysis_date}. 
+Only use information that would have been available on this date.
+Do NOT reference any events after {self.analysis_date}.
 """
-        return thesis
+
+        prompt = f"""You are a Senior Bull Analyst building the investment case FOR {self.ticker}.
+
+{date_context}
+
+═══════════════════════════════════════════════════════════════════════
+ANALYST REPORTS TO ANALYZE
+═══════════════════════════════════════════════════════════════════════
+
+TECHNICAL ANALYSIS:
+{full_reports.get('technical', 'No technical report available')}
+
+FUNDAMENTAL ANALYSIS:
+{full_reports.get('fundamental', 'No fundamental report available')}
+
+NEWS & SENTIMENT:
+{full_reports.get('news', 'No news report available')}
+
+MACRO ENVIRONMENT:
+{full_reports.get('macro', 'No macro report available')}
+
+ANALYST SUMMARY:
+{json.dumps(summary, indent=2) if summary else 'No summary available'}
+
+═══════════════════════════════════════════════════════════════════════
+YOUR TASK
+═══════════════════════════════════════════════════════════════════════
+
+Analyze ALL the reports above and build a comprehensive BULL CASE.
+
+You must:
+1. READ the reports carefully and identify bullish signals
+2. EXTRACT specific data points that support the bull case (prices, levels, metrics)
+3. DETERMINE realistic upside potential based on what the data shows
+4. ASSESS the quality of evidence (is there strong data or just vague signals?)
+5. DECIDE your conviction level based on evidence strength
+
+CRITICAL RULES:
+- Base your analysis ONLY on what's in the reports above
+- If a report doesn't mention specific price targets, estimate based on technical levels or valuation
+- Be realistic - mega-cap stocks don't move 50% in 3 months
+- If data is weak/missing, say so and lower your conviction
+- Cite specific evidence from the reports
+
+Return your analysis as JSON with this structure:
+{{
+    "core_thesis": "2-3 sentence summary of why this stock should go up",
     
-    def research_shallow(self, discussion_points: Dict) -> str:
+    "key_bullish_signals": [
+        {{"source": "technical/fundamental/news/macro", "signal": "specific finding", "strength": "strong/moderate/weak"}}
+    ],
+    
+    "catalysts": [
+        {{"catalyst": "description", "timeline": "when", "impact": "high/medium/low"}}
+    ],
+    
+    "risk_reward": {{
+        "current_price": <number or null if not found>,
+        "upside_target": <number or null>,
+        "downside_support": <number or null>,
+        "upside_pct": <your estimate based on data>,
+        "downside_pct": <your estimate based on data>,
+        "reward_risk_ratio": <calculated or estimated>,
+        "rationale": "explain how you arrived at these numbers"
+    }},
+    
+    "conviction": {{
+        "level": "HIGH/MEDIUM/LOW",
+        "reasoning": "why this conviction level",
+        "data_quality": "strong/moderate/weak - how much hard data vs speculation"
+    }},
+    
+    "recommendation": {{
+        "action": "STRONG BUY/BUY/HOLD",
+        "position_size": "suggested % of portfolio",
+        "entry_strategy": "how to enter",
+        "time_horizon": "expected holding period"
+    }},
+    
+    "counter_bear_arguments": [
+        {{"bear_concern": "what bears might say", "bull_response": "why it's overblown"}}
+    ],
+    
+    "full_analysis": "Your complete written bull case (3-5 paragraphs)"
+}}
+
+Return ONLY valid JSON. No markdown, no explanation outside JSON."""
+
+        return prompt
+
+    def _validate_and_fix(self, analysis: Dict, discussion_points: Dict) -> Dict:
         """
-        SHALLOW MODE: Quick single-pass bull case
-        Fast analysis, minimal LLM calls
+        Comprehensive guardrails to catch fabrication, errors, and inconsistencies.
+        Fixes what can be fixed, flags what can't.
         """
-        print(f"\n[BULL] 📊 SHALLOW MODE - Quick bull case\n")
+        print("[BULL] Applying comprehensive guardrails...")
+        corrections = []
+        warnings = []
         
-        start_time = time.time()
+        # ═══════════════════════════════════════════════════════════════
+        # 1. CHECK REQUIRED FIELDS EXIST
+        # ═══════════════════════════════════════════════════════════════
+        for field in self.guardrails['required_fields']:
+            if field not in analysis or not analysis[field]:
+                warnings.append(f"MISSING REQUIRED: '{field}' not provided by LLM")
+                if field == 'risk_reward':
+                    analysis['risk_reward'] = {}
+                elif field == 'conviction':
+                    analysis['conviction'] = {'level': 'LOW', 'data_quality': 'weak'}
+                elif field == 'recommendation':
+                    analysis['recommendation'] = {'action': 'HOLD'}
         
-        # Quick extraction
-        opportunity_categories = self.extract_bull_signals_from_full_reports(discussion_points)
-        risk_reward = self.calculate_risk_reward(discussion_points)
-        catalysts = self.identify_upside_catalysts(discussion_points)[:3]
-        entry_strategies = self.suggest_entry_strategies(risk_reward)[:2]
+        rr = analysis.get('risk_reward', {})
+        conviction = analysis.get('conviction', {})
+        rec = analysis.get('recommendation', {})
         
-        # Build thesis
-        core_thesis = self.build_bull_thesis(opportunity_categories, risk_reward)
-        
-        bull_data = {
-            'ticker': self.ticker,
-            'timestamp': datetime.now().isoformat(),
-            'mode': 'SHALLOW',
-            'core_thesis': core_thesis,
-            'opportunities': opportunity_categories,
-            'catalysts': catalysts,
-            'risk_reward': risk_reward,
-            'entry_strategies': entry_strategies,
-            'discussion_summary': discussion_points.get('summary', {})
-        }
-        
-        self.bull_thesis = bull_data
-        
-        # Quick synthesis
-        if self.client:
-            report = self._quick_synthesis(bull_data, discussion_points)
+        # ═══════════════════════════════════════════════════════════════
+        # 2. VALIDATE PERCENTAGE BOUNDS
+        # ═══════════════════════════════════════════════════════════════
+        upside = rr.get('upside_pct')
+        if upside is not None:
+            if not isinstance(upside, (int, float)):
+                warnings.append(f"INVALID TYPE: upside_pct is {type(upside).__name__}, not number")
+                rr['upside_pct'] = None
+            elif upside > self.guardrails['max_upside_pct']:
+                corrections.append(f"Upside {upside}% capped to {self.guardrails['max_upside_pct']}%")
+                rr['upside_pct'] = self.guardrails['max_upside_pct']
+                rr['upside_capped'] = True
+            elif upside < self.guardrails['min_upside_pct']:
+                warnings.append(f"Upside {upside}% suspiciously low for bull case")
         else:
-            report = self._create_fallback_report(bull_data)
+            warnings.append("MISSING: upside_pct not provided")
         
-        elapsed = time.time() - start_time
-        print(f"\n[BULL] ✓ Shallow analysis in {elapsed:.2f}s\n")
+        downside = rr.get('downside_pct')
+        if downside is not None:
+            if not isinstance(downside, (int, float)):
+                warnings.append(f"INVALID TYPE: downside_pct is {type(downside).__name__}, not number")
+                rr['downside_pct'] = None
+            elif downside > self.guardrails['max_downside_pct']:
+                corrections.append(f"Downside {downside}% capped to {self.guardrails['max_downside_pct']}%")
+                rr['downside_pct'] = self.guardrails['max_downside_pct']
+                rr['downside_capped'] = True
+            elif downside < 0:
+                corrections.append(f"Downside {downside}% cannot be negative - setting to 0")
+                rr['downside_pct'] = 0
+        else:
+            warnings.append("MISSING: downside_pct not provided")
         
-        return report
-    
-    def research_deep(self, discussion_points: Dict, rounds: int = 3, bear_thesis: Optional[str] = None) -> str:
-        """
-        DEEP MODE: Multi-round debate with bear analyst
-        Iterative refinement through argumentation
-        """
-        print(f"\n[BULL] 🎯 DEEP MODE - {rounds}-round debate\n")
+        # ═══════════════════════════════════════════════════════════════
+        # 3. VALIDATE R/R RATIO MATH
+        # ═══════════════════════════════════════════════════════════════
+        rr_ratio = rr.get('reward_risk_ratio')
+        upside_val = rr.get('upside_pct')
+        downside_val = rr.get('downside_pct')
         
-        start_time = time.time()
-        
-        # Extract comprehensive data
-        opportunity_categories = self.extract_bull_signals_from_full_reports(discussion_points)
-        rebuttals = self.counter_bear_arguments(discussion_points)
-        catalysts = self.identify_upside_catalysts(discussion_points)
-        risk_reward = self.calculate_risk_reward(discussion_points)
-        entry_strategies = self.suggest_entry_strategies(risk_reward)
-        
-        # Build initial thesis
-        core_thesis = self.build_bull_thesis(opportunity_categories, risk_reward)
-        
-        # Debate rounds
-        debate_history = []
-        current_argument = ""
-        
-        for round_num in range(1, rounds + 1):
-            print(f"[BULL] 🔄 Debate Round {round_num}/{rounds}")
-            
-            if round_num == 1:
-                # Initial bull argument
-                current_argument = self._generate_initial_argument(
-                    core_thesis, opportunity_categories, catalysts,
-                    risk_reward, discussion_points
-                )
+        if upside_val and downside_val and downside_val > 0:
+            calculated_rr = round(upside_val / downside_val, 2)
+            if rr_ratio is not None:
+                # Check if LLM's ratio matches the math
+                if abs(calculated_rr - rr_ratio) > 0.5:
+                    corrections.append(f"R/R ratio {rr_ratio} doesn't match math ({upside_val}/{downside_val}={calculated_rr}) - fixing")
+                    rr['reward_risk_ratio'] = calculated_rr
+                    rr['rr_ratio_corrected'] = True
             else:
-                # Respond to bear's counter
-                current_argument = self._generate_debate_response(
-                    round_num, rounds, debate_history,
-                    bear_thesis, opportunity_categories, discussion_points
-                )
-            
-            debate_history.append({
-                'round': round_num,
-                'speaker': 'bull',
-                'argument': current_argument
-            })
-            
-            print(f"[BULL] ✓ Round {round_num} complete ({len(current_argument)} chars)")
+                # LLM didn't provide, calculate it
+                rr['reward_risk_ratio'] = calculated_rr
+                rr['rr_ratio_calculated'] = True
         
-        # Compile final thesis
-        bull_data = {
+        # Cap R/R ratio
+        if rr.get('reward_risk_ratio'):
+            if rr['reward_risk_ratio'] > self.guardrails['max_rr_ratio']:
+                corrections.append(f"R/R {rr['reward_risk_ratio']} capped to {self.guardrails['max_rr_ratio']}")
+                rr['reward_risk_ratio'] = self.guardrails['max_rr_ratio']
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 4. VALIDATE PRICE CONSISTENCY
+        # ═══════════════════════════════════════════════════════════════
+        current = rr.get('current_price')
+        target = rr.get('upside_target')
+        support = rr.get('downside_support')
+        
+        if current and target:
+            if target <= current:
+                warnings.append(f"INCONSISTENT: Upside target ${target} <= current ${current}")
+        
+        if current and support:
+            if support >= current:
+                warnings.append(f"INCONSISTENT: Downside support ${support} >= current ${current}")
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 5. VALIDATE ENUMS
+        # ═══════════════════════════════════════════════════════════════
+        if conviction.get('level') not in self.guardrails['valid_convictions']:
+            corrections.append(f"Invalid conviction '{conviction.get('level')}' → MEDIUM")
+            conviction['level'] = 'MEDIUM'
+        
+        if conviction.get('data_quality') not in self.guardrails['valid_data_quality']:
+            corrections.append(f"Invalid data_quality '{conviction.get('data_quality')}' → moderate")
+            conviction['data_quality'] = 'moderate'
+        
+        if rec.get('action') not in self.guardrails['valid_recommendations']:
+            corrections.append(f"Invalid recommendation '{rec.get('action')}' → HOLD")
+            rec['action'] = 'HOLD'
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 6. VALIDATE CONSISTENCY (conviction vs data quality)
+        # ═══════════════════════════════════════════════════════════════
+        if conviction.get('level') == 'HIGH' and conviction.get('data_quality') == 'weak':
+            warnings.append("INCONSISTENT: HIGH conviction with weak data quality - suspicious")
+            # Downgrade conviction
+            corrections.append("HIGH conviction + weak data → downgraded to MEDIUM")
+            conviction['level'] = 'MEDIUM'
+            conviction['downgraded_reason'] = 'weak data quality'
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 7. VALIDATE RECOMMENDATION vs R/R
+        # ═══════════════════════════════════════════════════════════════
+        if rec.get('action') == 'STRONG BUY':
+            rr_val = rr.get('reward_risk_ratio', 0)
+            if rr_val < self.guardrails['strong_buy_requires_min_rr']:
+                warnings.append(f"INCONSISTENT: STRONG BUY but R/R only {rr_val}:1 (min {self.guardrails['strong_buy_requires_min_rr']})")
+                corrections.append(f"STRONG BUY → BUY (R/R {rr_val} < {self.guardrails['strong_buy_requires_min_rr']})")
+                rec['action'] = 'BUY'
+                rec['downgraded_reason'] = 'insufficient R/R ratio'
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 8. VALIDATE SIGNALS HAVE SOURCES
+        # ═══════════════════════════════════════════════════════════════
+        valid_sources = ['technical', 'fundamental', 'news', 'macro', 'sentiment']
+        signals = analysis.get('key_bullish_signals', [])
+        
+        for i, signal in enumerate(signals):
+            if not signal.get('source'):
+                warnings.append(f"Signal {i+1} missing source - could be fabricated")
+            elif signal.get('source').lower() not in valid_sources:
+                warnings.append(f"Signal {i+1} has invalid source '{signal.get('source')}'")
+            
+            if not signal.get('signal'):
+                warnings.append(f"Signal {i+1} has no actual signal text")
+            
+            if signal.get('strength') not in self.guardrails['valid_signal_strengths']:
+                signal['strength'] = 'moderate'  # Default
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 9. CHECK FOR RATIONALE (anti-fabrication)
+        # ═══════════════════════════════════════════════════════════════
+        rationale = rr.get('rationale', '')
+        if not rationale or len(rationale) < 20:
+            warnings.append("WEAK RATIONALE: No explanation for risk/reward numbers - possibly fabricated")
+            rr['rationale_warning'] = True
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 10. STORE RESULTS
+        # ═══════════════════════════════════════════════════════════════
+        analysis['guardrail_corrections'] = corrections
+        analysis['guardrail_warnings'] = warnings
+        analysis['validation_passed'] = len(warnings) == 0
+        analysis['validation_score'] = max(0, 100 - len(warnings) * 10 - len(corrections) * 5)
+        
+        # Print summary
+        print(f"[BULL] Validation score: {analysis['validation_score']}/100")
+        if corrections:
+            print(f"[BULL] ⚠ Applied {len(corrections)} correction(s):")
+            for c in corrections:
+                print(f"    → {c}")
+        if warnings:
+            print(f"[BULL] ⚠ {len(warnings)} warning(s):")
+            for w in warnings[:5]:  # Show first 5
+                print(f"    ⚠ {w}")
+            if len(warnings) > 5:
+                print(f"    ... and {len(warnings) - 5} more")
+        
+        if not corrections and not warnings:
+            print("[BULL] ✓ All validations passed")
+        
+        return analysis
+
+    def _fallback_analysis(self, discussion_points: Dict) -> Dict:
+        """Minimal fallback if LLM fails completely"""
+        print("[BULL] ⚠ Using fallback analysis")
+        
+        return {
+            'core_thesis': f"Unable to generate full analysis for {self.ticker}. LLM analysis failed.",
+            'key_bullish_signals': [],
+            'catalysts': [],
+            'risk_reward': {
+                'upside_pct': None,
+                'downside_pct': None,
+                'reward_risk_ratio': None,
+                'rationale': 'Analysis failed - no data available'
+            },
+            'conviction': {
+                'level': 'LOW',
+                'reasoning': 'Fallback due to analysis failure',
+                'data_quality': 'weak'
+            },
+            'recommendation': {
+                'action': 'HOLD',
+                'position_size': '0%',
+                'entry_strategy': 'Wait for proper analysis',
+                'time_horizon': 'N/A'
+            },
+            'counter_bear_arguments': [],
+            'full_analysis': 'Analysis could not be completed. Please retry or check input data.',
+            'is_fallback': True
+        }
+
+    def analyze(self, discussion_points: Dict) -> Dict:
+        """
+        Main analysis method - LLM does all the heavy lifting.
+        """
+        if not self.client:
+            print("[BULL] ✗ No API client available")
+            return self._fallback_analysis(discussion_points)
+        
+        prompt = self._build_analysis_prompt(discussion_points)
+        
+        try:
+            print(f"[BULL] LLM analyzing reports...")
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": "You are a senior equity analyst. Analyze the provided reports and return structured JSON. Be specific, cite evidence, and be realistic in your estimates."
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.4,  # Slightly lower for more consistent structured output
+                max_tokens=3000
+            )
+            
+            response_text = response.choices[0].message.content.strip()
+            
+            # Clean markdown if present
+            if response_text.startswith("```"):
+                response_text = re.sub(r'^```json?\n?', '', response_text)
+                response_text = re.sub(r'\n?```$', '', response_text)
+            
+            analysis = json.loads(response_text)
+            print(f"[BULL] ✓ LLM analysis complete")
+            
+            # Apply guardrails with discussion points for cross-reference
+            analysis = self._validate_and_fix(analysis, discussion_points)
+            
+            return analysis
+            
+        except json.JSONDecodeError as e:
+            print(f"[BULL] ✗ JSON parse error: {e}")
+            print(f"[BULL] Raw response: {response_text[:500]}...")
+            return self._fallback_analysis(discussion_points)
+        except Exception as e:
+            print(f"[BULL] ✗ Analysis error: {e}")
+            return self._fallback_analysis(discussion_points)
+
+    def generate_report(self, analysis: Dict) -> str:
+        """Generate human-readable report from analysis"""
+        rr = analysis.get('risk_reward', {})
+        conviction = analysis.get('conviction', {})
+        rec = analysis.get('recommendation', {})
+        
+        # Format bullish signals
+        signals_text = ""
+        for signal in analysis.get('key_bullish_signals', [])[:5]:
+            signals_text += f"  • [{signal.get('source', 'N/A').upper()}] {signal.get('signal', 'N/A')} (Strength: {signal.get('strength', 'N/A')})\n"
+        
+        # Format catalysts
+        catalysts_text = ""
+        for cat in analysis.get('catalysts', [])[:3]:
+            catalysts_text += f"  • {cat.get('catalyst', 'N/A')} ({cat.get('timeline', 'N/A')}, Impact: {cat.get('impact', 'N/A')})\n"
+        
+        # Format counter-arguments
+        counter_text = ""
+        for counter in analysis.get('counter_bear_arguments', [])[:2]:
+            counter_text += f"  • Bear: {counter.get('bear_concern', 'N/A')}\n    Bull Response: {counter.get('bull_response', 'N/A')}\n"
+        
+        guardrails_text = ""
+        if analysis.get('guardrail_corrections'):
+            guardrails_text = "\n**Guardrail Corrections Applied:**\n" + "\n".join(f"  ⚠ {c}" for c in analysis['guardrail_corrections'])
+        
+        report = f"""
+# BULL THESIS: {self.ticker}
+{'='*70}
+**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M')}
+**Analysis Date:** {self.analysis_date or 'Current'}
+**Model:** {self.model}
+
+## CORE THESIS
+{analysis.get('core_thesis', 'N/A')}
+
+## KEY BULLISH SIGNALS
+{signals_text or '  No signals identified'}
+
+## CATALYSTS
+{catalysts_text or '  No catalysts identified'}
+
+## RISK/REWARD ASSESSMENT
+- **Current Price:** {rr.get('current_price') or 'Not specified'}
+- **Upside Target:** {rr.get('upside_target') or 'Not specified'}
+- **Downside Support:** {rr.get('downside_support') or 'Not specified'}
+- **Upside Potential:** {rr.get('upside_pct')}%{' (CAPPED)' if rr.get('upside_capped') else ''}
+- **Downside Risk:** {rr.get('downside_pct')}%{' (CAPPED)' if rr.get('downside_capped') else ''}
+- **Reward/Risk Ratio:** {rr.get('reward_risk_ratio')}:1
+- **Rationale:** {rr.get('rationale', 'N/A')}
+
+## CONVICTION
+- **Level:** {conviction.get('level', 'N/A')}
+- **Data Quality:** {conviction.get('data_quality', 'N/A')}
+- **Reasoning:** {conviction.get('reasoning', 'N/A')}
+
+## RECOMMENDATION
+- **Action:** {rec.get('action', 'N/A')}
+- **Position Size:** {rec.get('position_size', 'N/A')}
+- **Entry Strategy:** {rec.get('entry_strategy', 'N/A')}
+- **Time Horizon:** {rec.get('time_horizon', 'N/A')}
+
+## COUNTER BEAR ARGUMENTS
+{counter_text or '  None provided'}
+
+## FULL ANALYSIS
+{analysis.get('full_analysis', 'N/A')}
+{guardrails_text}
+
+{'='*70}
+BULL CASE: {rec.get('action', 'N/A')} | Conviction: {conviction.get('level', 'N/A')} | Data Quality: {conviction.get('data_quality', 'N/A')}
+{'='*70}
+"""
+        return report
+
+    def research(self, discussion_points: Dict) -> str:
+        """Main entry point - analyze and generate report"""
+        print(f"\n{'='*60}")
+        print(f"BULL RESEARCHER: {self.ticker}")
+        if self.analysis_date:
+            print(f"*** HISTORICAL MODE: As of {self.analysis_date} ***")
+        print(f"{'='*60}\n")
+        
+        start_time = time.time()
+        
+        # LLM does all the analysis
+        analysis = self.analyze(discussion_points)
+        
+        # Generate report
+        report = self.generate_report(analysis)
+        
+        # Store thesis data
+        self.bull_thesis = {
             'ticker': self.ticker,
             'timestamp': datetime.now().isoformat(),
-            'mode': 'DEEP',
-            'rounds': rounds,
-            'core_thesis': core_thesis,
-            'opportunities': opportunity_categories,
-            'bear_rebuttals': rebuttals,
-            'catalysts': catalysts,
-            'risk_reward': risk_reward,
-            'entry_strategies': entry_strategies,
-            'debate_history': debate_history,
-            'final_argument': current_argument
+            'analysis_date': self.analysis_date,
+            'historical_mode': self.analysis_date is not None,
+            'model': self.model,
+            
+            # LLM's analysis
+            'core_thesis': analysis.get('core_thesis'),
+            'key_bullish_signals': analysis.get('key_bullish_signals', []),
+            'catalysts': analysis.get('catalysts', []),
+            'risk_reward': analysis.get('risk_reward', {}),
+            'conviction': analysis.get('conviction', {}),
+            'recommendation': analysis.get('recommendation', {}),
+            'counter_bear_arguments': analysis.get('counter_bear_arguments', []),
+            'full_analysis': analysis.get('full_analysis'),
+            
+            # Metadata
+            'guardrail_corrections': analysis.get('guardrail_corrections', []),
+            'is_fallback': analysis.get('is_fallback', False)
         }
         
-        self.bull_thesis = bull_data
-        
-        # Create final report
-        report = self._create_debate_report(bull_data)
-        
         elapsed = time.time() - start_time
-        print(f"\n[BULL] ✓ Deep analysis in {elapsed:.2f}s ({rounds} rounds)\n")
+        print(f"\n[BULL] ✓ Research complete in {elapsed:.2f}s")
+        print(f"[BULL] Conviction: {analysis.get('conviction', {}).get('level', 'N/A')}")
+        print(f"[BULL] Recommendation: {analysis.get('recommendation', {}).get('action', 'N/A')}")
         
         return report
-    
-    def research_comprehensive(self, discussion_points: Dict, rounds: int = 5, bear_thesis: Optional[str] = None) -> str:
-        """
-        RESEARCH MODE: Maximum depth with extended debate
-        Most thorough analysis, highest LLM usage
-        """
-        print(f"\n[BULL] 🔬 RESEARCH MODE - Comprehensive {rounds}-round analysis\n")
-        
-        return self.research_deep(discussion_points, rounds=rounds, bear_thesis=bear_thesis)
-    
-    def _generate_initial_argument(
-        self,
-        core_thesis: str,
-        opportunity_categories: Dict,
-        catalysts: List[Dict],
-        risk_reward: Dict,
-        discussion_points: Dict
-    ) -> str:
-        """Generate Round 1 bull argument"""
-        
-        if not self.client:
-            return core_thesis
-        
-        full_reports = discussion_points.get('full_analyst_reports', {})
-        
-        context = f"""# Initial Bull Argument for {self.ticker}
-
-## Core Thesis
-{core_thesis}
-
-## Full Analyst Reports (Excerpts)
-Technical: {full_reports.get('technical', '')[:1000]}...
-Fundamental: {full_reports.get('fundamental', '')[:1000]}...
-News: {full_reports.get('news', '')[:800]}...
-Macro: {full_reports.get('macro', '')[:800]}...
-
-## Opportunity Factors
-{json.dumps(opportunity_categories, indent=2)}
-
-## Upside Catalysts
-{json.dumps(catalysts, indent=2)}
-
-## Risk/Reward
-{json.dumps(risk_reward, indent=2)}
-
-Build your opening bull argument. Be compelling, specific, and data-driven."""
-        
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.base_system_prompt},
-                    {"role": "user", "content": context}
-                ],
-                temperature=0.7,
-                max_tokens=2000
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
-            print(f"[BULL] ⚠️  LLM error in round 1: {e}")
-            return core_thesis
-    
-    def _generate_debate_response(
-        self,
-        round_num: int,
-        total_rounds: int,
-        debate_history: List[Dict],
-        bear_argument: Optional[str],
-        opportunity_categories: Dict,
-        discussion_points: Dict
-    ) -> str:
-        """Generate debate response in later rounds"""
-        
-        if not self.client or not bear_argument:
-            return "Bull maintains position based on identified opportunities."
-        
-        # Format history
-        history_str = "\n\n".join([
-            f"Round {d['round']} ({d['speaker']}): {d['argument'][:500]}..."
-            for d in debate_history[-2:]
-        ])
-        
-        instructions = f"""Counter the bear's latest argument while strengthening your bull case.
-
-Focus on:
-1. Refuting bear's specific concerns with data
-2. Highlighting opportunities they're missing
-3. Reinforcing your strongest bull points
-4. Providing new positive evidence from reports
-
-Be persuasive but data-driven."""
-        
-        context = f"""# Debate Round {round_num}/{total_rounds}
-
-## Previous Debate
-{history_str}
-
-## Bear's Latest Argument
-{bear_argument[:1000]}
-
-## Your Opportunity Analysis
-{json.dumps(opportunity_categories, indent=2)[:2000]}
-
-{instructions}
-"""
-        
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.base_system_prompt},
-                    {"role": "user", "content": context}
-                ],
-                temperature=0.7,
-                max_tokens=2000
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
-            print(f"[BULL] ⚠️  LLM error in round {round_num}: {e}")
-            return f"Bull maintains opportunity-focused position (Round {round_num} error)"
-    
-    def _quick_synthesis(self, bull_data: Dict, discussion_points: Dict) -> str:
-        """Quick synthesis for shallow mode"""
-        
-        full_reports = discussion_points.get('full_analyst_reports', {})
-        
-        context = f"""Create a compelling bull case for {self.ticker}:
-
-## Core Thesis
-{bull_data['core_thesis']}
-
-## Full Analyst Reports (Key Excerpts)
-Technical: {full_reports.get('technical', '')[:800]}
-Fundamental: {full_reports.get('fundamental', '')[:800]}
-
-## Risk/Reward
-{json.dumps(bull_data['risk_reward'], indent=2)}
-
-## Catalysts
-{json.dumps(bull_data['catalysts'], indent=2)}
-
-Provide a compelling but concise bull case (500-1000 words)."""
-        
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.base_system_prompt},
-                    {"role": "user", "content": context}
-                ],
-                temperature=0.7,
-                max_tokens=1800
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
-            print(f"[BULL] ⚠️  Synthesis error: {e}")
-            return self._create_fallback_report(bull_data)
-    
-    def _create_debate_report(self, bull_data: Dict) -> str:
-        """Format debate-style report"""
-        report = f"""
-# BULL RESEARCH REPORT: {self.ticker}
-{'='*70}
-**Mode:** {bull_data['mode']} ({bull_data['rounds']} rounds)
-**Generated:** {bull_data['timestamp']}
-
-## Core Bull Thesis
-{bull_data['core_thesis']}
-
-## Debate Evolution
-"""
-        for entry in bull_data['debate_history']:
-            report += f"\n### Round {entry['round']} - Bull Argument\n"
-            report += f"{entry['argument'][:800]}...\n"
-        
-        report += f"""
-## Risk/Reward Summary
-- Upside: {bull_data['risk_reward']['upside_potential']}
-- Downside: {bull_data['risk_reward']['downside_risk']}
-- R/R Ratio: **{bull_data['risk_reward']['reward_risk_ratio']:.1f}:1**
-- Conviction: {bull_data['risk_reward']['conviction_level']}
-
-## Recommended Entry Strategy
-"""
-        for strat in bull_data['entry_strategies']:
-            report += f"\n**{strat['strategy']}** [{strat['timing']}]\n"
-            report += f"- {strat['description']}\n"
-            report += f"- {strat['rationale']}\n"
-        
-        report += f"\n{'='*70}\n"
-        report += f"BULL CASE STRENGTH: {bull_data['risk_reward']['conviction_level']} - Confidence: {bull_data['risk_reward']['conviction_level']}\n"
-        
-        return report
-    
-    def _create_fallback_report(self, bull_data: Dict) -> str:
-        """Fallback without LLM"""
-        report = f"""
-# BULL RESEARCH REPORT: {self.ticker}
-{'='*70}
-*Fallback Mode - LLM Unavailable*
-
-## Core Thesis
-{bull_data['core_thesis']}
-
-## Opportunity Factors
-"""
-        for category, opps in bull_data.get('opportunities', {}).items():
-            if opps:
-                report += f"\n### {category.title()} Opportunities:\n"
-                for opp in opps[:5]:
-                    report += f"- {opp}\n"
-        
-        report += f"""
-## Risk/Reward
-- Upside: {bull_data['risk_reward']['upside_potential']}
-- R/R Ratio: {bull_data['risk_reward']['reward_risk_ratio']:.1f}:1
-- Conviction: {bull_data['risk_reward']['conviction_level']}
-
-BULL CASE STRENGTH: {bull_data['risk_reward']['conviction_level']} - Confidence: {bull_data['risk_reward']['conviction_level']}
-"""
-        return report
-    
-    def research(self, discussion_points: Dict, mode: str = 'shallow', rounds: int = 1, bear_thesis: Optional[str] = None) -> str:
-        """
-        Main research entry point - dispatches to appropriate mode
-        """
-        if mode == 'shallow':
-            return self.research_shallow(discussion_points)
-        elif mode == 'deep':
-            return self.research_deep(discussion_points, rounds=rounds, bear_thesis=bear_thesis)
-        elif mode == 'research':
-            return self.research_comprehensive(discussion_points, rounds=rounds, bear_thesis=bear_thesis)
-        else:
-            print(f"[BULL] ⚠️  Unknown mode '{mode}', using shallow")
-            return self.research_shallow(discussion_points)
     
     def save_thesis(self, filepath: str):
-        """Save thesis data"""
+        """Save thesis data to JSON"""
         try:
             with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(self.bull_thesis, f, indent=2)
-            print(f"[BULL] ✓ Saved to {filepath}")
+                json.dump(self.bull_thesis, f, indent=2, ensure_ascii=False)
+            print(f"[BULL] ✓ Thesis saved to {filepath}")
         except Exception as e:
-            print(f"[BULL] ⚠️  Save error: {e}")
+            print(f"[BULL] ✗ Save error: {e}")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Bull Researcher - Multi-mode bullish analysis",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Research Modes:
-  shallow  - Quick single-pass (1 LLM call, ~30s)
-  deep     - Multi-round debate (3-5 rounds, ~2-3 min)
-  research - Comprehensive analysis (5+ rounds, ~5 min)
-
-Examples:
-  python bull_researcher.py AAPL --mode shallow
-  python bull_researcher.py AAPL --mode deep --rounds 3
-  python bull_researcher.py AAPL --mode research --rounds 5 --output bull_thesis.txt
-        """
-    )
-    
-    parser.add_argument("ticker", help="Stock ticker")
-    parser.add_argument("--discussion-file", default="../../outputs/discussion_points.json",
-                       help="Discussion points JSON")
-    parser.add_argument("--mode", choices=['shallow', 'deep', 'research'], default='shallow',
-                       help="Analysis depth (default: shallow)")
-    parser.add_argument("--rounds", type=int, default=3,
-                       help="Debate rounds for deep/research (default: 3)")
-    parser.add_argument("--bear-thesis", help="Bear thesis file for debate")
-    parser.add_argument("--api-key", help="OpenAI API key")
-    parser.add_argument("--model", default="gpt-4o-mini", help="Model")
-    parser.add_argument("--output", help="Output file")
-    parser.add_argument("--save-data", help="Save JSON")
+    parser = argparse.ArgumentParser(description="Bull Researcher - LLM-Driven Analysis")
+    parser.add_argument("ticker", help="Stock ticker symbol")
+    parser.add_argument("--discussion-file", help="Path to discussion_points.json")
+    parser.add_argument("--save-data", help="Path to save thesis JSON")
+    parser.add_argument("--model", default="gpt-4o-mini", help="OpenAI model")
+    parser.add_argument("--analysis-date", help="Historical analysis date (YYYY-MM-DD)")
     
     args = parser.parse_args()
     
-    try:
-        researcher = BullResearcher(ticker=args.ticker, api_key=args.api_key, model=args.model)
-        
-        # Load discussion
+    researcher = BullResearcher(
+        ticker=args.ticker,
+        model=args.model,
+        analysis_date=args.analysis_date
+    )
+    
+    if args.discussion_file:
         discussion_points = researcher.load_discussion_points(args.discussion_file)
-        if not discussion_points:
-            sys.exit(1)
-        
-        # Load bear thesis if provided
-        bear_thesis = None
-        if args.bear_thesis and os.path.exists(args.bear_thesis):
-            with open(args.bear_thesis, 'r', encoding='utf-8') as f:
-                bear_thesis = f.read()
-        
-        # Run research
-        report = researcher.research(
-            discussion_points,
-            mode=args.mode,
-            rounds=args.rounds,
-            bear_thesis=bear_thesis
-        )
-        
-        print(report)
-        
-        # Save
-        if args.output:
-            with open(args.output, 'w', encoding='utf-8') as f:
-                f.write(report)
-            print(f"\n✓ Saved to {args.output}")
-        
-        if args.save_data:
-            researcher.save_thesis(args.save_data)
-        
-    except KeyboardInterrupt:
-        print("\n\n⚠️  Interrupted")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+        if discussion_points:
+            report = researcher.research(discussion_points)
+            print(report)
+            
+            if args.save_data:
+                researcher.save_thesis(args.save_data)
+    else:
+        print("[BULL] No discussion file provided. Use --discussion-file")
 
 
 if __name__ == "__main__":

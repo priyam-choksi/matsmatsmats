@@ -1,168 +1,416 @@
-# agents/game_theory/strategies/tit_for_tat.py
-
 """
-Tit-for-Tat Strategy - The Adaptive Learner
+tit_for_tat.py - Adaptive Learner Strategy
 
-Personality: "I'll trust you until you burn me, then I adapt"
+Location: agents/game_theory/strategies/tit_for_tat.py
+
+This strategy mirrors what worked last round. It adapts by
+copying the approach of the winning strategy, believing that
+recent success is predictive of near-term success.
 
 Philosophy:
-- Mirrors the PREVIOUS WINNING STRATEGY from tournament history
-- Starts cooperative (Cooperator strategy)
-- Learns which personality works in current conditions
-- Evolves based on what's actually working
+    "Different regimes favor different strategies. Adapt to what's working."
 
-Game Theory Role: Evolution - learns which personality works in current regime
+Score Behavior:
+    Score determines ADAPTATION STRENGTH (how much to mirror)
+    - High score (+5 to +10): Adaptation = 100% (full mirror of winner)
+    - Neutral (-2 to +5):     Adaptation = 70% (partial mirror)
+    - Low score (-10 to -2):  Adaptation = 40% (mostly hedge/blend)
+
+Position Logic:
+    1. Track what each approach would suggest
+    2. Mirror last round's winning approach with adaptation strength
+    3. Blend with neutral (average) position based on adaptation
+
+IMPORTANT:
+    Requires external call to update_winner() after each round.
+    The tournament engine must call this with the name of the
+    strategy that performed best in the previous round.
+
+ENHANCED with:
+    - Variable position scaling based on who it's copying
+    - Memory of last 3 winners (not just 1)
+    - Initial neutral score (0)
+    - Hot/cold streak awareness
 """
 
-from typing import Optional, List, Dict
-from ..strategy_interface import TradingStrategy, StrategyDecision
+from typing import List, Tuple, Dict
+import numpy as np
+
+from ..base_strategy import TradingStrategy, TradeResult
 from ..market_context import MarketContext
 
 
 class TitForTatStrategy(TradingStrategy):
     """
-    Adaptive strategy that mirrors the previous tournament winner.
-    Starts cooperative, then learns from results.
+    ADAPTIVE LEARNER - Mirror What Worked Last Round
+    
+    This strategy is inspired by the famous Tit-for-Tat strategy
+    from game theory, which won Axelrod's tournament by being
+    simple, nice, and retaliatory.
+    
+    In this trading context:
+        - "Cooperate" = follow the winning approach
+        - "Defect" = if mirroring isn't working, blend more
+    
+    Core Idea:
+        Different market regimes favor different strategies:
+        - Bull markets might favor aggressive approaches
+        - Bear markets might favor conservative approaches
+        - Sideways markets might favor contrarian approaches
+        
+        By mirroring the recent winner, we adapt to the regime.
+    
+    Approach Types:
+        We map strategies to approach types:
+        - "cooperator": Follow consensus, scale with agreement
+        - "defector": Contrarian at extremes  
+        - "conservative": Follow conservative agent
+        - "aggressive": Follow aggressive agent
+        - "neutral": Average of all agents
+    
+    Score Interpretation:
+        Score determines how strongly to mirror:
+        
+        | Score Range | Adaptation | Interpretation |
+        |-------------|------------|----------------|
+        | +5 to +10   | 100%       | "Full mirror, it's working" |
+        | -2 to +5    | 70%        | "Partial mirror" |
+        | -10 to -2   | 40%        | "Mostly blend, mirroring isn't working" |
+    
+    When It Wins:
+        - Regime changes where adapting matters
+        - When recent performance predicts future performance
+        - Markets with momentum in strategy effectiveness
+    
+    When It Loses:
+        - Rapidly changing conditions (always one step behind)
+        - When the best strategy keeps changing
+        - Mean-reverting strategy effectiveness
     """
     
+    # Position scaling varies based on who we're copying
+    POSITION_SCALE_MAP = {
+        'cooperator': 4.0,    # Same as cooperator
+        'defector': 5.0,      # Same as defector
+        'conservative': 3.0,  # Conservative scaling
+        'aggressive': 6.0,    # Most aggressive scaling
+        'neutral': 3.5        # Moderate scaling
+    }
+    
     def __init__(self):
-        super().__init__(name="Tit-for-Tat")
+        super().__init__(
+            name="Tit-for-Tat",
+            description="Adaptive learner - mirrors winning strategies",
+            position_scale=4.0,  # Default, changes based on who we copy
+            initial_score=0.0  # Neutral starting point
+        )
+        
+        # Start by mirroring cooperator (follow consensus)
+        self.last_winning_approach = "cooperator"
+        
+        # Track last 3 winners for better adaptation
+        self.winner_history = ["cooperator", "cooperator", "cooperator"]
+        
+        # Track wins by approach type
+        self.approach_wins: Dict[str, int] = {
+            "cooperator": 0,
+            "defector": 0,
+            "conservative": 0,
+            "aggressive": 0,
+            "neutral": 0
+        }
+        
+        # Track which approach we mirrored each round
+        self.approach_history: List[str] = []
     
-    def make_decision(self,
-                     context: MarketContext,
-                     tournament_history: Optional[List[Dict]] = None) -> StrategyDecision:
+    def reset(self):
+        """Reset including adaptation state."""
+        super().reset()
+        self.last_winning_approach = "cooperator"
+        self.winner_history = ["cooperator", "cooperator", "cooperator"]
+        self.approach_wins = {k: 0 for k in self.approach_wins}
+        self.approach_history = []
+    
+    def update_winner(self, winner_name: str):
         """
-        Mirror the strategy that won the last tournament.
+        Update with the strategy that won last round.
         
-        Logic:
-        1. First round (no history) → Use Cooperator strategy
-        2. After round 1 → Mirror whatever strategy won last time
-        3. Apply that strategy's logic to current context
+        Call this after each round with the name of the strategy
+        that had the highest return.
+        
+        Args:
+            winner_name: Name of winning strategy (e.g., "Cooperator")
+        
+        Maps strategy names to approach types:
+            - "Cooperator", "consensus" -> "cooperator"
+            - "Defector", "contrarian" -> "defector"
+            - "Conservative", "Buy-and-Hold" -> "conservative"
+            - "Actual Market" -> "neutral"
+            - Others -> "aggressive"
         """
+        name_lower = winner_name.lower()
         
-        # First round: Start cooperative
-        if not tournament_history or len(tournament_history) == 0:
-            return self._use_cooperator_logic(context, is_first_round=True)
-        
-        # Get last winner
-        last_result = tournament_history[-1]
-        last_winner = last_result.get('winner', 'actual_market')
-        
-        # Mirror that strategy's logic
-        if last_winner == 'cooperator':
-            decision = self._use_cooperator_logic(context)
-        elif last_winner == 'defector':
-            decision = self._use_defector_logic(context)
-        elif last_winner == 'buy_hold':
-            decision = self._use_buy_hold_logic(context)
-        else:  # actual_market
-            decision = self._use_actual_market_logic(context)
-        
-        # Update reasoning to show we're mirroring
-        decision.reasoning = f"Mirroring '{last_winner}': {decision.reasoning}"
-        decision.strategy_name = self.name  # But keep our name
-        
-        decision.metadata = decision.metadata or {}
-        decision.metadata['mirroring'] = last_winner
-        
-        return decision
-    
-    # ===== Mirror Logic Methods ===== #
-    
-    def _use_cooperator_logic(self, context: MarketContext, is_first_round: bool = False) -> StrategyDecision:
-        """Apply Cooperator's logic"""
-        alignment = context.alignment_score()
-        consensus = context.analyst_consensus
-        
-        if alignment > 0.5 and consensus > 0.7:
-            position_multiplier = 1.0 + (alignment * 0.5)
-            confidence_multiplier = 1.15
-            reasoning = "Amplifying (Cooperator logic): High alignment + consensus"
-        elif alignment < 0:
-            position_multiplier = 0.7
-            confidence_multiplier = 0.9
-            reasoning = "Reducing (Cooperator logic): Misalignment detected"
+        # Map strategy name to approach type
+        if "cooperator" in name_lower or "consensus" in name_lower:
+            approach = "cooperator"
+        elif "defector" in name_lower or "contrar" in name_lower:
+            approach = "defector"
+        elif "conserv" in name_lower or "hold" in name_lower or "patient" in name_lower:
+            approach = "conservative"
+        elif "actual" in name_lower or "market" in name_lower or "control" in name_lower:
+            approach = "neutral"
         else:
-            position_multiplier = 1.0
-            confidence_multiplier = 1.0
-            reasoning = "Neutral (Cooperator logic): Following base"
+            approach = "aggressive"
         
-        if is_first_round:
-            reasoning = "First round: Starting cooperative " + reasoning
+        self.last_winning_approach = approach
         
-        return self.create_decision(
-            action=context.base_decision.action,
-            position_multiplier=position_multiplier,
-            confidence_multiplier=confidence_multiplier,
-            reasoning=reasoning,
-            context=context
-        )
+        # Update winner history (keep last 3)
+        self.winner_history.append(approach)
+        if len(self.winner_history) > 3:
+            self.winner_history.pop(0)
+        
+        # Track wins
+        if approach in self.approach_wins:
+            self.approach_wins[approach] += 1
     
-    def _use_defector_logic(self, context: MarketContext) -> StrategyDecision:
-        """Apply Defector's logic"""
-        consensus = context.analyst_consensus
-        sentiment = context.sentiment_score
-        base_action = context.base_decision.action
+    def _get_dominant_approach(self) -> str:
+        """
+        Get the most common winner from recent history.
         
-        # Invert if strong consensus
-        if consensus > 0.75 and context.confidence < 0.9:
-            action = self._invert_action(base_action)
-            position_multiplier = 0.6
-            reasoning = "Inverting (Defector logic): High consensus"
-        elif sentiment > 0.8 or sentiment < 0.2:
-            action = self._invert_action(base_action)
-            position_multiplier = 0.7
-            reasoning = "Fading (Defector logic): Extreme sentiment"
+        Returns:
+            Most common approach from last 3 winners
+        """
+        from collections import Counter
+        counts = Counter(self.winner_history)
+        return counts.most_common(1)[0][0]
+    
+    def _get_adaptation_strength(self) -> float:
+        """
+        Get how strongly to mirror based on score.
+        
+        Higher score = stronger mirror (it's working)
+        Lower score = weaker mirror (blend more)
+        
+        Returns:
+            Adaptation strength (0.0 to 1.0)
+        """
+        if self.score >= 5:
+            return 1.0   # Full mirror
+        elif self.score >= -2:
+            return 0.7   # Partial mirror
         else:
-            action = base_action
-            position_multiplier = 1.0
-            reasoning = "Following (Defector logic): No overreaction"
-        
-        return self.create_decision(
-            action=action,
-            position_multiplier=position_multiplier,
-            confidence_multiplier=0.9,
-            reasoning=reasoning,
-            context=context
-        )
+            return 0.4   # Mostly blend
     
-    def _use_buy_hold_logic(self, context: MarketContext) -> StrategyDecision:
-        """Apply Buy & Hold logic"""
-        base = context.base_decision
-        action = base.action
+    def _calculate_approach_positions(self, ctx: MarketContext) -> Dict[str, float]:
+        """
+        Calculate what each approach would suggest.
         
-        # Only act on high confidence
-        if base.confidence < 0.80:
-            action = 'HOLD'
-            reasoning = "Holding (Buy&Hold logic): Confidence too low"
-        elif action == 'SELL' and context.regime in ['bull_trend', 'momentum']:
-            action = 'HOLD'
-            reasoning = "Holding (Buy&Hold logic): Don't sell in bull market"
+        Args:
+            ctx: MarketContext with agent evaluations
+            
+        Returns:
+            Dictionary mapping approach -> suggested position (percentage)
+        """
+        # Get raw positions
+        positions = [
+            ctx.aggressive_position,
+            ctx.neutral_position,
+            ctx.conservative_position
+        ]
+        avg_position = np.mean(positions)
+        avg_pct = avg_position * 100.0
+        
+        # Calculate consensus for cooperator approach
+        std_pos = np.std(positions)
+        consensus = max(0.0, 1.0 - std_pos / 0.10)
+        
+        # Cooperator approach: consensus-scaled
+        cooperator_base = avg_pct * (0.5 + 0.5 * consensus)
+        cooperator_pos = cooperator_base * self.POSITION_SCALE_MAP['cooperator']
+        
+        # Defector approach: fade if high consensus, follow if low
+        if consensus > 0.8:
+            # High consensus - fade to small position
+            defector_base = 30.0 * 0.4  # Small contrarian position
         else:
-            reasoning = "Acting (Buy&Hold logic): Strong signal"
+            # Low consensus - follow aggressively
+            defector_base = avg_pct * 2.0
+        defector_pos = defector_base * self.POSITION_SCALE_MAP['defector']
         
-        return self.create_decision(
-            action=action,
-            position_multiplier=1.0,
-            confidence_multiplier=1.0,
-            reasoning=reasoning,
-            context=context
-        )
+        # Conservative approach: follow conservative agent with scaling
+        conservative_base = ctx.conservative_position * 100.0
+        conservative_pos = conservative_base * self.POSITION_SCALE_MAP['conservative']
+        
+        # Aggressive approach: follow aggressive agent with scaling
+        aggressive_base = ctx.aggressive_position * 100.0
+        aggressive_pos = aggressive_base * self.POSITION_SCALE_MAP['aggressive']
+        
+        # Neutral approach: simple average with scaling
+        neutral_pos = avg_pct * self.POSITION_SCALE_MAP['neutral']
+        
+        return {
+            "cooperator": min(85.0, cooperator_pos),
+            "defector": max(20.0, min(80.0, defector_pos)),
+            "conservative": min(70.0, conservative_pos),
+            "aggressive": min(90.0, aggressive_pos),
+            "neutral": min(75.0, neutral_pos)
+        }
     
-    def _use_actual_market_logic(self, context: MarketContext) -> StrategyDecision:
-        """Apply Actual Market logic (just follow base)"""
-        return self.create_decision(
-            action=context.base_decision.action,
-            position_multiplier=1.0,
-            confidence_multiplier=1.0,
-            reasoning="Following (Actual Market logic): Trust base system",
-            context=context
+    def decide_position(
+        self, 
+        ctx: MarketContext, 
+        history: List[TradeResult]
+    ) -> Tuple[float, str]:
+        """
+        Decide position by mirroring the last winning approach.
+        
+        Blends the target approach with neutral based on adaptation strength.
+        
+        Args:
+            ctx: MarketContext with agent evaluations
+            history: Past trades
+            
+        Returns:
+            Tuple of (position_pct, reasoning)
+        """
+        # Get adaptation strength based on score
+        adaptation = self._get_adaptation_strength()
+        
+        # Get dominant approach from recent winners
+        dominant = self._get_dominant_approach()
+        
+        # Calculate what each approach would suggest
+        approach_positions = self._calculate_approach_positions(ctx)
+        
+        # Get target position from dominant winning approach
+        target_pos = approach_positions.get(dominant, approach_positions["neutral"])
+        
+        # Get neutral position for blending
+        neutral_pos = approach_positions["neutral"]
+        
+        # Blend: adaptation% of target + (1-adaptation)% of neutral
+        position_pct = target_pos * adaptation + neutral_pos * (1.0 - adaptation)
+        
+        # Apply hot/cold adjustment
+        if self.is_hot:
+            position_pct *= 1.1
+        elif self.is_cold:
+            position_pct *= 0.9
+        
+        # Update position scale to match who we're copying
+        self.position_scale = self.POSITION_SCALE_MAP.get(dominant, 4.0)
+        
+        # Clamp to reasonable range
+        position_pct = max(15.0, min(85.0, position_pct))
+        
+        # Track which approach we're mirroring
+        self.approach_history.append(dominant)
+        
+        # Build reasoning
+        reasoning = (
+            f"TitForTat: mirroring '{dominant}' "
+            f"(recent: {'/'.join(self.winner_history[-3:])}) "
+            f"target={target_pos:.0f}%, adapt={adaptation:.0%} "
         )
+        
+        if self.is_hot:
+            reasoning += "[HOT] "
+        elif self.is_cold:
+            reasoning += "[COLD] "
+            
+        reasoning += f"[score={self.score:+.0f}] -> {position_pct:.0f}%"
+        
+        return position_pct, reasoning
     
-    def _invert_action(self, action: str) -> str:
-        """Invert action for Defector logic"""
-        if action == 'BUY':
-            return 'SELL'
-        elif action == 'SELL':
-            return 'BUY'
-        return 'HOLD'
+    def get_adaptation_stats(self) -> dict:
+        """Get statistics about adaptation behavior."""
+        total_wins = sum(self.approach_wins.values())
+        
+        stats = {
+            "approach_wins": self.approach_wins,
+            "total_rounds_tracked": total_wins,
+            "most_successful_approach": (
+                max(self.approach_wins, key=self.approach_wins.get)
+                if total_wins > 0 else "none"
+            ),
+            "current_mirroring": self.last_winning_approach,
+            "recent_winners": self.winner_history[-3:],
+            "approach_history": self.approach_history[-10:]  # Last 10
+        }
+        
+        # Calculate which approach we've mirrored most
+        if self.approach_history:
+            from collections import Counter
+            mirror_counts = Counter(self.approach_history)
+            stats["most_mirrored"] = mirror_counts.most_common(1)[0][0]
+            stats["mirror_distribution"] = dict(mirror_counts)
+        
+        return stats
+
+
+# === Quick test when run directly ===
+
+if __name__ == "__main__":
+    print("Testing TitForTatStrategy...")
+    print("=" * 50)
+    
+    strategy = TitForTatStrategy()
+    print(f"Initial score: {strategy.score} (neutral)")
+    print(f"Initial approach: {strategy.last_winning_approach}")
+    
+    # Test Case 1: Initial state (mirrors cooperator by default)
+    print("\nTest 1: Initial State")
+    ctx1 = MarketContext(
+        date="2024-03-15",
+        ticker="AAPL",
+        sample_num=1,
+        daily_return=0.02,
+        aggressive_position=0.20,
+        aggressive_stance="BUY",
+        aggressive_confidence="HIGH",
+        neutral_position=0.10,
+        neutral_stance="HOLD",
+        neutral_confidence="MEDIUM",
+        conservative_position=0.05,
+        conservative_stance="HOLD",
+        conservative_confidence="LOW",
+        regime="bull"
+    )
+    
+    position, reasoning = strategy.decide_position(ctx1, [])
+    print(f"  Mirroring: {strategy.last_winning_approach}")
+    print(f"  Decision: {position:.1f}%")
+    print(f"  {reasoning}")
+    
+    # Test Case 2: Update winner and see change
+    print("\nTest 2: After Defector Wins")
+    strategy.update_winner("Defector")
+    
+    position, reasoning = strategy.decide_position(ctx1, [])
+    print(f"  Mirroring: {strategy.last_winning_approach}")
+    print(f"  Decision: {position:.1f}%")
+    print(f"  {reasoning}")
+    
+    # Test Case 3: Multiple winner updates
+    print("\nTest 3: After Multiple Winners")
+    strategy.update_winner("Cooperator")
+    strategy.update_winner("Buy-and-Hold")
+    
+    dominant = strategy._get_dominant_approach()
+    position, reasoning = strategy.decide_position(ctx1, [])
+    print(f"  Winner history: {strategy.winner_history}")
+    print(f"  Dominant approach: {dominant}")
+    print(f"  Decision: {position:.1f}%")
+    print(f"  {reasoning}")
+    
+    # Test Case 4: Score effect on adaptation
+    print("\nTest 4: Score Effect on Adaptation")
+    
+    test_scores = [-8, -5, -2, 0, 3, 5, 8, 10]
+    for score in test_scores:
+        strategy.score = score
+        adapt = strategy._get_adaptation_strength()
+        print(f"  Score {score:+3d} -> Adaptation: {adapt:.0%}")
+    
+    print("\n" + "=" * 50)
+    print("TitForTatStrategy test complete!")

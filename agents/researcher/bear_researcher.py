@@ -1,807 +1,640 @@
 """
-Bear Researcher - Enhanced with Multi-Round Debate Support
-Builds comprehensive bearish case with shallow/deep/research modes
+Bear Researcher - LLM-Driven Analysis
+LLM does the heavy lifting: reads reports, extracts insights, decides metrics
+Code only provides guardrails to catch unrealistic outputs
+
+Philosophy:
+  LLM = Brain (analyzes, decides, reasons)
+  Code = Safety net (validates bounds, catches errors)
 
 Usage: 
-  python bear_researcher.py AAPL --mode shallow
-  python bear_researcher.py AAPL --mode deep --rounds 3
-  python bear_researcher.py AAPL --mode research --rounds 5
+  python bear_researcher.py AAPL --discussion-file ../../outputs/discussion_points.json
+  python bear_researcher.py AAPL --discussion-file ../../outputs/discussion_points.json --analysis-date 2024-06-15
 """
 
 import os
 import sys
 import json
 import argparse
-import subprocess
+import re
 import time
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from openai import OpenAI
 
-# Force UTF-8 for Windows
 if sys.platform == 'win32':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 
 class BearResearcher:
-    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
+    def __init__(self, ticker: str, api_key: Optional[str] = None, model: str = "gpt-4o-mini",
+                 analysis_date: Optional[str] = None):
         self.ticker = ticker.upper()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
         
-        # System prompts for different modes
-        self.base_system_prompt = """You are a Bear Analyst making the case AGAINST investing in this stock.
-
-**YOUR ROLE:**
-Present a well-reasoned argument emphasizing risks, challenges, and negative indicators. You are in a debate with a Bull Analyst, so your arguments must be:
-- Data-driven and specific (reference actual numbers from reports)
-- Logically sound (critical but intellectually honest)
-- Comprehensive (technical, fundamental, sentiment, macro risks)
-- Actionable (specific price targets, catalysts, risk management)
-
-**ANALYSIS FRAMEWORK:**
-
-1. **Risk Identification:**
-   - Technical: Overbought, resistance, bearish patterns, breakdown risk
-   - Fundamental: Overvaluation, declining growth, margin pressure, debt concerns
-   - Sentiment: Excessive optimism (contrarian signal), negative catalysts
-   - Macro: Interest rate headwinds, recession risk, sector rotation
-
-2. **Counter Bull Arguments:**
-   - Address each major bullish point with data-driven rebuttal
-   - Expose over-optimistic assumptions
-   - Show what bulls are missing or underweighting
-
-3. **Downside Catalysts:**
-   - Specific events that could trigger price decline
-   - Timeline and probability for each
-   - Quantify potential impact
-
-4. **Risk/Reward:**
-   - Downside target (% and price level)
-   - Limited upside potential
-   - Unfavorable risk/reward ratio
-
-5. **Action Plan:**
-   - Exit strategy (full/partial/hedge)
-   - Specific levels for action
-   - Risk management approach
-"""
+        self.analysis_date = analysis_date
         
-        # Debate-specific prompts
-        self.debate_prompt_template = """
-{base_prompt}
-
-**DEBATE CONTEXT:**
-Round {round_num} of {total_rounds} - {mode} mode
-
-**Previous Debate History:**
-{debate_history}
-
-**Bull's Latest Argument:**
-{bull_argument}
-
-**YOUR TASK FOR THIS ROUND:**
-{round_instructions}
-
-{output_format}
-"""
+        if self.analysis_date:
+            print(f"[BEAR] *** HISTORICAL MODE: Analyzing as of {self.analysis_date} ***")
+        else:
+            print(f"[BEAR] Running in LIVE mode (current data)")
         
-        # Storage
+        # Guardrails - comprehensive validation to catch fabrication and errors
+        self.guardrails = {
+            # Percentage bounds
+            'max_downside_pct': 80,     # Flag if LLM says >80% downside
+            'min_downside_pct': 1,      # Flag if <1%
+            'max_upside_pct': 100,      # Flag if >100% (limited) upside
+            'min_upside_pct': 0,        # Can be 0 for bear case
+            'max_risk_score': 100,      # Risk score 0-100
+            'min_risk_score': 0,
+            
+            # Valid enums
+            'valid_risk_levels': ['HIGH', 'MEDIUM', 'LOW'],
+            'valid_convictions': ['HIGH', 'MEDIUM', 'LOW'],
+            'valid_recommendations': ['STRONG SELL', 'SELL', 'HOLD', 'AVOID', 'REDUCE'],
+            'valid_signal_severity': ['high', 'medium', 'low'],
+            'valid_probability': ['high', 'medium', 'low'],
+            'valid_data_quality': ['strong', 'moderate', 'weak'],
+            
+            # Consistency rules
+            'high_conviction_requires_strong_data': True,
+            'strong_sell_requires_min_risk_score': 60,
+            'max_signals_without_source': 0,
+            
+            # Required fields
+            'required_fields': ['core_thesis', 'risk_assessment', 'conviction', 'recommendation'],
+            'required_ra_fields': ['downside_pct', 'risk_score', 'rationale'],
+            'required_conviction_fields': ['level', 'data_quality'],
+        }
+        
         self.bear_thesis = {}
-        self.debate_history = []
+        self.validation_warnings = []
     
     def load_discussion_points(self, filepath: str) -> Optional[Dict]:
-        """Load discussion points with validation"""
+        """Load discussion points from analysts"""
         print(f"[BEAR] Loading discussion points from {filepath}...")
-        
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
+            print(f"[BEAR] ✓ Loaded discussion for {data.get('ticker', 'unknown')}")
             
-            required_keys = ['ticker', 'summary', 'full_analyst_reports']
-            missing = [k for k in required_keys if k not in data]
-            
-            if missing:
-                print(f"[BEAR] ⚠️  Missing keys: {missing}")
-                return None
-            
-            print(f"[BEAR] ✓ Loaded discussion for {data['ticker']}")
-            print(f"[BEAR] ✓ Full reports: {len(data.get('full_analyst_reports', {}))}")
+            if data.get('analysis_date'):
+                print(f"[BEAR] Discussion data is from historical date: {data.get('analysis_date')}")
             
             return data
-            
         except FileNotFoundError:
-            print(f"[BEAR] ❌ File not found: {filepath}")
+            print(f"[BEAR] ✗ File not found: {filepath}")
             return None
         except json.JSONDecodeError as e:
-            print(f"[BEAR] ❌ Invalid JSON: {e}")
+            print(f"[BEAR] ✗ Invalid JSON: {e}")
             return None
         except Exception as e:
-            print(f"[BEAR] ❌ Load error: {e}")
+            print(f"[BEAR] ✗ Load error: {e}")
             return None
-    
-    def extract_bear_signals_from_full_reports(self, discussion_points: Dict) -> Dict[str, List[str]]:
-        """Extract bearish signals from full analyst reports"""
-        print(f"[BEAR] Analyzing full analyst reports...")
-        
+
+    def _build_analysis_prompt(self, discussion_points: Dict) -> str:
+        """Build the prompt for LLM to analyze and decide everything"""
         full_reports = discussion_points.get('full_analyst_reports', {})
-        
-        risk_categories = {
-            'technical': [],
-            'fundamental': [],
-            'sentiment': [],
-            'macro': []
-        }
-        
-        # Keyword sets for each category
-        keywords = {
-            'technical': ['overbought', 'resistance', 'downtrend', 'breakdown', 'bearish', 'weakness', 'poor risk/reward'],
-            'fundamental': ['overvalued', 'debt', 'declining', 'margin compression', 'liquidity concern', 'expensive', 'high P/E'],
-            'sentiment': ['negative', 'bearish sentiment', 'selling pressure', 'downgrade', 'concern', 'caution'],
-            'macro': ['risk-off', 'defensive', 'recession', 'headwind', 'rising rates', 'volatility', 'uncertainty']
-        }
-        
-        # Extract from each report
-        for report_type, keyword_list in keywords.items():
-            report_text = full_reports.get(report_type, '')
-            
-            for keyword in keyword_list:
-                if keyword in report_text.lower():
-                    # Find sentences containing keyword
-                    sentences = report_text.split('.')
-                    for sent in sentences:
-                        if keyword in sent.lower() and len(sent.strip()) > 20 and len(sent.strip()) < 300:
-                            risk_categories[report_type].append(sent.strip())
-                            break  # One per keyword
-        
-        # Also add extracted bear evidence
-        for evidence in discussion_points.get('bear_evidence', [])[:10]:
-            source = evidence.get('source', 'unknown')
-            signal = evidence.get('signal', '')
-            
-            if source in risk_categories:
-                risk_categories[source].append(signal)
-        
-        # Deduplicate and limit
-        for category in risk_categories:
-            risk_categories[category] = list(set(risk_categories[category]))[:10]
-        
-        total_risks = sum(len(v) for v in risk_categories.values())
-        print(f"[BEAR] ✓ Extracted {total_risks} risk factors")
-        
-        return risk_categories
-    
-    def counter_bull_arguments(self, discussion_points: Dict) -> List[Dict]:
-        """Build rebuttals to bullish arguments"""
-        print(f"[BEAR] Developing bull rebuttals...")
-        
-        bull_evidence = discussion_points.get('bull_evidence', [])
-        rebuttals = []
-        
-        for evidence in bull_evidence[:5]:
-            signal = evidence.get('signal', '')
-            source = evidence.get('source', '')
-            
-            rebuttal = {
-                'bull_claim': signal,
-                'source': source,
-                'counter_argument': self._generate_smart_rebuttal(signal)
-            }
-            rebuttals.append(rebuttal)
-        
-        print(f"[BEAR] ✓ Created {len(rebuttals)} rebuttals")
-        return rebuttals
-    
-    def _generate_smart_rebuttal(self, bull_signal: str) -> str:
-        """Generate context-aware rebuttals"""
-        signal_lower = bull_signal.lower()
-        
-        rebuttals = {
-            'oversold': 'Oversold can persist in downtrends - catching falling knives is dangerous',
-            'support': 'Support levels often break in weak markets',
-            'growth': 'Growth is decelerating from historical peaks',
-            'beat': 'Beating lowered estimates is not impressive - actual growth disappointing',
-            'bullish': 'Excessive bullish sentiment often marks tops (contrarian signal)',
-            'upgrade': 'Analyst upgrades lag price action and miss turning points',
-            'strong': 'Temporary strength may mask underlying deterioration',
-            'momentum': 'Momentum is mean-reverting and often reverses sharply',
-            'undervalued': 'Value traps exist - cheap can get cheaper',
-            'uptrend': 'Uptrends eventually end - exhaustion signs present'
-        }
-        
-        for keyword, rebuttal in rebuttals.items():
-            if keyword in signal_lower:
-                return rebuttal
-        
-        return "This positive factor appears already priced in at current levels"
-    
-    def identify_downside_triggers(self, discussion_points: Dict) -> List[Dict]:
-        """Identify downside catalysts"""
-        print(f"[BEAR] Identifying downside triggers...")
-        
-        triggers = []
-        
-        # Urgent risks from priorities
-        for priority in discussion_points.get('research_priorities', []):
-            if priority.get('priority') in ['URGENT', 'CRITICAL']:
-                triggers.append({
-                    'type': 'immediate_risk',
-                    'description': priority.get('description', ''),
-                    'impact': 'HIGH',
-                    'timeline': 'Imminent',
-                    'probability': 'Medium to High'
-                })
-        
-        # Standard triggers
-        standard_triggers = [
-            {'type': 'earnings_miss', 'description': 'Quarterly earnings disappointment or guidance cut', 'impact': 'HIGH', 'timeline': '1-3 months', 'probability': 'Medium'},
-            {'type': 'technical_breakdown', 'description': 'Break below key support triggering stop losses', 'impact': 'MEDIUM', 'timeline': '1-2 weeks', 'probability': 'Medium'},
-            {'type': 'macro_deterioration', 'description': 'Rising rates or recession fears escalating', 'impact': 'HIGH', 'timeline': 'Ongoing', 'probability': 'Medium to High'},
-            {'type': 'competitive_threat', 'description': 'Market share loss to competitors', 'impact': 'MEDIUM', 'timeline': '6-12 months', 'probability': 'Low to Medium'},
-            {'type': 'regulatory_action', 'description': 'Regulatory scrutiny or adverse policy changes', 'impact': 'MEDIUM', 'timeline': '3-6 months', 'probability': 'Low to Medium'}
-        ]
-        
-        # Add based on bear strength
-        bear_pct = discussion_points.get('summary', {}).get('bear_signal_count', 0)
-        bull_pct = discussion_points.get('summary', {}).get('bull_signal_count', 0)
-        
-        if bear_pct > bull_pct:
-            triggers.extend(standard_triggers[:4])
-        else:
-            triggers.extend(standard_triggers[2:4])
-        
-        print(f"[BEAR] ✓ Identified {len(triggers)} triggers")
-        return triggers
-    
-    def calculate_risk_assessment(self, discussion_points: Dict) -> Dict[str, Any]:
-        """Calculate risk metrics"""
         summary = discussion_points.get('summary', {})
-        recs = summary.get('recommendations', {})
         
-        bear_count = sum(1 for r in recs.values() if r == 'SELL')
-        hold_count = sum(1 for r in recs.values() if r == 'HOLD')
-        bull_count = sum(1 for r in recs.values() if r == 'BUY')
-        total = len(recs)
+        date_context = ""
+        if self.analysis_date:
+            date_context = f"""
+⚠️ HISTORICAL ANALYSIS MODE ⚠️
+You are analyzing as of {self.analysis_date}. 
+Only use information that would have been available on this date.
+Do NOT reference any events after {self.analysis_date}.
+"""
+
+        prompt = f"""You are a Senior Bear Analyst building the investment case AGAINST {self.ticker}.
+
+{date_context}
+
+═══════════════════════════════════════════════════════════════════════
+ANALYST REPORTS TO ANALYZE
+═══════════════════════════════════════════════════════════════════════
+
+TECHNICAL ANALYSIS:
+{full_reports.get('technical', 'No technical report available')}
+
+FUNDAMENTAL ANALYSIS:
+{full_reports.get('fundamental', 'No fundamental report available')}
+
+NEWS & SENTIMENT:
+{full_reports.get('news', 'No news report available')}
+
+MACRO ENVIRONMENT:
+{full_reports.get('macro', 'No macro report available')}
+
+ANALYST SUMMARY:
+{json.dumps(summary, indent=2) if summary else 'No summary available'}
+
+═══════════════════════════════════════════════════════════════════════
+YOUR TASK
+═══════════════════════════════════════════════════════════════════════
+
+Analyze ALL the reports above and build a comprehensive BEAR CASE.
+
+You must:
+1. READ the reports carefully and identify bearish signals, risks, and red flags
+2. EXTRACT specific data points that support the bear case (overbought indicators, valuation concerns, debt levels, etc.)
+3. DETERMINE realistic downside potential based on what the data shows
+4. ASSESS the quality of evidence (is there strong data or just vague concerns?)
+5. DECIDE your conviction level based on evidence strength
+
+CRITICAL RULES:
+- Base your analysis ONLY on what's in the reports above
+- If a report doesn't mention specific support levels, estimate based on technical analysis or historical ranges
+- Be realistic - even bear cases need to be grounded in data
+- If data is weak/missing, say so and lower your conviction
+- Cite specific evidence from the reports
+
+Return your analysis as JSON with this structure:
+{{
+    "core_thesis": "2-3 sentence summary of why this stock has downside risk",
+    
+    "key_risk_signals": [
+        {{"source": "technical/fundamental/news/macro", "signal": "specific risk finding", "severity": "high/medium/low"}}
+    ],
+    
+    "downside_triggers": [
+        {{"trigger": "what could cause decline", "timeline": "when", "probability": "high/medium/low", "impact": "description"}}
+    ],
+    
+    "risk_assessment": {{
+        "current_price": <number or null if not found>,
+        "downside_target": <number or null>,
+        "upside_resistance": <number or null>,
+        "downside_pct": <your estimate based on data>,
+        "limited_upside_pct": <your estimate - how much upside is capped>,
+        "risk_score": <0-100, your assessment of overall risk>,
+        "rationale": "explain how you arrived at these numbers"
+    }},
+    
+    "conviction": {{
+        "level": "HIGH/MEDIUM/LOW",
+        "reasoning": "why this conviction level",
+        "data_quality": "strong/moderate/weak - how much hard data vs speculation"
+    }},
+    
+    "recommendation": {{
+        "action": "STRONG SELL/SELL/AVOID/REDUCE/HOLD",
+        "risk_level": "HIGH/MEDIUM/LOW",
+        "hedging_strategy": "suggested protection",
+        "time_horizon": "when risks most likely to materialize"
+    }},
+    
+    "counter_bull_arguments": [
+        {{"bull_argument": "what bulls might say", "bear_response": "why it's wrong or risky"}}
+    ],
+    
+    "full_analysis": "Your complete written bear case (3-5 paragraphs)"
+}}
+
+Return ONLY valid JSON. No markdown, no explanation outside JSON."""
+
+        return prompt
+
+    def _validate_and_fix(self, analysis: Dict, discussion_points: Dict) -> Dict:
+        """
+        Comprehensive guardrails to catch fabrication, errors, and inconsistencies.
+        Fixes what can be fixed, flags what can't.
+        """
+        print("[BEAR] Applying comprehensive guardrails...")
+        corrections = []
+        warnings = []
         
-        bear_pct = ((bear_count + hold_count * 0.5) / total) * 100 if total > 0 else 50
+        # ═══════════════════════════════════════════════════════════════
+        # 1. CHECK REQUIRED FIELDS EXIST
+        # ═══════════════════════════════════════════════════════════════
+        for field in self.guardrails['required_fields']:
+            if field not in analysis or not analysis[field]:
+                warnings.append(f"MISSING REQUIRED: '{field}' not provided by LLM")
+                if field == 'risk_assessment':
+                    analysis['risk_assessment'] = {}
+                elif field == 'conviction':
+                    analysis['conviction'] = {'level': 'LOW', 'data_quality': 'weak'}
+                elif field == 'recommendation':
+                    analysis['recommendation'] = {'action': 'HOLD', 'risk_level': 'MEDIUM'}
         
-        if bear_pct >= 75:
-            downside, upside, risk, conviction = "25-35%", "5-10%", "HIGH", "HIGH"
-        elif bear_pct >= 50:
-            downside, upside, risk, conviction = "15-25%", "10-15%", "MEDIUM", "MEDIUM"
+        ra = analysis.get('risk_assessment', {})
+        conviction = analysis.get('conviction', {})
+        rec = analysis.get('recommendation', {})
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 2. VALIDATE PERCENTAGE BOUNDS
+        # ═══════════════════════════════════════════════════════════════
+        downside = ra.get('downside_pct')
+        if downside is not None:
+            if not isinstance(downside, (int, float)):
+                warnings.append(f"INVALID TYPE: downside_pct is {type(downside).__name__}, not number")
+                ra['downside_pct'] = None
+            elif downside > self.guardrails['max_downside_pct']:
+                corrections.append(f"Downside {downside}% capped to {self.guardrails['max_downside_pct']}%")
+                ra['downside_pct'] = self.guardrails['max_downside_pct']
+                ra['downside_capped'] = True
+            elif downside < 0:
+                corrections.append(f"Downside {downside}% cannot be negative - setting to 0")
+                ra['downside_pct'] = 0
         else:
-            downside, upside, risk, conviction = "10-15%", "15-25%", "LOW", "LOW"
+            warnings.append("MISSING: downside_pct not provided")
+        
+        limited_upside = ra.get('limited_upside_pct')
+        if limited_upside is not None:
+            if not isinstance(limited_upside, (int, float)):
+                warnings.append(f"INVALID TYPE: limited_upside_pct is {type(limited_upside).__name__}, not number")
+                ra['limited_upside_pct'] = None
+            elif limited_upside > self.guardrails['max_upside_pct']:
+                corrections.append(f"Limited upside {limited_upside}% capped to {self.guardrails['max_upside_pct']}%")
+                ra['limited_upside_pct'] = self.guardrails['max_upside_pct']
+            elif limited_upside < 0:
+                corrections.append(f"Limited upside {limited_upside}% cannot be negative - setting to 0")
+                ra['limited_upside_pct'] = 0
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 3. VALIDATE RISK SCORE
+        # ═══════════════════════════════════════════════════════════════
+        risk_score = ra.get('risk_score')
+        if risk_score is not None:
+            if not isinstance(risk_score, (int, float)):
+                warnings.append(f"INVALID TYPE: risk_score is {type(risk_score).__name__}, not number")
+                ra['risk_score'] = 50  # Default to medium
+            elif risk_score > self.guardrails['max_risk_score']:
+                corrections.append(f"Risk score {risk_score} capped to 100")
+                ra['risk_score'] = 100
+            elif risk_score < self.guardrails['min_risk_score']:
+                corrections.append(f"Risk score {risk_score} floored to 0")
+                ra['risk_score'] = 0
+        else:
+            warnings.append("MISSING: risk_score not provided")
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 4. VALIDATE PRICE CONSISTENCY
+        # ═══════════════════════════════════════════════════════════════
+        current = ra.get('current_price')
+        downside_target = ra.get('downside_target')
+        resistance = ra.get('upside_resistance')
+        
+        if current and downside_target:
+            if downside_target >= current:
+                warnings.append(f"INCONSISTENT: Downside target ${downside_target} >= current ${current}")
+        
+        if current and resistance:
+            if resistance <= current:
+                warnings.append(f"INCONSISTENT: Resistance ${resistance} <= current ${current}")
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 5. VALIDATE ENUMS
+        # ═══════════════════════════════════════════════════════════════
+        if conviction.get('level') not in self.guardrails['valid_convictions']:
+            corrections.append(f"Invalid conviction '{conviction.get('level')}' → MEDIUM")
+            conviction['level'] = 'MEDIUM'
+        
+        if conviction.get('data_quality') not in self.guardrails['valid_data_quality']:
+            corrections.append(f"Invalid data_quality '{conviction.get('data_quality')}' → moderate")
+            conviction['data_quality'] = 'moderate'
+        
+        if rec.get('action') not in self.guardrails['valid_recommendations']:
+            corrections.append(f"Invalid recommendation '{rec.get('action')}' → HOLD")
+            rec['action'] = 'HOLD'
+        
+        if rec.get('risk_level') not in self.guardrails['valid_risk_levels']:
+            corrections.append(f"Invalid risk_level '{rec.get('risk_level')}' → MEDIUM")
+            rec['risk_level'] = 'MEDIUM'
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 6. VALIDATE CONSISTENCY (conviction vs data quality)
+        # ═══════════════════════════════════════════════════════════════
+        if conviction.get('level') == 'HIGH' and conviction.get('data_quality') == 'weak':
+            warnings.append("INCONSISTENT: HIGH conviction with weak data quality - suspicious")
+            corrections.append("HIGH conviction + weak data → downgraded to MEDIUM")
+            conviction['level'] = 'MEDIUM'
+            conviction['downgraded_reason'] = 'weak data quality'
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 7. VALIDATE RECOMMENDATION vs RISK SCORE
+        # ═══════════════════════════════════════════════════════════════
+        if rec.get('action') == 'STRONG SELL':
+            score = ra.get('risk_score', 0)
+            if score < self.guardrails['strong_sell_requires_min_risk_score']:
+                warnings.append(f"INCONSISTENT: STRONG SELL but risk score only {score} (min {self.guardrails['strong_sell_requires_min_risk_score']})")
+                corrections.append(f"STRONG SELL → SELL (risk score {score} < {self.guardrails['strong_sell_requires_min_risk_score']})")
+                rec['action'] = 'SELL'
+                rec['downgraded_reason'] = 'insufficient risk score'
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 8. VALIDATE RISK LEVEL vs RISK SCORE CONSISTENCY
+        # ═══════════════════════════════════════════════════════════════
+        score = ra.get('risk_score')
+        level = rec.get('risk_level')
+        if score is not None and level:
+            if score >= 70 and level == 'LOW':
+                warnings.append(f"INCONSISTENT: Risk score {score} but risk level is LOW")
+                corrections.append(f"Risk level LOW → HIGH (score {score})")
+                rec['risk_level'] = 'HIGH'
+            elif score <= 30 and level == 'HIGH':
+                warnings.append(f"INCONSISTENT: Risk score {score} but risk level is HIGH")
+                corrections.append(f"Risk level HIGH → LOW (score {score})")
+                rec['risk_level'] = 'LOW'
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 9. VALIDATE SIGNALS HAVE SOURCES
+        # ═══════════════════════════════════════════════════════════════
+        valid_sources = ['technical', 'fundamental', 'news', 'macro', 'sentiment']
+        signals = analysis.get('key_risk_signals', [])
+        
+        for i, signal in enumerate(signals):
+            if not signal.get('source'):
+                warnings.append(f"Risk signal {i+1} missing source - could be fabricated")
+            elif signal.get('source').lower() not in valid_sources:
+                warnings.append(f"Risk signal {i+1} has invalid source '{signal.get('source')}'")
+            
+            if not signal.get('signal'):
+                warnings.append(f"Risk signal {i+1} has no actual signal text")
+            
+            if signal.get('severity') not in self.guardrails['valid_signal_severity']:
+                signal['severity'] = 'medium'
+        
+        # Validate triggers
+        triggers = analysis.get('downside_triggers', [])
+        for i, trigger in enumerate(triggers):
+            if not trigger.get('trigger'):
+                warnings.append(f"Trigger {i+1} has no description")
+            if trigger.get('probability') not in self.guardrails['valid_probability']:
+                trigger['probability'] = 'medium'
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 10. CHECK FOR RATIONALE (anti-fabrication)
+        # ═══════════════════════════════════════════════════════════════
+        rationale = ra.get('rationale', '')
+        if not rationale or len(rationale) < 20:
+            warnings.append("WEAK RATIONALE: No explanation for risk numbers - possibly fabricated")
+            ra['rationale_warning'] = True
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 11. STORE RESULTS
+        # ═══════════════════════════════════════════════════════════════
+        analysis['guardrail_corrections'] = corrections
+        analysis['guardrail_warnings'] = warnings
+        analysis['validation_passed'] = len(warnings) == 0
+        analysis['validation_score'] = max(0, 100 - len(warnings) * 10 - len(corrections) * 5)
+        
+        # Print summary
+        print(f"[BEAR] Validation score: {analysis['validation_score']}/100")
+        if corrections:
+            print(f"[BEAR] ⚠ Applied {len(corrections)} correction(s):")
+            for c in corrections:
+                print(f"    → {c}")
+        if warnings:
+            print(f"[BEAR] ⚠ {len(warnings)} warning(s):")
+            for w in warnings[:5]:
+                print(f"    ⚠ {w}")
+            if len(warnings) > 5:
+                print(f"    ... and {len(warnings) - 5} more")
+        
+        if not corrections and not warnings:
+            print("[BEAR] ✓ All validations passed")
+        
+        return analysis
+
+    def _fallback_analysis(self, discussion_points: Dict) -> Dict:
+        """Minimal fallback if LLM fails completely"""
+        print("[BEAR] ⚠ Using fallback analysis")
         
         return {
-            'downside_risk': downside,
-            'limited_upside': upside,
-            'risk_level': risk,
-            'bear_percentage': bear_pct,
-            'risk_score': min(100, bear_pct * 1.3),
-            'conviction_level': conviction,
-            'analyst_breakdown': {'sell': bear_count, 'hold': hold_count, 'buy': bull_count}
+            'core_thesis': f"Unable to generate full analysis for {self.ticker}. LLM analysis failed.",
+            'key_risk_signals': [],
+            'downside_triggers': [],
+            'risk_assessment': {
+                'downside_pct': None,
+                'limited_upside_pct': None,
+                'risk_score': None,
+                'rationale': 'Analysis failed - no data available'
+            },
+            'conviction': {
+                'level': 'LOW',
+                'reasoning': 'Fallback due to analysis failure',
+                'data_quality': 'weak'
+            },
+            'recommendation': {
+                'action': 'HOLD',
+                'risk_level': 'MEDIUM',
+                'hedging_strategy': 'Wait for proper analysis',
+                'time_horizon': 'N/A'
+            },
+            'counter_bull_arguments': [],
+            'full_analysis': 'Analysis could not be completed. Please retry or check input data.',
+            'is_fallback': True
         }
-    
-    def suggest_hedging_strategies(self, risk_assessment: Dict) -> List[Dict]:
-        """Generate hedging strategies"""
-        risk_level = risk_assessment['risk_level']
-        
-        strategies = {
-            'HIGH': [
-                {'strategy': 'IMMEDIATE_EXIT', 'description': 'Full position exit - risk too high', 'urgency': 'IMMEDIATE', 'rationale': 'Downside significantly outweighs upside'},
-                {'strategy': 'PROTECTIVE_PUTS', 'description': 'Buy puts 5-10% OTM', 'urgency': 'HIGH', 'rationale': 'Hedge sharp downside'},
-                {'strategy': 'POSITION_REDUCTION', 'description': 'Reduce 75-100%', 'urgency': 'HIGH', 'rationale': 'De-risk before catalyst'}
-            ],
-            'MEDIUM': [
-                {'strategy': 'TIGHT_STOP', 'description': 'Stop loss at -5% to -7%', 'urgency': 'MEDIUM', 'rationale': 'Limit losses if support breaks'},
-                {'strategy': 'PARTIAL_EXIT', 'description': 'Reduce 50%', 'urgency': 'MEDIUM', 'rationale': 'Take profits, reduce exposure'},
-                {'strategy': 'COLLAR', 'description': 'Sell calls, buy puts', 'urgency': 'MEDIUM', 'rationale': 'Cap upside, protect downside'}
-            ],
-            'LOW': [
-                {'strategy': 'MONITORING', 'description': 'Daily monitoring', 'urgency': 'LOW', 'rationale': 'Watch for deterioration'},
-                {'strategy': 'STANDARD_STOP', 'description': 'Stop at -10%', 'urgency': 'LOW', 'rationale': 'Standard risk management'},
-                {'strategy': 'COVERED_CALLS', 'description': 'Sell calls for income', 'urgency': 'LOW', 'rationale': 'Generate income while waiting'}
-            ]
-        }
-        
-        return strategies.get(risk_level, strategies['LOW'])
-    
-    def build_bear_thesis(self, risk_categories: Dict, risk_assessment: Dict) -> str:
-        """Build core thesis statement"""
-        components = []
-        
-        if risk_categories['technical']:
-            components.append("Technical indicators signal overbought conditions and breakdown risk")
-        if risk_categories['fundamental']:
-            components.append("Fundamental deterioration threatens current valuation")
-        if risk_categories['sentiment']:
-            components.append("Negative sentiment shift could accelerate selling")
-        if risk_categories['macro']:
-            components.append("Macro headwinds create systematic downside risk")
-        
-        if not components:
-            components.append("Multiple risk factors warrant defensive positioning")
-        
-        thesis = f"""The bear case for {self.ticker} rests on {len(components)} critical pillars:
 
-{chr(10).join(f'{i+1}. {c}' for i, c in enumerate(components))}
-
-**Risk/Reward Analysis:**
-- Downside Risk: {risk_assessment['downside_risk']}
-- Limited Upside: {risk_assessment['limited_upside']}
-- Risk Level: {risk_assessment['risk_level']}
-- Conviction: {risk_assessment['conviction_level']} ({risk_assessment['bear_percentage']:.0f}% bearish/neutral)
-- Risk Score: {risk_assessment['risk_score']:.0f}/100
-"""
-        return thesis
-    
-    def research_shallow(self, discussion_points: Dict) -> str:
+    def analyze(self, discussion_points: Dict) -> Dict:
         """
-        SHALLOW MODE: Quick single-pass bear case
-        Fast analysis, minimal LLM calls
+        Main analysis method - LLM does all the heavy lifting.
         """
-        print(f"\n[BEAR] 📊 SHALLOW MODE - Quick bear case\n")
-        
-        start_time = time.time()
-        
-        # Quick extraction
-        risk_categories = self.extract_bear_signals_from_full_reports(discussion_points)
-        risk_assessment = self.calculate_risk_assessment(discussion_points)
-        triggers = self.identify_downside_triggers(discussion_points)[:3]  # Top 3 only
-        hedging = self.suggest_hedging_strategies(risk_assessment)[:2]  # Top 2 only
-        
-        # Build basic thesis
-        core_thesis = self.build_bear_thesis(risk_categories, risk_assessment)
-        
-        bear_data = {
-            'ticker': self.ticker,
-            'timestamp': datetime.now().isoformat(),
-            'mode': 'SHALLOW',
-            'core_thesis': core_thesis,
-            'risks': risk_categories,
-            'downside_triggers': triggers,
-            'risk_assessment': risk_assessment,
-            'hedging_strategies': hedging,
-            'discussion_summary': discussion_points.get('summary', {})
-        }
-        
-        self.bear_thesis = bear_data
-        
-        # Quick LLM synthesis (no debate)
-        if self.client:
-            report = self._quick_synthesis(bear_data, discussion_points)
-        else:
-            report = self._create_fallback_report(bear_data)
-        
-        elapsed = time.time() - start_time
-        print(f"\n[BEAR] ✓ Shallow analysis in {elapsed:.2f}s\n")
-        
-        return report
-    
-    def research_deep(self, discussion_points: Dict, rounds: int = 3, bull_thesis: Optional[str] = None) -> str:
-        """
-        DEEP MODE: Multi-round debate with bull analyst
-        Iterative refinement through argumentation
-        """
-        print(f"\n[BEAR] 🎯 DEEP MODE - {rounds}-round debate\n")
-        
-        start_time = time.time()
-        
-        # Extract comprehensive data
-        risk_categories = self.extract_bear_signals_from_full_reports(discussion_points)
-        rebuttals = self.counter_bull_arguments(discussion_points)
-        triggers = self.identify_downside_triggers(discussion_points)
-        risk_assessment = self.calculate_risk_assessment(discussion_points)
-        hedging = self.suggest_hedging_strategies(risk_assessment)
-        
-        # Build initial thesis
-        core_thesis = self.build_bear_thesis(risk_categories, risk_assessment)
-        
-        # Debate rounds
-        debate_history = []
-        current_argument = ""
-        
-        for round_num in range(1, rounds + 1):
-            print(f"[BEAR] 🔄 Debate Round {round_num}/{rounds}")
-            
-            if round_num == 1:
-                # Initial bear argument
-                current_argument = self._generate_initial_argument(
-                    core_thesis, risk_categories, triggers, 
-                    risk_assessment, discussion_points
-                )
-            else:
-                # Respond to bull's counter
-                current_argument = self._generate_debate_response(
-                    round_num, rounds, debate_history, 
-                    bull_thesis, risk_categories, discussion_points
-                )
-            
-            debate_history.append({
-                'round': round_num,
-                'speaker': 'bear',
-                'argument': current_argument
-            })
-            
-            print(f"[BEAR] ✓ Round {round_num} complete ({len(current_argument)} chars)")
-        
-        # Compile final thesis
-        bear_data = {
-            'ticker': self.ticker,
-            'timestamp': datetime.now().isoformat(),
-            'mode': 'DEEP',
-            'rounds': rounds,
-            'core_thesis': core_thesis,
-            'risks': risk_categories,
-            'bull_rebuttals': rebuttals,
-            'downside_triggers': triggers,
-            'risk_assessment': risk_assessment,
-            'hedging_strategies': hedging,
-            'debate_history': debate_history,
-            'final_argument': current_argument
-        }
-        
-        self.bear_thesis = bear_data
-        
-        # Create final report
-        report = self._create_debate_report(bear_data)
-        
-        elapsed = time.time() - start_time
-        print(f"\n[BEAR] ✓ Deep analysis in {elapsed:.2f}s ({rounds} rounds)\n")
-        
-        return report
-    
-    def research_comprehensive(self, discussion_points: Dict, rounds: int = 5, bull_thesis: Optional[str] = None) -> str:
-        """
-        RESEARCH MODE: Maximum depth with extended debate
-        Most thorough analysis, highest LLM usage
-        """
-        print(f"\n[BEAR] 🔬 RESEARCH MODE - Comprehensive {rounds}-round analysis\n")
-        
-        # Research mode is like deep mode but with:
-        # 1. More rounds
-        # 2. Deeper data extraction
-        # 3. More detailed synthesis
-        
-        return self.research_deep(discussion_points, rounds=rounds, bull_thesis=bull_thesis)
-    
-    def _generate_initial_argument(
-        self, 
-        core_thesis: str,
-        risk_categories: Dict,
-        triggers: List[Dict],
-        risk_assessment: Dict,
-        discussion_points: Dict
-    ) -> str:
-        """Generate Round 1 bear argument"""
-        
         if not self.client:
-            return core_thesis
+            print("[BEAR] ✗ No API client available")
+            return self._fallback_analysis(discussion_points)
         
-        full_reports = discussion_points.get('full_analyst_reports', {})
-        
-        context = f"""# Initial Bear Argument for {self.ticker}
-
-## Core Thesis
-{core_thesis}
-
-## Full Analyst Reports
-{json.dumps(full_reports, indent=2)[:5000]}  # First 5k chars
-
-## Risk Factors Identified
-{json.dumps(risk_categories, indent=2)}
-
-## Downside Triggers
-{json.dumps(triggers, indent=2)}
-
-Build your opening bear argument. Be compelling and specific."""
+        prompt = self._build_analysis_prompt(discussion_points)
         
         try:
+            print(f"[BEAR] LLM analyzing reports...")
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": self.base_system_prompt},
-                    {"role": "user", "content": context}
+                    {
+                        "role": "system", 
+                        "content": "You are a senior risk analyst. Analyze the provided reports and return structured JSON. Be specific about risks, cite evidence, and be realistic in your estimates."
+                    },
+                    {"role": "user", "content": prompt}
                 ],
-                temperature=0.7,
-                max_tokens=2000
+                temperature=0.4,
+                max_tokens=3000
             )
             
-            return response.choices[0].message.content
+            response_text = response.choices[0].message.content.strip()
             
+            # Clean markdown if present
+            if response_text.startswith("```"):
+                response_text = re.sub(r'^```json?\n?', '', response_text)
+                response_text = re.sub(r'\n?```$', '', response_text)
+            
+            analysis = json.loads(response_text)
+            print(f"[BEAR] ✓ LLM analysis complete")
+            
+            # Apply guardrails with discussion points for cross-reference
+            analysis = self._validate_and_fix(analysis, discussion_points)
+            
+            return analysis
+            
+        except json.JSONDecodeError as e:
+            print(f"[BEAR] ✗ JSON parse error: {e}")
+            print(f"[BEAR] Raw response: {response_text[:500]}...")
+            return self._fallback_analysis(discussion_points)
         except Exception as e:
-            print(f"[BEAR] ⚠️  LLM error in round 1: {e}")
-            return core_thesis
-    
-    def _generate_debate_response(
-        self,
-        round_num: int,
-        total_rounds: int,
-        debate_history: List[Dict],
-        bull_argument: Optional[str],
-        risk_categories: Dict,
-        discussion_points: Dict
-    ) -> str:
-        """Generate debate response in later rounds"""
+            print(f"[BEAR] ✗ Analysis error: {e}")
+            return self._fallback_analysis(discussion_points)
+
+    def generate_report(self, analysis: Dict) -> str:
+        """Generate human-readable report from analysis"""
+        ra = analysis.get('risk_assessment', {})
+        conviction = analysis.get('conviction', {})
+        rec = analysis.get('recommendation', {})
         
-        if not self.client or not bull_argument:
-            return "Bear maintains position based on identified risks."
+        # Format risk signals
+        signals_text = ""
+        for signal in analysis.get('key_risk_signals', [])[:5]:
+            signals_text += f"  • [{signal.get('source', 'N/A').upper()}] {signal.get('signal', 'N/A')} (Severity: {signal.get('severity', 'N/A')})\n"
         
-        # Format debate history
-        history_str = "\n\n".join([
-            f"Round {d['round']} ({d['speaker']}): {d['argument'][:500]}..."
-            for d in debate_history[-2:]  # Last 2 rounds
-        ])
+        # Format triggers
+        triggers_text = ""
+        for trig in analysis.get('downside_triggers', [])[:3]:
+            triggers_text += f"  • {trig.get('trigger', 'N/A')} ({trig.get('timeline', 'N/A')}, Prob: {trig.get('probability', 'N/A')})\n"
         
-        instructions = f"""Counter the bull's latest argument while strengthening your bear case.
-
-Focus on:
-1. Refuting bull's specific claims with data
-2. Highlighting risks they're ignoring
-3. Reinforcing your strongest bear points
-4. Providing new evidence from analyst reports
-
-Keep your argument sharp and data-driven."""
+        # Format counter-arguments
+        counter_text = ""
+        for counter in analysis.get('counter_bull_arguments', [])[:2]:
+            counter_text += f"  • Bull: {counter.get('bull_argument', 'N/A')}\n    Bear Response: {counter.get('bear_response', 'N/A')}\n"
         
-        context = f"""# Debate Round {round_num}/{total_rounds}
-
-## Previous Debate
-{history_str}
-
-## Bull's Latest Argument
-{bull_argument[:1000]}
-
-## Your Risk Analysis
-{json.dumps(risk_categories, indent=2)[:2000]}
-
-{instructions}
-"""
+        guardrails_text = ""
+        if analysis.get('guardrail_corrections'):
+            guardrails_text = "\n**Guardrail Corrections Applied:**\n" + "\n".join(f"  ⚠ {c}" for c in analysis['guardrail_corrections'])
         
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.base_system_prompt},
-                    {"role": "user", "content": context}
-                ],
-                temperature=0.7,
-                max_tokens=2000
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
-            print(f"[BEAR] ⚠️  LLM error in round {round_num}: {e}")
-            return f"Bear maintains risk-focused position (Round {round_num} error)"
-    
-    def _quick_synthesis(self, bear_data: Dict, discussion_points: Dict) -> str:
-        """Quick synthesis for shallow mode"""
-        
-        context = f"""Create a concise bear case for {self.ticker}:
-
-Core Thesis: {bear_data['core_thesis']}
-Risk Assessment: {json.dumps(bear_data['risk_assessment'], indent=2)}
-Key Triggers: {json.dumps(bear_data['downside_triggers'], indent=2)}
-
-Provide a brief but compelling bear case (500-800 words)."""
-        
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.base_system_prompt},
-                    {"role": "user", "content": context}
-                ],
-                temperature=0.7,
-                max_tokens=1500
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
-            print(f"[BEAR] ⚠️  Synthesis error: {e}")
-            return self._create_fallback_report(bear_data)
-    
-    def _create_debate_report(self, bear_data: Dict) -> str:
-        """Format debate-style report"""
         report = f"""
-# BEAR RESEARCH REPORT: {self.ticker}
+# BEAR THESIS: {self.ticker}
 {'='*70}
-**Mode:** {bear_data['mode']} ({bear_data['rounds']} rounds)
-**Generated:** {bear_data['timestamp']}
+**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M')}
+**Analysis Date:** {self.analysis_date or 'Current'}
+**Model:** {self.model}
 
-## Core Bear Thesis
-{bear_data['core_thesis']}
+## CORE THESIS
+{analysis.get('core_thesis', 'N/A')}
 
-## Debate Evolution
-"""
-        for entry in bear_data['debate_history']:
-            report += f"\n### Round {entry['round']} - Bear Argument\n"
-            report += f"{entry['argument'][:800]}...\n"
-        
-        report += f"""
-## Risk Assessment Summary
-- Downside: {bear_data['risk_assessment']['downside_risk']}
-- Upside: {bear_data['risk_assessment']['limited_upside']}
-- Risk Level: **{bear_data['risk_assessment']['risk_level']}**
-- Conviction: {bear_data['risk_assessment']['conviction_level']}
+## KEY RISK SIGNALS
+{signals_text or '  No risk signals identified'}
 
-## Recommended Actions
-"""
-        for strat in bear_data['hedging_strategies']:
-            report += f"\n**{strat['strategy']}** [{strat['urgency']}]\n"
-            report += f"- {strat['description']}\n"
-            report += f"- {strat['rationale']}\n"
-        
-        report += f"\n{'='*70}\n"
-        report += f"BEAR CASE STRENGTH: {bear_data['risk_assessment']['conviction_level']} - Confidence: {bear_data['risk_assessment']['conviction_level']}\n"
-        
-        return report
-    
-    def _create_fallback_report(self, bear_data: Dict) -> str:
-        """Fallback report without LLM"""
-        report = f"""
-# BEAR RESEARCH REPORT: {self.ticker}
+## DOWNSIDE TRIGGERS
+{triggers_text or '  No triggers identified'}
+
+## RISK ASSESSMENT
+- **Current Price:** {ra.get('current_price') or 'Not specified'}
+- **Downside Target:** {ra.get('downside_target') or 'Not specified'}
+- **Upside Resistance:** {ra.get('upside_resistance') or 'Not specified'}
+- **Downside Potential:** {ra.get('downside_pct')}%{' (CAPPED)' if ra.get('downside_capped') else ''}
+- **Limited Upside:** {ra.get('limited_upside_pct')}%
+- **Risk Score:** {ra.get('risk_score')}/100
+- **Rationale:** {ra.get('rationale', 'N/A')}
+
+## CONVICTION
+- **Level:** {conviction.get('level', 'N/A')}
+- **Data Quality:** {conviction.get('data_quality', 'N/A')}
+- **Reasoning:** {conviction.get('reasoning', 'N/A')}
+
+## RECOMMENDATION
+- **Action:** {rec.get('action', 'N/A')}
+- **Risk Level:** {rec.get('risk_level', 'N/A')}
+- **Hedging Strategy:** {rec.get('hedging_strategy', 'N/A')}
+- **Time Horizon:** {rec.get('time_horizon', 'N/A')}
+
+## COUNTER BULL ARGUMENTS
+{counter_text or '  None provided'}
+
+## FULL ANALYSIS
+{analysis.get('full_analysis', 'N/A')}
+{guardrails_text}
+
 {'='*70}
-*Fallback Mode - LLM Unavailable*
-
-## Core Thesis
-{bear_data['core_thesis']}
-
-## Risk Factors
-"""
-        for category, risks in bear_data.get('risks', {}).items():
-            if risks:
-                report += f"\n### {category.title()} Risks:\n"
-                for risk in risks[:5]:
-                    report += f"- {risk}\n"
-        
-        report += f"""
-## Risk Assessment
-- Downside: {bear_data['risk_assessment']['downside_risk']}
-- Risk Level: {bear_data['risk_assessment']['risk_level']}
-- Conviction: {bear_data['risk_assessment']['conviction_level']}
-
-BEAR CASE STRENGTH: {bear_data['risk_assessment']['conviction_level']} - Confidence: {bear_data['risk_assessment']['conviction_level']}
+BEAR CASE: {rec.get('action', 'N/A')} | Risk Level: {rec.get('risk_level', 'N/A')} | Conviction: {conviction.get('level', 'N/A')}
+{'='*70}
 """
         return report
-    
-    def research(self, discussion_points: Dict, mode: str = 'shallow', rounds: int = 1, bull_thesis: Optional[str] = None) -> str:
-        """
-        Main research entry point - dispatches to appropriate mode
-        """
-        if mode == 'shallow':
-            return self.research_shallow(discussion_points)
-        elif mode == 'deep':
-            return self.research_deep(discussion_points, rounds=rounds, bull_thesis=bull_thesis)
-        elif mode == 'research':
-            return self.research_comprehensive(discussion_points, rounds=rounds, bull_thesis=bull_thesis)
-        else:
-            print(f"[BEAR] ⚠️  Unknown mode '{mode}', using shallow")
-            return self.research_shallow(discussion_points)
+
+    def research(self, discussion_points: Dict) -> str:
+        """Main entry point - analyze and generate report"""
+        print(f"\n{'='*60}")
+        print(f"BEAR RESEARCHER: {self.ticker}")
+        if self.analysis_date:
+            print(f"*** HISTORICAL MODE: As of {self.analysis_date} ***")
+        print(f"{'='*60}\n")
+        
+        start_time = time.time()
+        
+        # LLM does all the analysis
+        analysis = self.analyze(discussion_points)
+        
+        # Generate report
+        report = self.generate_report(analysis)
+        
+        # Store thesis data
+        self.bear_thesis = {
+            'ticker': self.ticker,
+            'timestamp': datetime.now().isoformat(),
+            'analysis_date': self.analysis_date,
+            'historical_mode': self.analysis_date is not None,
+            'model': self.model,
+            
+            # LLM's analysis
+            'core_thesis': analysis.get('core_thesis'),
+            'key_risk_signals': analysis.get('key_risk_signals', []),
+            'downside_triggers': analysis.get('downside_triggers', []),
+            'risk_assessment': analysis.get('risk_assessment', {}),
+            'conviction': analysis.get('conviction', {}),
+            'recommendation': analysis.get('recommendation', {}),
+            'counter_bull_arguments': analysis.get('counter_bull_arguments', []),
+            'full_analysis': analysis.get('full_analysis'),
+            
+            # Metadata
+            'guardrail_corrections': analysis.get('guardrail_corrections', []),
+            'is_fallback': analysis.get('is_fallback', False)
+        }
+        
+        elapsed = time.time() - start_time
+        print(f"\n[BEAR] ✓ Research complete in {elapsed:.2f}s")
+        print(f"[BEAR] Risk Level: {analysis.get('recommendation', {}).get('risk_level', 'N/A')}")
+        print(f"[BEAR] Recommendation: {analysis.get('recommendation', {}).get('action', 'N/A')}")
+        
+        return report
     
     def save_thesis(self, filepath: str):
-        """Save thesis data"""
+        """Save thesis data to JSON"""
         try:
             with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(self.bear_thesis, f, indent=2)
-            print(f"[BEAR] ✓ Saved to {filepath}")
+                json.dump(self.bear_thesis, f, indent=2, ensure_ascii=False)
+            print(f"[BEAR] ✓ Thesis saved to {filepath}")
         except Exception as e:
-            print(f"[BEAR] ⚠️  Save error: {e}")
-    
-    def extract_bear_signals_from_full_reports(self, discussion_points: Dict) -> Dict[str, List[str]]:
-        """Extract from full reports (implementation from above)"""
-        print(f"[BEAR] Analyzing full reports...")
-        
-        full_reports = discussion_points.get('full_analyst_reports', {})
-        risk_categories = {'technical': [], 'fundamental': [], 'sentiment': [], 'macro': []}
-        
-        keywords = {
-            'technical': ['overbought', 'resistance', 'downtrend', 'bearish', 'weakness'],
-            'fundamental': ['overvalued', 'debt', 'declining', 'expensive', 'concern'],
-            'sentiment': ['negative', 'selling', 'downgrade', 'caution'],
-            'macro': ['risk-off', 'defensive', 'recession', 'headwind']
-        }
-        
-        for report_type, kw_list in keywords.items():
-            report = full_reports.get(report_type, '')
-            for kw in kw_list:
-                if kw in report.lower():
-                    for sent in report.split('.'):
-                        if kw in sent.lower() and 20 < len(sent.strip()) < 300:
-                            risk_categories[report_type].append(sent.strip())
-                            break
-        
-        # Add extracted evidence
-        for ev in discussion_points.get('bear_evidence', [])[:10]:
-            source = ev.get('source', 'unknown')
-            if source in risk_categories:
-                risk_categories[source].append(ev.get('signal', ''))
-        
-        # Deduplicate
-        for cat in risk_categories:
-            risk_categories[cat] = list(set(risk_categories[cat]))[:10]
-        
-        print(f"[BEAR] ✓ Extracted {sum(len(v) for v in risk_categories.values())} risks")
-        return risk_categories
+            print(f"[BEAR] ✗ Save error: {e}")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Bear Researcher - Multi-mode bearish analysis",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Research Modes:
-  shallow  - Quick single-pass (1 LLM call, ~30s)
-  deep     - Multi-round debate (3-5 rounds, ~2-3 min)
-  research - Comprehensive analysis (5+ rounds, ~5 min)
-
-Examples:
-  python bear_researcher.py AAPL --mode shallow
-  python bear_researcher.py AAPL --mode deep --rounds 3
-  python bear_researcher.py AAPL --mode research --rounds 5 --output bear_thesis.txt
-        """
-    )
-    
-    parser.add_argument("ticker", help="Stock ticker")
-    parser.add_argument("--discussion-file", default="../../outputs/discussion_points.json",
-                       help="Discussion points JSON")
-    parser.add_argument("--mode", choices=['shallow', 'deep', 'research'], default='shallow',
-                       help="Analysis depth (default: shallow)")
-    parser.add_argument("--rounds", type=int, default=3,
-                       help="Debate rounds for deep/research mode (default: 3)")
-    parser.add_argument("--bull-thesis", help="Bull thesis for debate (optional)")
-    parser.add_argument("--api-key", help="OpenAI API key")
-    parser.add_argument("--model", default="gpt-4o-mini", help="Model")
-    parser.add_argument("--output", help="Output file")
-    parser.add_argument("--save-data", help="Save JSON")
+    parser = argparse.ArgumentParser(description="Bear Researcher - LLM-Driven Analysis")
+    parser.add_argument("ticker", help="Stock ticker symbol")
+    parser.add_argument("--discussion-file", help="Path to discussion_points.json")
+    parser.add_argument("--save-data", help="Path to save thesis JSON")
+    parser.add_argument("--model", default="gpt-4o-mini", help="OpenAI model")
+    parser.add_argument("--analysis-date", help="Historical analysis date (YYYY-MM-DD)")
     
     args = parser.parse_args()
     
-    try:
-        researcher = BearResearcher(ticker=args.ticker, api_key=args.api_key, model=args.model)
-        
-        # Load discussion
+    researcher = BearResearcher(
+        ticker=args.ticker,
+        model=args.model,
+        analysis_date=args.analysis_date
+    )
+    
+    if args.discussion_file:
         discussion_points = researcher.load_discussion_points(args.discussion_file)
-        if not discussion_points:
-            sys.exit(1)
-        
-        # Load bull thesis if in debate mode
-        bull_thesis = None
-        if args.bull_thesis and os.path.exists(args.bull_thesis):
-            with open(args.bull_thesis, 'r', encoding='utf-8') as f:
-                bull_thesis = f.read()
-        
-        # Run research
-        report = researcher.research(
-            discussion_points,
-            mode=args.mode,
-            rounds=args.rounds,
-            bull_thesis=bull_thesis
-        )
-        
-        print(report)
-        
-        # Save
-        if args.output:
-            with open(args.output, 'w', encoding='utf-8') as f:
-                f.write(report)
-            print(f"\n✓ Saved to {args.output}")
-        
-        if args.save_data:
-            researcher.save_thesis(args.save_data)
-        
-    except KeyboardInterrupt:
-        print("\n\n⚠️  Interrupted")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+        if discussion_points:
+            report = researcher.research(discussion_points)
+            print(report)
+            
+            if args.save_data:
+                researcher.save_thesis(args.save_data)
+    else:
+        print("[BEAR] No discussion file provided. Use --discussion-file")
 
 
 if __name__ == "__main__":
