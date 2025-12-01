@@ -2,7 +2,10 @@
 parallel_collector_sampled.py - With sampling support and better day labeling
 Supports sampling every Nth day over longer periods for better regime coverage
 
-MODIFIED: Now writes market_context.json for historical backtesting
+MODIFIED: 
+- Now writes market_context.json for historical backtesting
+- Added --start-date parameter to define where sampling begins
+- Added --end-date parameter for custom date ranges
 """
 
 import os
@@ -51,13 +54,10 @@ def process_single_workflow(task_data):
         final_path = ticker_path / date_folder / portfolio_folder
         final_path.mkdir(parents=True, exist_ok=True)
         
-        # ============================================================
-        # NEW: Write market_context.json BEFORE running orchestrator
-        # This is the KEY change for historical backtesting
-        # ============================================================
+        # Write market_context.json BEFORE running orchestrator
         market_context = {
             'ticker': ticker,
-            'analysis_date': price_info['date'],  # THE CRITICAL FIELD
+            'analysis_date': price_info['date'],
             'sample_number': sample_num,
             'actual_day': actual_day,
             'price_data': {
@@ -76,9 +76,6 @@ def process_single_workflow(task_data):
             json.dump(market_context, f, indent=2)
         
         print(f"[WORKFLOW] Market context written for {ticker} @ {price_info['date']}")
-        # ============================================================
-        # END OF NEW CODE
-        # ============================================================
         
         # Find and run master orchestrator with CUSTOM OUTPUT DIR
         master_script = Path(project_root) / "agents" / "orchestrators" / "master_orchestrator.py"
@@ -104,7 +101,7 @@ def process_single_workflow(task_data):
         # Modified command to use temp outputs
         cmd = [
             sys.executable,
-            "-c",  # Run as Python code to override output path
+            "-c",
             f"""
 import sys
 import os
@@ -148,9 +145,9 @@ orchestrator.run_complete_workflow()
             env=env
         )
         
-        # Now collect files from the TEMP directory
+        # Collect files from the TEMP directory
         workflow_files = [
-            "market_context.json",  # NEW: Include market context in output
+            "market_context.json",
             "discussion_points.json",
             "bear_thesis.json", 
             "bull_thesis.json",
@@ -173,15 +170,14 @@ orchestrator.run_complete_workflow()
                 shutil.move(str(src), str(dst))
                 files_saved += 1
                 
-                # Count risk files
                 if filename in ["aggressive_eval.json", "neutral_eval.json", "conservative_eval.json"]:
                     risk_files_copied += 1
         
-        # Create summary with both sample and actual day info
+        # Create summary
         summary = {
             "ticker": ticker,
             "date": price_info['date'],
-            "analysis_date": price_info['date'],  # NEW: Explicit analysis date
+            "analysis_date": price_info['date'],
             "sample_number": sample_num,
             "actual_day_number": actual_day,
             "portfolio_size": portfolio_size,
@@ -189,7 +185,7 @@ orchestrator.run_complete_workflow()
             "timestamp": datetime.now().isoformat(),
             "files_saved": files_saved,
             "path": str(final_path.relative_to(outputs_path)),
-            "historical_mode": True  # NEW: Flag indicating historical analysis
+            "historical_mode": True
         }
         
         # Extract decision if available
@@ -210,8 +206,7 @@ orchestrator.run_complete_workflow()
         with open(final_path / "summary.json", 'w') as f:
             json.dump(summary, f, indent=2)
         
-        # Also copy to game_theory folder for compatibility
-        # Use sample_num for game_theory to maintain consistency
+        # Also copy to game_theory folder
         game_theory_path = outputs_path / "game_theory" / ticker / f"portfolio_{portfolio_size}" / f"sample_{sample_num}"
         game_theory_path.mkdir(parents=True, exist_ok=True)
         
@@ -221,18 +216,17 @@ orchestrator.run_complete_workflow()
                 dst = game_theory_path / risk_file
                 shutil.copy2(src, dst)
         
-        # Save date info with both sample and actual day
         with open(game_theory_path / "date_info.json", 'w') as f:
             json.dump({
                 "sample_number": sample_num,
                 "actual_day": actual_day,
                 "date": price_info['date'],
-                "analysis_date": price_info['date'],  # NEW: Explicit
+                "analysis_date": price_info['date'],
                 "ticker": ticker,
                 "portfolio_size": portfolio_size,
                 "market_data": price_info,
                 "workflow_location": str(final_path.relative_to(outputs_path)),
-                "historical_mode": True  # NEW: Flag
+                "historical_mode": True
             }, f, indent=2)
         
         # Clean up temp directory
@@ -287,11 +281,16 @@ orchestrator.run_complete_workflow()
 
 
 class ParallelCollector:
-    def __init__(self, tickers, samples=90, sample_rate=1, max_workers=None):
+    def __init__(self, tickers, samples=90, sample_rate=1, max_workers=None,
+                 start_date=None, end_date=None):
         self.tickers = tickers
-        self.samples = samples  # Number of samples to collect
-        self.sample_rate = sample_rate  # 1 = every day, 3 = every 3rd day, etc.
+        self.samples = samples
+        self.sample_rate = sample_rate
         self.portfolio_sizes = [100000]
+        
+        # NEW: Date range parameters
+        self.start_date = start_date  # datetime object or None
+        self.end_date = end_date      # datetime object or None (defaults to today)
         
         # Calculate total days needed
         self.total_days_needed = (self.samples - 1) * self.sample_rate + 1
@@ -342,28 +341,31 @@ class ParallelCollector:
         return current
     
     def get_price_data(self, ticker):
-        """Get historical prices for ticker with sampling"""
+        """Get historical prices for ticker with sampling - samples BACKWARD from end_date"""
         try:
-            print(f"Fetching {self.total_days_needed} days of prices for {ticker} (sampling every {self.sample_rate} days)...")
-            stock = yf.Ticker(ticker)
-            end_date = datetime.now()
-            # Get extra days to ensure we have enough
-            start_date = end_date - timedelta(days=self.total_days_needed * 2 + 30)
+            # Determine end date (the date we sample backward FROM)
+            if self.end_date:
+                end_dt = self.end_date
+            else:
+                end_dt = datetime.now()
             
-            hist = stock.history(start=start_date, end=end_date)
+            # Always fetch enough historical data going back from end_date
+            # Need extra buffer for weekends/holidays
+            start_dt = end_dt - timedelta(days=self.total_days_needed * 2 + 60)
+            
+            print(f"Fetching prices for {ticker} ending at {end_dt.strftime('%Y-%m-%d')}...")
+            print(f"  (Sampling {self.samples} days backward, every {self.sample_rate} trading day(s))")
+            
+            stock = yf.Ticker(ticker)
+            hist = stock.history(start=start_dt, end=end_dt)
+            
             if hist.empty:
+                print(f"  No data returned for {ticker}")
                 return None
             
-            # Get enough days for sampling
-            all_prices = hist.tail(self.total_days_needed + 10)
-            
-            # Sample the prices
-            price_data = []
-            sampled_prices = []
-            
-            # First, get all prices with day numbers
+            # Convert to list of price info (chronological order)
             all_price_list = []
-            for idx, (date, row) in enumerate(all_prices.iterrows(), 1):
+            for idx, (date, row) in enumerate(hist.iterrows(), 1):
                 all_price_list.append({
                     'actual_day': idx,
                     'date': date.strftime('%Y-%m-%d'),
@@ -375,30 +377,51 @@ class ParallelCollector:
                     'daily_return': round((row['Close'] - row['Open']) / row['Open'], 4)
                 })
             
-            # Now sample them
+            print(f"  Total trading days available: {len(all_price_list)}")
+            
+            # SAMPLE BACKWARD from the end
+            # Sample 1 = most recent (closest to end_date)
+            # Sample 2 = one step back
+            # etc.
+            sampled_prices = []
+            
             for sample_idx in range(self.samples):
-                actual_idx = sample_idx * self.sample_rate
-                if actual_idx < len(all_price_list):
+                # Calculate index from the END of the list
+                # sample_idx=0 → last item, sample_idx=1 → second to last, etc.
+                backward_offset = sample_idx * self.sample_rate
+                actual_idx = len(all_price_list) - 1 - backward_offset
+                
+                if actual_idx >= 0:
                     price_info = all_price_list[actual_idx].copy()
                     price_info['sample_num'] = sample_idx + 1
+                    price_info['actual_day'] = backward_offset + 1  # Days back from end
                     sampled_prices.append(price_info)
+                else:
+                    print(f"  Warning: Not enough data for sample {sample_idx + 1}")
+                    break
             
             print(f"  Got {len(sampled_prices)} samples for {ticker}")
             if sampled_prices:
-                print(f"  Date range: {sampled_prices[0]['date']} to {sampled_prices[-1]['date']}")
-                print(f"  Covering {sampled_prices[-1]['actual_day']} trading days")
+                # Note: sampled_prices[0] is the most recent, sampled_prices[-1] is oldest
+                print(f"  Date range: {sampled_prices[-1]['date']} (oldest) to {sampled_prices[0]['date']} (newest)")
+                if len(sampled_prices) > 1:
+                    first_date = datetime.strptime(sampled_prices[-1]['date'], '%Y-%m-%d')
+                    last_date = datetime.strptime(sampled_prices[0]['date'], '%Y-%m-%d')
+                    days_spanned = (last_date - first_date).days
+                    print(f"  Spanning {days_spanned} calendar days")
             
             return sampled_prices
             
         except Exception as e:
             print(f"  Error getting prices for {ticker}: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def check_exists(self, ticker, portfolio, sample_num, date):
         """Check if data already exists with file validation"""
-        # Define ALL required files for a complete workflow
         required_files = [
-            "market_context.json",  # NEW: Now required
+            "market_context.json",
             "discussion_points.json",
             "bear_thesis.json",
             "bull_thesis.json",
@@ -411,9 +434,6 @@ class ParallelCollector:
             "summary.json"
         ]
         
-        # Check new structure first
-        # Find the actual folder (handles wildcards)
-        workflow_pattern = f"{date}_sample{sample_num:03d}*"
         ticker_path = self.workflows_path / ticker
         
         if ticker_path.exists():
@@ -421,7 +441,6 @@ class ParallelCollector:
                 if date_folder.name.startswith(f"{date}_sample{sample_num:03d}"):
                     portfolio_path = date_folder / f"portfolio_{portfolio}"
                     if portfolio_path.exists():
-                        # Validate files exist and are not empty
                         valid = True
                         for req_file in required_files:
                             file_path = portfolio_path / req_file
@@ -430,20 +449,17 @@ class ParallelCollector:
                                 break
                         
                         if valid:
-                            # Check if we have a valid decision in summary
                             try:
                                 with open(portfolio_path / "summary.json", 'r') as f:
                                     summary = json.load(f)
-                                    # Check ALL required files are saved (9 minimum now with market_context)
                                     if summary.get('files_saved', 0) >= 9:
                                         return True
                             except:
                                 pass
         
-        # Also check game_theory folder as backup
+        # Check game_theory folder as backup
         game_path = self.game_theory_path / ticker / f"portfolio_{portfolio}" / f"sample_{sample_num}"
         if game_path.exists():
-            # Check if risk files exist and are valid
             risk_files = ["aggressive_eval.json", "neutral_eval.json", "conservative_eval.json"]
             valid_count = 0
             for risk_file in risk_files:
@@ -452,12 +468,12 @@ class ParallelCollector:
                     try:
                         with open(file_path, 'r') as f:
                             data = json.load(f)
-                            if data.get('ticker') == ticker:  # Validate content
+                            if data.get('ticker') == ticker:
                                 valid_count += 1
                     except:
                         pass
             
-            if valid_count >= 2:  # At least 2 valid risk files
+            if valid_count >= 2:
                 return True
         
         return False
@@ -470,11 +486,22 @@ class ParallelCollector:
         print(f"Tickers: {len(self.tickers)}")
         print(f"Samples per ticker: {self.samples}")
         print(f"Sample rate: Every {self.sample_rate} day(s)")
-        print(f"Total days covered: ~{self.total_days_needed} trading days")
+        
+        # NEW: Show date range info
+        if self.start_date:
+            print(f"Start date: {self.start_date.strftime('%Y-%m-%d')}")
+        else:
+            print(f"Start date: (auto - recent data)")
+        
+        if self.end_date:
+            print(f"End date: {self.end_date.strftime('%Y-%m-%d')}")
+        else:
+            print(f"End date: (today)")
+        
         print(f"Portfolio sizes: {self.portfolio_sizes}")
         print(f"Workers: {self.max_workers} parallel processes")
         print(f"CPU count: {mp.cpu_count()}")
-        print(f"Historical Mode: ENABLED")  # NEW: Indicate historical mode
+        print(f"Historical Mode: ENABLED")
         print(f"{'='*80}\n")
         
         # Check for previous incomplete runs
@@ -488,9 +515,12 @@ class ParallelCollector:
         for ticker in self.tickers:
             prices = self.get_price_data(ticker)
             
-            if not prices or len(prices) < self.samples:
-                print(f"  Skipping {ticker} - insufficient data")
+            if not prices:
+                print(f"  Skipping {ticker} - no price data")
                 continue
+            
+            if len(prices) < self.samples:
+                print(f"  Warning: {ticker} has only {len(prices)} samples (requested {self.samples})")
             
             for portfolio_size in self.portfolio_sizes:
                 for price_info in prices:
@@ -500,7 +530,6 @@ class ParallelCollector:
                     if self.check_exists(ticker, portfolio_size, sample_num, price_info['date']):
                         skipped += 1
                     else:
-                        # Check if partially complete (corrupted/incomplete files)
                         if self.is_partially_complete(ticker, portfolio_size, sample_num, price_info['date']):
                             invalid += 1
                             print(f"  Cleaning incomplete: {ticker} sample{sample_num} P${portfolio_size}")
@@ -510,7 +539,7 @@ class ParallelCollector:
                         all_tasks.append(task)
         
         total_tasks = len(all_tasks)
-        print(f"Total tasks: {total_tasks} (skipped {skipped} valid, cleaned {invalid} incomplete)")
+        print(f"\nTotal tasks: {total_tasks} (skipped {skipped} valid, cleaned {invalid} incomplete)")
         
         if not all_tasks:
             print("No tasks to run! All workflows appear complete.")
@@ -519,7 +548,6 @@ class ParallelCollector:
         # Save checkpoint file for recovery
         self.save_checkpoint(all_tasks)
         
-        # Adjust time estimate for sampling
         workflows_per_minute = 12 if self.sample_rate == 1 else 10
         print(f"Estimated time: {total_tasks / self.max_workers / workflows_per_minute:.1f} hours")
         print(f"\nStarting parallel processing with isolated workspaces...\n")
@@ -527,13 +555,11 @@ class ParallelCollector:
         
         # Process with concurrent.futures
         with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-            # Submit all tasks
             future_to_task = {
                 executor.submit(process_single_workflow, task): task 
                 for task in all_tasks
             }
             
-            # Process completed tasks
             for future in as_completed(future_to_task):
                 try:
                     result = future.result(timeout=360)
@@ -551,12 +577,10 @@ class ParallelCollector:
                     
                     self.results_log.append(result)
                     
-                    # Progress update every 10 tasks
                     total_done = self.completed + self.failed
                     if total_done % 10 == 0:
                         self.print_progress(total_done, total_tasks)
                     
-                    # Save progress checkpoint every 50 completions
                     if self.completed % 50 == 0:
                         self.save_progress_checkpoint()
                         
@@ -565,7 +589,6 @@ class ParallelCollector:
                     task = future_to_task[future]
                     print(f"✗ Task failed: {task[0]} Sample{task[2]} P${task[1]} - {str(e)[:100]}")
         
-        # Final summary
         self.print_summary(total_tasks)
         self.save_results_log()
         self.cleanup_checkpoint()
@@ -590,8 +613,7 @@ class ParallelCollector:
                 print(f"   Could not load checkpoint: {e}")
     
     def is_partially_complete(self, ticker, portfolio, sample_num, date):
-        """Check if workflow is partially complete (has some files but not all)"""
-        workflow_pattern = f"{date}_sample{sample_num:03d}*"
+        """Check if workflow is partially complete"""
         ticker_path = self.workflows_path / ticker
         
         if ticker_path.exists():
@@ -599,26 +621,22 @@ class ParallelCollector:
                 if date_folder.name.startswith(f"{date}_sample{sample_num:03d}"):
                     portfolio_path = date_folder / f"portfolio_{portfolio}"
                     if portfolio_path.exists():
-                        # Count valid JSON files
                         valid_files = 0
                         for json_file in portfolio_path.glob("*.json"):
-                            if json_file.stat().st_size > 10:  # Not empty
+                            if json_file.stat().st_size > 10:
                                 try:
                                     with open(json_file, 'r') as f:
-                                        json.load(f)  # Verify it's valid JSON
+                                        json.load(f)
                                         valid_files += 1
                                 except:
                                     pass
                         
-                        # If has some files but less than 9 required, it's incomplete
                         if 0 < valid_files < 9:
                             return True
         return False
     
     def clean_incomplete_workflow(self, ticker, portfolio, sample_num, date):
         """Clean up incomplete workflow files"""
-        # Clean workflow folder
-        workflow_pattern = f"{date}_sample{sample_num:03d}*"
         ticker_path = self.workflows_path / ticker
         
         if ticker_path.exists():
@@ -628,7 +646,6 @@ class ParallelCollector:
                     if portfolio_path.exists():
                         shutil.rmtree(portfolio_path)
         
-        # Clean game_theory folder
         game_path = self.game_theory_path / ticker / f"portfolio_{portfolio}" / f"sample_{sample_num}"
         if game_path.exists():
             shutil.rmtree(game_path)
@@ -641,11 +658,13 @@ class ParallelCollector:
             'tickers': self.tickers,
             'samples': self.samples,
             'sample_rate': self.sample_rate,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
             'total_tasks': len(tasks),
             'completed': self.completed,
             'failed': self.failed,
             'results_log': self.results_log,
-            'historical_mode': True  # NEW
+            'historical_mode': True
         }
         with open(checkpoint_file, 'w') as f:
             json.dump(checkpoint, f, indent=2)
@@ -664,7 +683,7 @@ class ParallelCollector:
                 with open(checkpoint_file, 'w') as f:
                     json.dump(checkpoint, f, indent=2)
             except:
-                pass  # Don't fail on checkpoint save
+                pass
     
     def cleanup_checkpoint(self):
         """Remove checkpoint file after successful completion"""
@@ -699,8 +718,11 @@ class ParallelCollector:
         print(f"\nSampling configuration:")
         print(f"  Sample rate: Every {self.sample_rate} day(s)")
         print(f"  Samples collected: {self.samples} per ticker")
-        print(f"  Days covered: ~{self.total_days_needed} trading days")
-        print(f"  Historical Mode: ENABLED")  # NEW
+        if self.start_date:
+            print(f"  Start date: {self.start_date.strftime('%Y-%m-%d')}")
+        if self.end_date:
+            print(f"  End date: {self.end_date.strftime('%Y-%m-%d')}")
+        print(f"  Historical Mode: ENABLED")
         print(f"\nData locations:")
         print(f"  Organized workflows: {self.workflows_path}")
         print(f"  Game theory data: {self.game_theory_path}")
@@ -717,12 +739,13 @@ class ParallelCollector:
             'tickers': self.tickers,
             'samples': self.samples,
             'sample_rate': self.sample_rate,
-            'total_days_covered': self.total_days_needed,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
             'portfolio_sizes': self.portfolio_sizes,
             'workers': self.max_workers,
             'completed': self.completed,
             'failed': self.failed,
-            'historical_mode': True,  # NEW
+            'historical_mode': True,
             'results': self.results_log
         }
         
@@ -732,44 +755,58 @@ class ParallelCollector:
         print(f"Results log saved to: {log_file}")
 
 
-# Your diverse 20 stocks (removed 10 for better coverage)
+# Default tickers
 SELECTED_TICKERS = [
-    # Tech (5)
     'NVDA', 'AAPL', 'MSFT', 'GOOGL', 'META',
-    # Finance (3)
     'JPM', 'GS', 'V',
-    # Healthcare (3)
     'LLY', 'JNJ', 'UNH',
-    # Consumer (3)
     'AMZN', 'TSLA', 'WMT',
-    # Energy (2)
     'XOM', 'CVX',
-    # ETFs (2)
     'SPY', 'QQQ',
-    # Defensive (2)
     'PG', 'KO'
 ]
+
+
+def parse_date(date_str):
+    """Parse date string in various formats"""
+    if not date_str:
+        return None
+    
+    formats = ['%Y-%m-%d', '%Y/%m/%d', '%m-%d-%Y', '%m/%d/%Y', '%d-%m-%Y']
+    for fmt in formats:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+    
+    raise ValueError(f"Could not parse date: {date_str}. Use YYYY-MM-DD format.")
 
 
 def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="Parallel data collection with sampling support",
+        description="Parallel data collection with sampling support and custom date ranges",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Standard 90 consecutive days
-  python parallel_collector_sampled.py --samples 90 --sample-rate 1
+  # Standard 90 consecutive days (recent data)
+  python batch_collect_all.py --samples 90 --sample-rate 1
   
-  # Every 3rd day for 90 samples (covers ~270 days)
-  python parallel_collector_sampled.py --samples 90 --sample-rate 3
+  # Start from specific date, collect 60 samples every 2nd day
+  python batch_collect_all.py --start-date 2024-01-01 --samples 60 --sample-rate 2
   
-  # Every 2nd day for 60 samples (covers ~120 days)
-  python parallel_collector_sampled.py --samples 60 --sample-rate 2
+  # Specific date range
+  python batch_collect_all.py --start-date 2024-01-01 --end-date 2024-06-30 --samples 90
   
-  # Test mode
-  python parallel_collector_sampled.py --test
+  # Every 3rd day for 90 samples starting from a date
+  python batch_collect_all.py --start-date 2023-06-01 --samples 90 --sample-rate 3
+  
+  # Test mode with custom start
+  python batch_collect_all.py --test --start-date 2024-01-15
+  
+  # Single ticker with date range
+  python batch_collect_all.py --tickers AAPL --start-date 2024-01-01 --samples 30
         """
     )
     
@@ -779,12 +816,26 @@ Examples:
     parser.add_argument('--workers', type=int, default=None, help='Number of parallel workers')
     parser.add_argument('--test', action='store_true', help='Test mode - 2 tickers, 5 samples')
     
+    # NEW: Date range arguments
+    parser.add_argument('--start-date', type=str, default=None, 
+                        help='Start date for sampling (YYYY-MM-DD). Samples forward from this date.')
+    parser.add_argument('--end-date', type=str, default=None,
+                        help='End date for sampling (YYYY-MM-DD). Defaults to today.')
+    
     args = parser.parse_args()
     
     # Set environment variables for UTF-8
     if sys.platform == 'win32':
         os.environ['PYTHONIOENCODING'] = 'utf-8'
         os.environ['PYTHONUTF8'] = '1'
+    
+    # Parse dates
+    try:
+        start_date = parse_date(args.start_date)
+        end_date = parse_date(args.end_date)
+    except ValueError as e:
+        print(f"Error: {e}")
+        return
     
     # Determine parameters
     if args.test:
@@ -798,7 +849,7 @@ Examples:
         sample_rate = args.sample_rate
     
     # Calculate estimates
-    total_tasks = len(tickers) * samples * 1  # 1 portfolio size
+    total_tasks = len(tickers) * samples * 1
     total_days = (samples - 1) * sample_rate + 1
     workers = args.workers or min(8, mp.cpu_count() // 2)
     
@@ -808,10 +859,21 @@ Examples:
     print(f"  Samples: {samples} per ticker")
     print(f"  Sample rate: Every {sample_rate} day(s)")
     print(f"  Days covered: ~{total_days} trading days")
+    
+    if start_date:
+        print(f"  Start date: {start_date.strftime('%Y-%m-%d')}")
+    else:
+        print(f"  Start date: (auto - most recent data)")
+    
+    if end_date:
+        print(f"  End date: {end_date.strftime('%Y-%m-%d')}")
+    else:
+        print(f"  End date: (today)")
+    
     print(f"  Total tasks: {total_tasks} workflows")
     print(f"  Workers: {workers} parallel processes")
     print(f"  Estimated time: {total_tasks/workers/12:.1f} hours")
-    print(f"  Historical Mode: ENABLED")  # NEW
+    print(f"  Historical Mode: ENABLED")
     
     if sample_rate > 1:
         print(f"\nNOTE: Sampling every {sample_rate} days gives better regime")
@@ -829,13 +891,14 @@ Examples:
         tickers=tickers, 
         samples=samples,
         sample_rate=sample_rate,
-        max_workers=args.workers
+        max_workers=args.workers,
+        start_date=start_date,
+        end_date=end_date
     )
     collector.run_parallel_collection()
 
 
 if __name__ == '__main__':
-    # CRITICAL: Windows multiprocessing setup
     if sys.platform == 'win32':
         mp.freeze_support()
     
