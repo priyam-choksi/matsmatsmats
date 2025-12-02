@@ -1,0 +1,86 @@
+{
+  "ticker": "JPM",
+  "timestamp": "2025-12-01T04:51:20.594427",
+  "analysis_date": "2024-07-26",
+  "historical_mode": true,
+  "portfolio_value": 100000.0,
+  "verdict": "APPROVE",
+  "final_position_pct": 0.045888,
+  "final_position_dollars": 4588.81,
+  "confidence": "LOW",
+  "reasoning": "Based on split consensus among evaluators.",
+  "key_factors": [
+    "Consensus: SPLIT"
+  ],
+  "conditions": [
+    "Monitor weekly"
+  ],
+  "stop_loss_pct": 15,
+  "profit_targets": [
+    12.5,
+    18.8,
+    25
+  ],
+  "guardrail_corrections": [],
+  "is_llm_decision": true,
+  "risk_controls": {
+    "stop_loss": {
+      "percentage": 15,
+      "dollar_amount": 688.32
+    },
+    "take_profit": {
+      "targets": [
+        12.5,
+        18.8,
+        25
+      ],
+      "scale_out": [
+        0.33,
+        0.33,
+        0.34
+      ]
+    },
+    "time_limit": {
+      "max_holding_period": "90 days",
+      "review_frequency": "weekly"
+    }
+  },
+  "risk_consensus": {
+    "stances": {
+      "aggressive": "BUY",
+      "neutral": "HOLD",
+      "conservative": "HOLD"
+    },
+    "position_sizes": {
+      "aggressive": 10.0,
+      "neutral": 0,
+      "conservative": 0
+    },
+    "agreements": [],
+    "conflicts": [
+      "Mixed views: 1 buy, 0 avoid"
+    ],
+    "avg_position_size": 0.03333333333333333,
+    "red_flags": [
+      {
+        "flag": "Analysis failed",
+        "severity": "HIGH",
+        "source": "System"
+      }
+    ]
+  },
+  "position_sizing": {
+    "range_min_pct": 3.0,
+    "range_max_pct": 5.5,
+    "final_pct": 4.5888,
+    "final_dollars": 4588.81
+  },
+  "agent_votes": {
+    "bullish": 1,
+    "bearish": 0,
+    "neutral": 3,
+    "consensus": "SPLIT"
+  },
+  "research_recommendation": "HOLD",
+  "report": "\n======================================================================\nRISK MANAGER FINAL DECISION: JPM\n======================================================================\n**Analysis Date:** 2024-07-26 (HISTORICAL)\n**Portfolio:** $100,000\n\n## VERDICT: APPROVE\n**Position:** 4.59% ($4,588.81)\n**Confidence:** LOW\n\n## REASONING\nBased on split consensus among evaluators.\n\n## KEY FACTORS\n\u2022 Consensus: SPLIT\n\n## EVALUATOR SUMMARY\n- Aggressive: BUY @ 10%\n- Neutral: HOLD @ 0%\n- Conservative: HOLD @ 0%\n\n## AGENT CONSENSUS\n- Bullish Votes: 1/4\n- Bearish Votes: 0/4\n- Neutral Votes: 3/4\n- Overall: Split\n\n## POSITION SIZING\n- Range: 3.0% - 5.5%\n- Final: 4.59% ($4,588.81)\n\n## RISK CONTROLS\n- Stop Loss: -15%\n- Profit Targets: +12.5%, +18.8%, +25%\n\n## CONDITIONS\n\u2022 Monitor weekly\n\n======================================================================\n"
+}
