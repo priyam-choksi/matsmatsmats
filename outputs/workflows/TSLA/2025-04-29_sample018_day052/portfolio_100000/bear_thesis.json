@@ -1,0 +1,84 @@
+{
+  "ticker": "TSLA",
+  "timestamp": "2025-12-01T02:02:04.950514",
+  "analysis_date": "2025-04-29",
+  "historical_mode": true,
+  "model": "gpt-4o-mini",
+  "core_thesis": "Tesla (TSLA) faces significant downside risks due to high valuation metrics, declining earnings, and overbought technical indicators, suggesting that the stock is likely to experience a pullback as investor sentiment shifts.",
+  "key_risk_signals": [
+    {
+      "source": "technical",
+      "signal": "Overbought RSI at 71.5 indicates potential for a price pullback.",
+      "severity": "high"
+    },
+    {
+      "source": "fundamental",
+      "signal": "P/E ratio of 198.37 and P/B ratio of 13.01 suggest severe overvaluation.",
+      "severity": "high"
+    },
+    {
+      "source": "fundamental",
+      "signal": "Earnings decline of 37.1% raises concerns about future profitability.",
+      "severity": "high"
+    },
+    {
+      "source": "fundamental",
+      "signal": "0% earnings beat rate over the last four quarters indicates poor earnings quality.",
+      "severity": "medium"
+    },
+    {
+      "source": "macro",
+      "signal": "High volatility indicated by ATR of $20.38, suggesting potential for wider price swings.",
+      "severity": "medium"
+    }
+  ],
+  "downside_triggers": [
+    {
+      "trigger": "Market correction or negative earnings report",
+      "timeline": "next earnings release",
+      "probability": "high",
+      "impact": "Could lead to a significant decline in stock price as investor confidence wanes."
+    },
+    {
+      "trigger": "Breakdown below key support levels",
+      "timeline": "short-term",
+      "probability": "medium",
+      "impact": "May trigger stop-loss orders, exacerbating the decline."
+    }
+  ],
+  "risk_assessment": {
+    "current_price": 292.03,
+    "downside_target": 214.25,
+    "upside_resistance": 294.86,
+    "downside_pct": 26.67,
+    "limited_upside_pct": 0.95,
+    "risk_score": 85,
+    "rationale": "The current price is near resistance, and with overbought conditions and high valuation metrics, a pullback to support levels is likely. The downside target reflects the key support level identified in technical analysis."
+  },
+  "conviction": {
+    "level": "HIGH",
+    "reasoning": "The combination of high valuation, declining earnings, and technical indicators strongly suggests that the stock is at risk of a significant pullback.",
+    "data_quality": "moderate"
+  },
+  "recommendation": {
+    "action": "STRONG SELL",
+    "risk_level": "HIGH",
+    "hedging_strategy": "Consider options strategies to protect against downside risk, such as buying puts.",
+    "time_horizon": "Risks are likely to materialize in the upcoming earnings report and as technical indicators suggest a reversal."
+  },
+  "counter_bull_arguments": [
+    {
+      "bull_argument": "Strong revenue growth of 11.6% indicates demand for Tesla products.",
+      "bear_response": "However, this is overshadowed by the alarming earnings decline of 37.1%, indicating that revenue growth is not translating into profitability."
+    },
+    {
+      "bull_argument": "Tesla's market leadership in electric vehicles will drive future growth.",
+      "bear_response": "Market leadership does not justify current valuations, especially in a competitive landscape where margins are under pressure."
+    }
+  ],
+  "full_analysis": "Tesla's current stock price of $292.03 is precariously positioned near key resistance levels, with a P/E ratio of 198.37 and a P/B ratio of 13.01 indicating that the stock is significantly overvalued relative to its earnings and book value. The company's recent earnings performance has been troubling, with a 37.1% decline in earnings, and a 0% beat rate over the last four quarters raises serious concerns about the quality of its earnings. Furthermore, the technical indicators suggest that the stock is overbought, as evidenced by an RSI of 71.5, which typically signals a potential pullback. The ATR of $20.38 indicates high volatility, suggesting that the stock could experience significant price swings in the near future. Given these factors, the risk of a price decline is substantial, particularly if the upcoming earnings report fails to meet expectations. Overall, the combination of high valuation, declining earnings, and overbought conditions leads to a strong sell recommendation for TSLA.",
+  "guardrail_corrections": [
+    "Invalid data_quality 'strong - supported by multiple data points across technical, fundamental, and macro analyses.' → moderate"
+  ],
+  "is_fallback": false
+}

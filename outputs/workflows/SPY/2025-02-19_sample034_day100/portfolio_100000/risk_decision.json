@@ -1,0 +1,111 @@
+{
+  "ticker": "SPY",
+  "timestamp": "2025-12-01T08:09:48.180563",
+  "analysis_date": "2025-02-19",
+  "historical_mode": true,
+  "portfolio_value": 100000.0,
+  "verdict": "APPROVE",
+  "final_position_pct": 0.050945,
+  "final_position_dollars": 5094.48,
+  "confidence": "LOW",
+  "reasoning": "Based on split consensus among evaluators.",
+  "key_factors": [
+    "Consensus: SPLIT"
+  ],
+  "conditions": [
+    "Monitor weekly"
+  ],
+  "stop_loss_pct": 15,
+  "profit_targets": [
+    12.5,
+    18.8,
+    25
+  ],
+  "guardrail_corrections": [],
+  "is_llm_decision": true,
+  "risk_controls": {
+    "stop_loss": {
+      "percentage": 15,
+      "dollar_amount": 764.17
+    },
+    "take_profit": {
+      "targets": [
+        12.5,
+        18.8,
+        25
+      ],
+      "scale_out": [
+        0.33,
+        0.33,
+        0.34
+      ]
+    },
+    "time_limit": {
+      "max_holding_period": "90 days",
+      "review_frequency": "weekly"
+    }
+  },
+  "risk_consensus": {
+    "stances": {
+      "aggressive": "STRONG BUY",
+      "neutral": "HOLD",
+      "conservative": "AVOID"
+    },
+    "position_sizes": {
+      "aggressive": 10.5,
+      "neutral": 0,
+      "conservative": 0
+    },
+    "agreements": [],
+    "conflicts": [
+      "Mixed views: 1 buy, 1 avoid"
+    ],
+    "avg_position_size": 0.034999999999999996,
+    "red_flags": [
+      {
+        "flag": "Max allowed red flags exceeded",
+        "severity": "HIGH",
+        "source": "Risk Metrics"
+      },
+      {
+        "flag": "Overbought conditions indicated by RSI and Stochastic",
+        "severity": "HIGH",
+        "source": "Key Risk Signals"
+      },
+      {
+        "flag": "Poor risk/reward ratio",
+        "severity": "MEDIUM",
+        "source": "Risk/Reward Ratio"
+      },
+      {
+        "flag": "Absence of key financial metrics",
+        "severity": "HIGH",
+        "source": "Data Quality"
+      },
+      {
+        "flag": "Market correction probability high",
+        "severity": "HIGH",
+        "source": "Downside Triggers"
+      },
+      {
+        "flag": "Negative sentiment due to lack of data",
+        "severity": "MEDIUM",
+        "source": "Downside Triggers"
+      }
+    ]
+  },
+  "position_sizing": {
+    "range_min_pct": 3.0,
+    "range_max_pct": 5.5,
+    "final_pct": 5.0945,
+    "final_dollars": 5094.48
+  },
+  "agent_votes": {
+    "bullish": 1,
+    "bearish": 1,
+    "neutral": 2,
+    "consensus": "SPLIT"
+  },
+  "research_recommendation": "HOLD",
+  "report": "\n======================================================================\nRISK MANAGER FINAL DECISION: SPY\n======================================================================\n**Analysis Date:** 2025-02-19 (HISTORICAL)\n**Portfolio:** $100,000\n\n## VERDICT: APPROVE\n**Position:** 5.09% ($5,094.48)\n**Confidence:** LOW\n\n## REASONING\nBased on split consensus among evaluators.\n\n## KEY FACTORS\n\u2022 Consensus: SPLIT\n\n## EVALUATOR SUMMARY\n- Aggressive: STRONG BUY @ 10.5%\n- Neutral: HOLD @ 0%\n- Conservative: AVOID @ 0%\n\n## AGENT CONSENSUS\n- Bullish Votes: 1/4\n- Bearish Votes: 1/4\n- Neutral Votes: 2/4\n- Overall: Split\n\n## POSITION SIZING\n- Range: 3.0% - 5.5%\n- Final: 5.09% ($5,094.48)\n\n## RISK CONTROLS\n- Stop Loss: -15%\n- Profit Targets: +12.5%, +18.8%, +25%\n\n## CONDITIONS\n\u2022 Monitor weekly\n\n======================================================================\n"
+}
