@@ -4,38 +4,23 @@ run_analysis.py - CLI Entry Point for Game Theory Tournament
 
 Location: agents/game_theory/run_analysis.py
 
-This is the command-line interface for running game theory tournaments.
-Run this from your project root directory.
+UPDATED: 
+- Buy-and-Hold is now EXTERNAL BENCHMARK (not tournament participant)
+- Tournament has 4 strategies competing for capital
+- Generates visualizations automatically
 
-Usage Examples:
-    # Run for single ticker
+Usage:
+    # Run single ticker
     python -m agents.game_theory.run_analysis --ticker AAPL
     
-    # Run for all tickers
+    # Run all tickers
     python -m agents.game_theory.run_analysis --all
     
-    # Quick mode (skip Monte Carlo and animated GIFs)
-    python -m agents.game_theory.run_analysis --all --quick
-    
-    # Custom Monte Carlo iterations
-    python -m agents.game_theory.run_analysis --ticker AAPL --mc-sims 5000
-    
-    # Skip only GIFs (keep Monte Carlo)
-    python -m agents.game_theory.run_analysis --all --no-gifs
-    
-    # Custom output directory
-    python -m agents.game_theory.run_analysis --ticker AAPL --output-dir my_results
-    
-    # Show available tickers
+    # List available tickers
     python -m agents.game_theory.run_analysis --list
-
-Alternative ways to run:
-    # From project root
-    python agents/game_theory/run_analysis.py --ticker AAPL
     
-    # From agents folder
-    cd agents
-    python -m game_theory.run_analysis --ticker AAPL
+    # Custom settings
+    python -m agents.game_theory.run_analysis --ticker AAPL --capital 500000 --realloc 0.15
 """
 
 import argparse
@@ -43,8 +28,7 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-# Add parent directories to path for imports
-# This allows running from various locations
+# Add paths for imports
 current_dir = Path(__file__).parent
 agents_dir = current_dir.parent
 project_root = agents_dir.parent
@@ -53,117 +37,112 @@ for path in [str(current_dir), str(agents_dir), str(project_root)]:
     if path not in sys.path:
         sys.path.insert(0, path)
 
-# Now import our modules
-from game_theory.tournament_engine import TournamentEngine
-from game_theory.monte_carlo_engine import MonteCarloEngine
+from game_theory.gt_engine import GTEngine
 from game_theory.data_loader import DataLoader
 
 
 def print_header():
-    """Print fancy header."""
-    print("\n" + "=" * 70)
-    print("   ██████╗  █████╗ ███╗   ███╗███████╗    ████████╗██╗  ██╗███████╗ ██████╗ ██████╗ ██╗   ██╗")
-    print("  ██╔════╝ ██╔══██╗████╗ ████║██╔════╝    ╚══██╔══╝██║  ██║██╔════╝██╔═══██╗██╔══██╗╚██╗ ██╔╝")
-    print("  ██║  ███╗███████║██╔████╔██║█████╗         ██║   ███████║█████╗  ██║   ██║██████╔╝ ╚████╔╝ ")
-    print("  ██║   ██║██╔══██║██║╚██╔╝██║██╔══╝         ██║   ██╔══██║██╔══╝  ██║   ██║██╔══██╗  ╚██╔╝  ")
-    print("  ╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗       ██║   ██║  ██║███████╗╚██████╔╝██║  ██║   ██║   ")
-    print("   ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝       ╚═╝   ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ")
-    print("=" * 70)
-    print("  TRADING TOURNAMENT ANALYSIS")
-    print("=" * 70)
+    """Print banner."""
+    print("""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    GAME THEORY CAPITAL ALLOCATION TOURNAMENT                  ║
+║                                                                              ║
+║  4 Strategies compete for capital allocation based on relative performance   ║
+║  Buy-and-Hold serves as EXTERNAL BENCHMARK for comparison                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+    """)
 
 
 def print_config(args):
-    """Print configuration summary."""
-    print(f"\n{'─' * 50}")
-    print("CONFIGURATION")
-    print(f"{'─' * 50}")
-    print(f"  Started:      {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"  Mode:         {'Single ticker' if args.ticker else 'All tickers'}")
+    """Print configuration."""
+    print("Configuration:")
+    print(f"  Capital: ${args.capital:,.0f}")
+    print(f"  Reallocation Rate: {args.realloc:.0%}")
     if args.ticker:
-        print(f"  Ticker:       {args.ticker}")
-    print(f"  Monte Carlo:  {'Disabled' if args.quick else f'{args.mc_sims} simulations'}")
-    print(f"  Animated GIFs: {'Disabled' if args.quick or args.no_gifs else 'Enabled'}")
+        print(f"  Ticker: {args.ticker}")
+    else:
+        print(f"  Mode: All tickers")
     if args.output_dir:
-        print(f"  Output Dir:   {args.output_dir}")
-    print(f"{'─' * 50}\n")
+        print(f"  Output: {args.output_dir}")
+    print()
+    print("Tournament Strategies: Signal Follower, Cooperator, Defector, Tit-for-Tat")
+    print("Benchmark: Buy-and-Hold (tracked separately)")
+    print()
 
 
 def list_tickers():
-    """List available tickers with sample counts."""
+    """List available tickers."""
     print("\nSearching for available data...")
     
     try:
         loader = DataLoader()
-        loader.print_data_summary()
+        tickers = loader.get_available_tickers()
+        
+        if tickers:
+            print(f"\nFound {len(tickers)} tickers with data:")
+            for t in tickers:
+                contexts = loader.load_ticker_data(t)
+                print(f"  {t}: {len(contexts)} samples")
+        else:
+            print("\nNo tickers found.")
+            print("Make sure you've run the data collector first.")
+        
+        return 0
+        
     except FileNotFoundError as e:
         print(f"\nError: {e}")
-        print("\nMake sure you:")
-        print("  1. Are running from the project root directory")
-        print("  2. Have collected data using the parallel collector")
         return 1
-    
-    return 0
 
 
 def run_tournament(args):
-    """Run the tournament with given arguments."""
+    """Run the tournament."""
     print_header()
     print_config(args)
     
     try:
         # Initialize engine
         output_dir = Path(args.output_dir) if args.output_dir else None
-        engine = TournamentEngine(output_dir=output_dir)
         
-        # Update Monte Carlo simulations if specified
-        if args.mc_sims != 1000:
-            engine.monte_carlo = MonteCarloEngine(n_simulations=args.mc_sims)
-            print(f"Monte Carlo set to {args.mc_sims} simulations")
-        
-        # Determine flags
-        run_mc = not args.quick
-        run_gifs = not args.quick and not args.no_gifs
+        engine = GTEngine(
+            total_capital=args.capital,
+            reallocation_rate=args.realloc,
+            output_dir=output_dir
+        )
         
         # Run analysis
         if args.ticker:
-            # Single ticker
-            engine.run_ticker(
-                args.ticker,
-                run_monte_carlo=run_mc,
-                generate_gifs=run_gifs
-            )
+            engine.run_ticker(args.ticker)
         else:
-            # All tickers
-            engine.run_all_tickers(
-                run_monte_carlo=run_mc,
-                generate_gifs=run_gifs
-            )
+            engine.run_all_tickers()
         
         # Print completion
         print(f"\n{'=' * 70}")
-        print("ANALYSIS COMPLETE")
+        print("TOURNAMENT COMPLETE")
         print(f"{'=' * 70}")
-        print(f"  Finished:    {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"  Results:     {engine.output_dir}")
+        print(f"  Finished: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"  Results:  {engine.output_dir}")
+        print()
+        print("Output files:")
+        print(f"  📝 Detailed logs: {engine.output_dir}/logs/")
+        print(f"  📊 Summaries: {engine.output_dir}/summary/")
+        print(f"  📈 Visualizations: {engine.output_dir}/visualizations/")
         print(f"{'=' * 70}\n")
         
         return 0
         
     except FileNotFoundError as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n✗ Error: {e}")
         print("\nMake sure you:")
-        print("  1. Are running from the project root directory")
-        print("  2. Have collected data using the parallel collector")
-        print("  3. Have data in outputs/game_theory/TICKER/portfolio_100000/")
+        print("  1. Are running from the project root")
+        print("  2. Have collected data using the data collector")
         return 1
         
     except KeyboardInterrupt:
-        print("\n\n⚠️ Analysis interrupted by user")
+        print("\n\n⚠ Interrupted by user")
         return 130
         
     except Exception as e:
-        print(f"\n❌ Unexpected error: {e}")
+        print(f"\n✗ Error: {e}")
         import traceback
         traceback.print_exc()
         return 1
@@ -172,68 +151,38 @@ def run_tournament(args):
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Run Game Theory Tournament Analysis",
+        description="Game Theory Capital Allocation Tournament",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s --ticker AAPL           Run for single ticker
-  %(prog)s --all                   Run for all tickers
-  %(prog)s --all --quick           Skip Monte Carlo and GIFs
-  %(prog)s --ticker AAPL --mc-sims 5000  Custom MC iterations
-  %(prog)s --list                  Show available tickers
+  %(prog)s --list                    List available tickers
+  %(prog)s --ticker AAPL             Run tournament for AAPL
+  %(prog)s --all                     Run tournament for all tickers
+  %(prog)s --ticker AAPL --capital 500000  Custom capital
         """
     )
     
-    # Main mode selection (mutually exclusive)
+    # Mode selection
     mode_group = parser.add_mutually_exclusive_group(required=True)
-    mode_group.add_argument(
-        '--ticker', 
-        type=str, 
-        help='Single ticker to analyze (e.g., AAPL)'
-    )
-    mode_group.add_argument(
-        '--all', 
-        action='store_true', 
-        help='Analyze all available tickers'
-    )
-    mode_group.add_argument(
-        '--list', 
-        action='store_true', 
-        help='List available tickers and exit'
-    )
+    mode_group.add_argument('--ticker', '-t', type=str, help='Run for specific ticker')
+    mode_group.add_argument('--all', '-a', action='store_true', help='Run for all tickers')
+    mode_group.add_argument('--list', '-l', action='store_true', help='List available tickers')
     
-    # Optional flags
-    parser.add_argument(
-        '--quick', 
-        action='store_true',
-        help='Quick mode: skip Monte Carlo and animated GIFs'
-    )
-    parser.add_argument(
-        '--mc-sims', 
-        type=int, 
-        default=1000,
-        help='Number of Monte Carlo simulations (default: 1000)'
-    )
-    parser.add_argument(
-        '--output-dir', 
-        type=str, 
-        default=None,
-        help='Custom output directory'
-    )
-    parser.add_argument(
-        '--no-gifs', 
-        action='store_true',
-        help='Skip animated GIF generation (faster)'
-    )
+    # Configuration
+    parser.add_argument('--capital', '-c', type=float, default=1_000_000,
+                       help='Total capital (default: 1,000,000)')
+    parser.add_argument('--realloc', '-r', type=float, default=0.10,
+                       help='Reallocation rate (default: 0.10)')
+    parser.add_argument('--output-dir', '-o', type=str, default=None,
+                       help='Output directory (auto-generated if not specified)')
     
     args = parser.parse_args()
     
-    # Handle --list
+    # Execute
     if args.list:
         return list_tickers()
-    
-    # Run tournament
-    return run_tournament(args)
+    else:
+        return run_tournament(args)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,109 @@
+{
+  "ticker": "JPM",
+  "timestamp": "2025-12-01T04:12:32.327725",
+  "analysis_date": "2025-02-13",
+  "historical_mode": true,
+  "portfolio_value": 100000.0,
+  "verdict": "REJECT",
+  "final_position_pct": 0.004022,
+  "final_position_dollars": 402.16,
+  "confidence": "HIGH",
+  "reasoning": "We are rejecting a position in JPMorgan Chase due to significant downside risks stemming from its current overvaluation and the potential for a market correction. The bearish macroeconomic environment, combined with operational instability concerns from recent layoffs, creates an unfavorable risk/reward profile that necessitates a prudent approach to risk management.",
+  "key_factors": [
+    "overvaluation",
+    "market correction potential",
+    "operational instability"
+  ],
+  "conditions": [
+    "bearish macroeconomic environment",
+    "high valuation ratios"
+  ],
+  "stop_loss_pct": 15,
+  "profit_targets": [
+    12.5,
+    18.8,
+    25
+  ],
+  "guardrail_corrections": [],
+  "is_llm_decision": true,
+  "risk_controls": {
+    "stop_loss": {
+      "percentage": 15,
+      "dollar_amount": 60.32
+    },
+    "take_profit": {
+      "targets": [
+        12.5,
+        18.8,
+        25
+      ],
+      "scale_out": [
+        0.33,
+        0.33,
+        0.34
+      ]
+    },
+    "time_limit": {
+      "max_holding_period": "90 days",
+      "review_frequency": "weekly"
+    }
+  },
+  "risk_consensus": {
+    "stances": {
+      "aggressive": "AVOID",
+      "neutral": "AVOID",
+      "conservative": "AVOID"
+    },
+    "position_sizes": {
+      "aggressive": 0.0,
+      "neutral": 0,
+      "conservative": 0
+    },
+    "agreements": [
+      "All evaluators recommend avoiding"
+    ],
+    "conflicts": [],
+    "avg_position_size": 0.0,
+    "red_flags": [
+      {
+        "flag": "Max allowed red flags exceeded",
+        "severity": "HIGH",
+        "source": "Pre-calculated risk metrics"
+      },
+      {
+        "flag": "Overvaluation indicated by high P/E and Price/Book ratios",
+        "severity": "HIGH",
+        "source": "Bear thesis"
+      },
+      {
+        "flag": "Operational instability due to layoffs",
+        "severity": "HIGH",
+        "source": "Bear thesis"
+      },
+      {
+        "flag": "High RSI indicating overbought conditions",
+        "severity": "HIGH",
+        "source": "Bear thesis"
+      },
+      {
+        "flag": "RISK-OFF sentiment and rising interest rates",
+        "severity": "MEDIUM",
+        "source": "Bear thesis"
+      }
+    ]
+  },
+  "position_sizing": {
+    "range_min_pct": 0,
+    "range_max_pct": 2.0,
+    "final_pct": 0.40220000000000006,
+    "final_dollars": 402.16
+  },
+  "agent_votes": {
+    "bullish": 0,
+    "bearish": 4,
+    "neutral": 0,
+    "consensus": "STRONG_BEARISH"
+  },
+  "research_recommendation": "SELL",
+  "report": "\n======================================================================\nRISK MANAGER FINAL DECISION: JPM\n======================================================================\n**Analysis Date:** 2025-02-13 (HISTORICAL)\n**Portfolio:** $100,000\n\n## VERDICT: REJECT\n**Position:** No position taken\n**Confidence:** HIGH\n\n## REASONING\nWe are rejecting a position in JPMorgan Chase due to significant downside risks stemming from its current overvaluation and the potential for a market correction. The bearish macroeconomic environment, combined with operational instability concerns from recent layoffs, creates an unfavorable risk/reward profile that necessitates a prudent approach to risk management.\n\n## KEY FACTORS\n\u2022 overvaluation\n\u2022 market correction potential\n\u2022 operational instability\n\n## EVALUATOR SUMMARY\n- Aggressive: AVOID @ 0.0%\n- Neutral: AVOID @ 0%\n- Conservative: AVOID @ 0%\n\n## AGENT CONSENSUS\n- Bullish Votes: 0/4\n- Bearish Votes: 4/4\n- Neutral Votes: 0/4\n- Overall: Strong Bearish\n\n## POSITION SIZING\n- Range: 0.0% - 2.0%\n- Final: 0.40% ($402.16)\n\n## RISK CONTROLS\n- Stop Loss: -15%\n- Profit Targets: +12.5%, +18.8%, +25%\n\n## CONDITIONS\n\u2022 bearish macroeconomic environment\n\u2022 high valuation ratios\n\n======================================================================\n"
+}

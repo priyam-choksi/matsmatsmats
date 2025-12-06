@@ -1,0 +1,4354 @@
+{
+  "meta": {
+    "ticker": "PG",
+    "timestamp": "2025-12-03T01:41:34.714599",
+    "total_rounds": 64,
+    "benchmark": "Buy-and-Hold",
+    "tournament_strategies": [
+      "Signal Follower",
+      "Cooperator",
+      "Defector",
+      "Tit-for-Tat"
+    ]
+  },
+  "rounds": [
+    {
+      "round_num": 1,
+      "date": "2025-07-09",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0037,
+        "daily_return_pct": -0.37
+      },
+      "benchmark_return_pct": -0.37,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "HOLD",
+          "position": 5.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "BUY",
+          "position": 6.2,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 12.76,
+          "reasoning": "Signal Follower: agg=5.0%, neu=6.2%, con=0.0% | Using avg=3.7% | Consensus=73% (mult=1.14) | Base=11.2% \u2192 Final=12.8%"
+        },
+        "Cooperator": {
+          "position_pct": 12.32,
+          "reasoning": "Cooperator: Round 1, using LLM only | LLM consensus=73% (adj: +10% (high LLM consensus)) | Final=12.3%"
+        },
+        "Defector": {
+          "position_pct": 11.2,
+          "reasoning": "Defector: Round 1, using LLM signal \u2192 11.2%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Round 1, starting nice \u2192 15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.0472,
+          "Cooperator": -0.0456,
+          "Defector": -0.0414,
+          "Tit-for-Tat": -0.0555
+        },
+        "dollar_returns": {
+          "Signal Follower": -117.99,
+          "Cooperator": -113.96,
+          "Defector": -103.6,
+          "Tit-for-Tat": -138.75
+        },
+        "allocations_after": {
+          "Signal Follower": 251144.08,
+          "Cooperator": 259030.7,
+          "Defector": 279302.83,
+          "Tit-for-Tat": 210522.39
+        }
+      }
+    },
+    {
+      "round_num": 2,
+      "date": "2025-06-25",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0053,
+        "daily_return_pct": -0.53
+      },
+      "benchmark_return_pct": -0.53,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 10.0,
+          "reasoning": "Cooperator: Round 1, using LLM only | LLM consensus=53% (adj: none) | Final=10.0%"
+        },
+        "Defector": {
+          "position_pct": 10.0,
+          "reasoning": "Defector: Round 1, using LLM signal \u2192 10.0%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Round 1, starting nice \u2192 15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.0539,
+          "Cooperator": -0.053,
+          "Defector": -0.053,
+          "Tit-for-Tat": -0.0795
+        },
+        "dollar_returns": {
+          "Signal Follower": -135.39,
+          "Cooperator": -137.29,
+          "Defector": -148.03,
+          "Tit-for-Tat": -167.37
+        },
+        "allocations_after": {
+          "Signal Follower": 261883.17,
+          "Cooperator": 272163.45,
+          "Defector": 293463.37,
+          "Tit-for-Tat": 172490.0
+        }
+      }
+    },
+    {
+      "round_num": 3,
+      "date": "2025-06-06",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0045,
+        "daily_return_pct": 0.45
+      },
+      "benchmark_return_pct": 0.45,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 12.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 34.58,
+          "reasoning": "Signal Follower: agg=12.0%, neu=0.0%, con=0.0% | Using max=12.0% | Consensus=43% (mult=0.96) | Base=36.0% \u2192 Final=34.6%"
+        },
+        "Cooperator": {
+          "position_pct": 11.81,
+          "reasoning": "Cooperator: Group=11.7%\u00d70.7 + LLM=12.0%\u00d70.3 | LLM consensus=43% (adj: none) | Final=11.8%"
+        },
+        "Defector": {
+          "position_pct": 79.14,
+          "reasoning": "Defector: DEFECT: Group bearish (11.7%) \u2192 go bullish | LLM avg=4.0% (no LLM adjustment) | Final=79.1%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (10.2%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.1556,
+          "Cooperator": 0.0531,
+          "Defector": 0.3561,
+          "Tit-for-Tat": 0.0675
+        },
+        "dollar_returns": {
+          "Signal Follower": 407.53,
+          "Cooperator": 144.6,
+          "Defector": 1045.09,
+          "Tit-for-Tat": 116.43
+        },
+        "allocations_after": {
+          "Signal Follower": 258508.1,
+          "Cooperator": 245831.35,
+          "Defector": 337830.86,
+          "Tit-for-Tat": 157829.69
+        }
+      }
+    },
+    {
+      "round_num": 4,
+      "date": "2025-05-29",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0109,
+        "daily_return_pct": 1.09
+      },
+      "benchmark_return_pct": 1.09,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "HIGH"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 33.03,
+          "reasoning": "Cooperator: Group=42.9%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=33.0%"
+        },
+        "Defector": {
+          "position_pct": 74.77,
+          "reasoning": "Defector: DEFECT: Group bearish (20.5%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=74.8%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 59.9,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (79.1%) | new winner \u2192 70% copy | Own=15.0% | Final=59.9%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.0841,
+          "Cooperator": 0.3601,
+          "Defector": 0.815,
+          "Tit-for-Tat": 0.6529
+        },
+        "dollar_returns": {
+          "Signal Follower": 217.36,
+          "Cooperator": 885.18,
+          "Defector": 2753.25,
+          "Tit-for-Tat": 1030.43
+        },
+        "allocations_after": {
+          "Signal Follower": 221277.5,
+          "Cooperator": 234581.11,
+          "Defector": 377082.5,
+          "Tit-for-Tat": 167058.89
+        }
+      }
+    },
+    {
+      "round_num": 5,
+      "date": "2025-05-20",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0063,
+        "daily_return_pct": 0.63
+      },
+      "benchmark_return_pct": 0.63,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.5,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "HIGH"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 31.59,
+          "reasoning": "Signal Follower: agg=10.5%, neu=0.0%, con=0.0% | Using max=10.5% | Consensus=51% (mult=1.00) | Base=31.5% \u2192 Final=31.6%"
+        },
+        "Cooperator": {
+          "position_pct": 36.37,
+          "reasoning": "Cooperator: Group=47.5%\u00d70.7 + LLM=10.5%\u00d70.3 | LLM consensus=51% (adj: none) | Final=36.4%"
+        },
+        "Defector": {
+          "position_pct": 68.23,
+          "reasoning": "Defector: DEFECT: Group bearish (33.5%) \u2192 go bullish | LLM avg=3.5% (no LLM adjustment) | Final=68.2%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 62.81,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (74.8%) | normal copy | Own=15.0% | Final=62.8%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.199,
+          "Cooperator": 0.2291,
+          "Defector": 0.4298,
+          "Tit-for-Tat": 0.3957
+        },
+        "dollar_returns": {
+          "Signal Follower": 440.45,
+          "Cooperator": 537.53,
+          "Defector": 1620.79,
+          "Tit-for-Tat": 661.11
+        },
+        "allocations_after": {
+          "Signal Follower": 193709.57,
+          "Cooperator": 212284.44,
+          "Defector": 415511.22,
+          "Tit-for-Tat": 178494.78
+        }
+      }
+    },
+    {
+      "round_num": 6,
+      "date": "2025-05-15",
+      "regime": "bull",
+      "market": {
+        "daily_return": 0.0177,
+        "daily_return_pct": 1.77
+      },
+      "benchmark_return_pct": 1.77,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "HOLD",
+          "position": 5.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "BUY",
+          "position": 12.0,
+          "confidence": "MEDIUM"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "HIGH"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 36.17,
+          "reasoning": "Signal Follower: agg=5.0%, neu=12.0%, con=0.0% | Using max=12.0% | Consensus=51% (mult=1.00) | Base=36.0% \u2192 Final=36.2%"
+        },
+        "Cooperator": {
+          "position_pct": 43.05,
+          "reasoning": "Cooperator: Group=54.2%\u00d70.7 + LLM=17.0%\u00d70.3 | LLM consensus=51% (adj: none) | Final=43.0%"
+        },
+        "Defector": {
+          "position_pct": 17.0,
+          "reasoning": "Defector: NEUTRAL: Group neutral (43.6%) \u2192 use LLM | LLM avg=5.7% (no LLM adjustment) | Final=17.0%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 63.1,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (68.2%) | streak=3 \u2192 90% copy | Own=17.0% | Final=63.1%"
+        }
+      },
+      "round_results": {
+        "winner": "Tit-for-Tat",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.6402,
+          "Cooperator": 0.762,
+          "Defector": 0.3009,
+          "Tit-for-Tat": 1.1169
+        },
+        "dollar_returns": {
+          "Signal Follower": 1240.12,
+          "Cooperator": 1617.51,
+          "Defector": 1250.27,
+          "Tit-for-Tat": 1993.66
+        },
+        "allocations_after": {
+          "Signal Follower": 195771.3,
+          "Cooperator": 223701.65,
+          "Defector": 369983.63,
+          "Tit-for-Tat": 210543.43
+        }
+      }
+    },
+    {
+      "round_num": 7,
+      "date": "2025-05-12",
+      "regime": "bull",
+      "market": {
+        "daily_return": 0.022,
+        "daily_return_pct": 2.2
+      },
+      "benchmark_return_pct": 2.2,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.5,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 31.59,
+          "reasoning": "Signal Follower: agg=10.5%, neu=0.0%, con=0.0% | Using max=10.5% | Consensus=51% (mult=1.00) | Base=31.5% \u2192 Final=31.6%"
+        },
+        "Cooperator": {
+          "position_pct": 30.28,
+          "reasoning": "Cooperator: Group=38.8%\u00d70.7 + LLM=10.5%\u00d70.3 | LLM consensus=51% (adj: none) | Final=30.3%"
+        },
+        "Defector": {
+          "position_pct": 10.5,
+          "reasoning": "Defector: NEUTRAL: Group neutral (47.4%) \u2192 use LLM | LLM avg=3.5% (no LLM adjustment) | Final=10.5%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 48.67,
+          "reasoning": "Tit-for-Tat: Copying 'Tit-for-Tat' (63.1%) | new winner \u2192 70% copy | Own=15.0% | Final=48.7%"
+        }
+      },
+      "round_results": {
+        "winner": "Tit-for-Tat",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.6951,
+          "Cooperator": 0.6662,
+          "Defector": 0.231,
+          "Tit-for-Tat": 1.0708
+        },
+        "dollar_returns": {
+          "Signal Follower": 1360.79,
+          "Cooperator": 1490.22,
+          "Defector": 854.66,
+          "Tit-for-Tat": 2254.48
+        },
+        "allocations_after": {
+          "Signal Follower": 202448.43,
+          "Cooperator": 229103.97,
+          "Defector": 323492.35,
+          "Tit-for-Tat": 244955.25
+        }
+      }
+    },
+    {
+      "round_num": 8,
+      "date": "2025-05-07",
+      "regime": "bull",
+      "market": {
+        "daily_return": 0.0017,
+        "daily_return_pct": 0.17
+      },
+      "benchmark_return_pct": 0.17,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 24.18,
+          "reasoning": "Cooperator: Group=30.3%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=53% (adj: none) | Final=24.2%"
+        },
+        "Defector": {
+          "position_pct": 66.58,
+          "reasoning": "Defector: DEFECT: Group bearish (36.8%) \u2192 go bullish | LLM avg=3.3% (no LLM adjustment) | Final=66.6%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 41.94,
+          "reasoning": "Tit-for-Tat: Copying 'Tit-for-Tat' (48.7%) | normal copy | Own=15.0% | Final=41.9%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.0173,
+          "Cooperator": 0.0411,
+          "Defector": 0.1132,
+          "Tit-for-Tat": 0.0713
+        },
+        "dollar_returns": {
+          "Signal Follower": 35.01,
+          "Cooperator": 94.17,
+          "Defector": 366.12,
+          "Tit-for-Tat": 174.64
+        },
+        "allocations_after": {
+          "Signal Follower": 174847.06,
+          "Cooperator": 212833.55,
+          "Defector": 364474.67,
+          "Tit-for-Tat": 247844.72
+        }
+      }
+    },
+    {
+      "round_num": 9,
+      "date": "2025-05-02",
+      "regime": "bull",
+      "market": {
+        "daily_return": -0.0025,
+        "daily_return_pct": -0.25
+      },
+      "benchmark_return_pct": -0.25,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 30.69,
+          "reasoning": "Cooperator: Group=39.6%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=30.7%"
+        },
+        "Defector": {
+          "position_pct": 72.29,
+          "reasoning": "Defector: DEFECT: Group bearish (25.4%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=72.3%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 51.1,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (66.6%) | new winner \u2192 70% copy | Own=15.0% | Final=51.1%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.0193,
+          "Cooperator": -0.0767,
+          "Defector": -0.1807,
+          "Tit-for-Tat": -0.1278
+        },
+        "dollar_returns": {
+          "Signal Follower": -33.72,
+          "Cooperator": -163.31,
+          "Defector": -658.65,
+          "Tit-for-Tat": -316.64
+        },
+        "allocations_after": {
+          "Signal Follower": 204244.54,
+          "Cooperator": 227629.79,
+          "Defector": 324758.47,
+          "Tit-for-Tat": 243367.19
+        }
+      }
+    },
+    {
+      "round_num": 10,
+      "date": "2025-04-29",
+      "regime": "bull",
+      "market": {
+        "daily_return": 0.006,
+        "daily_return_pct": 0.6
+      },
+      "benchmark_return_pct": 0.6,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 33.59,
+          "reasoning": "Cooperator: Group=43.7%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=33.6%"
+        },
+        "Defector": {
+          "position_pct": 70.08,
+          "reasoning": "Defector: DEFECT: Group bearish (29.8%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=70.1%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (7.7%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.0463,
+          "Cooperator": 0.2015,
+          "Defector": 0.4205,
+          "Tit-for-Tat": 0.09
+        },
+        "dollar_returns": {
+          "Signal Follower": 94.53,
+          "Cooperator": 458.77,
+          "Defector": 1365.58,
+          "Tit-for-Tat": 219.03
+        },
+        "allocations_after": {
+          "Signal Follower": 181011.81,
+          "Cooperator": 225736.48,
+          "Defector": 370342.8,
+          "Tit-for-Tat": 222908.91
+        }
+      }
+    },
+    {
+      "round_num": 11,
+      "date": "2025-04-24",
+      "regime": "bull",
+      "market": {
+        "daily_return": -0.006,
+        "daily_return_pct": -0.6
+      },
+      "benchmark_return_pct": -0.6,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 24.65,
+          "reasoning": "Cooperator: Group=30.9%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=53% (adj: none) | Final=24.7%"
+        },
+        "Defector": {
+          "position_pct": 75.62,
+          "reasoning": "Defector: DEFECT: Group bearish (18.8%) \u2192 go bullish | LLM avg=3.3% (no LLM adjustment) | Final=75.6%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 53.56,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (70.1%) | new winner \u2192 70% copy | Own=15.0% | Final=53.6%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": -0.061,
+          "Cooperator": -0.1479,
+          "Defector": -0.4537,
+          "Tit-for-Tat": -0.3213
+        },
+        "dollar_returns": {
+          "Signal Follower": -110.47,
+          "Cooperator": -333.9,
+          "Defector": -1680.23,
+          "Tit-for-Tat": -716.3
+        },
+        "allocations_after": {
+          "Signal Follower": 208223.02,
+          "Cooperator": 246453.16,
+          "Defector": 328011.34,
+          "Tit-for-Tat": 217312.48
+        }
+      }
+    },
+    {
+      "round_num": 12,
+      "date": "2025-04-21",
+      "regime": "bull",
+      "market": {
+        "daily_return": -0.0244,
+        "daily_return_pct": -2.44
+      },
+      "benchmark_return_pct": -2.44,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 35.51,
+          "reasoning": "Cooperator: Group=46.4%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=35.5%"
+        },
+        "Defector": {
+          "position_pct": 70.27,
+          "reasoning": "Defector: DEFECT: Group bearish (29.5%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=70.3%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (10.2%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.1882,
+          "Cooperator": -0.8665,
+          "Defector": -1.7146,
+          "Tit-for-Tat": -0.366
+        },
+        "dollar_returns": {
+          "Signal Follower": -391.92,
+          "Cooperator": -2135.6,
+          "Defector": -5624.03,
+          "Tit-for-Tat": -795.36
+        },
+        "allocations_after": {
+          "Signal Follower": 233540.03,
+          "Cooperator": 247647.43,
+          "Defector": 281726.8,
+          "Tit-for-Tat": 237085.73
+        }
+      }
+    },
+    {
+      "round_num": 13,
+      "date": "2025-04-10",
+      "regime": "bull",
+      "market": {
+        "daily_return": 0.0041,
+        "daily_return_pct": 0.41
+      },
+      "benchmark_return_pct": 0.41,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 24.7,
+          "reasoning": "Cooperator: Group=31.0%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=53% (adj: none) | Final=24.7%"
+        },
+        "Defector": {
+          "position_pct": 75.3,
+          "reasoning": "Defector: DEFECT: Group bearish (19.4%) \u2192 go bullish | LLM avg=3.3% (no LLM adjustment) | Final=75.3%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (7.7%) | normal copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.0417,
+          "Cooperator": 0.1013,
+          "Defector": 0.3087,
+          "Tit-for-Tat": 0.0615
+        },
+        "dollar_returns": {
+          "Signal Follower": 97.39,
+          "Cooperator": 250.75,
+          "Defector": 869.72,
+          "Tit-for-Tat": 145.81
+        },
+        "allocations_after": {
+          "Signal Follower": 212908.69,
+          "Cooperator": 239532.52,
+          "Defector": 327037.62,
+          "Tit-for-Tat": 220521.17
+        }
+      }
+    },
+    {
+      "round_num": 14,
+      "date": "2025-04-07",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.021,
+        "daily_return_pct": -2.1
+      },
+      "benchmark_return_pct": -2.1,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "HOLD",
+          "position": 3.5,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 5.0,
+          "reasoning": "Signal Follower: agg=3.5%, neu=0.0%, con=0.0% | Using avg=1.2% | Consensus=84% (mult=1.20) | Base=3.5% \u2192 Final=5.0%"
+        },
+        "Cooperator": {
+          "position_pct": 29.09,
+          "reasoning": "Cooperator: Group=33.5%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=84% (adj: +10% (high LLM consensus)) | Final=29.1%"
+        },
+        "Defector": {
+          "position_pct": 76.69,
+          "reasoning": "Defector: DEFECT: Group bearish (16.6%) \u2192 go bullish | LLM avg=1.2% (no LLM adjustment) | Final=76.7%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 57.21,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (75.3%) | new winner \u2192 70% copy | Own=15.0% | Final=57.2%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": -0.105,
+          "Cooperator": -0.6108,
+          "Defector": -1.6105,
+          "Tit-for-Tat": -1.2013
+        },
+        "dollar_returns": {
+          "Signal Follower": -223.55,
+          "Cooperator": -1463.1,
+          "Defector": -5266.82,
+          "Tit-for-Tat": -2649.21
+        },
+        "allocations_after": {
+          "Signal Follower": 245170.92,
+          "Cooperator": 254362.84,
+          "Defector": 289363.9,
+          "Tit-for-Tat": 211102.34
+        }
+      }
+    },
+    {
+      "round_num": 15,
+      "date": "2025-03-28",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.008,
+        "daily_return_pct": -0.8
+      },
+      "benchmark_return_pct": -0.8,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 5.0,
+          "reasoning": "Signal Follower: agg=0.0%, neu=0.0%, con=0.0% | Using avg=0.0% | Consensus=100% (mult=1.30) | Base=0.0% \u2192 Final=5.0%"
+        },
+        "Cooperator": {
+          "position_pct": 38.95,
+          "reasoning": "Cooperator: Group=46.3%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=100% (adj: +10% (high LLM consensus)) | Final=38.9%"
+        },
+        "Defector": {
+          "position_pct": 69.78,
+          "reasoning": "Defector: DEFECT: Group bearish (30.4%) \u2192 go bullish | LLM avg=0.0% (no LLM adjustment) | Final=69.8%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (5.0%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.04,
+          "Cooperator": -0.3116,
+          "Defector": -0.5583,
+          "Tit-for-Tat": -0.12
+        },
+        "dollar_returns": {
+          "Signal Follower": -98.07,
+          "Cooperator": -792.59,
+          "Defector": -1615.45,
+          "Tit-for-Tat": -253.32
+        },
+        "allocations_after": {
+          "Signal Follower": 274400.19,
+          "Cooperator": 249780.12,
+          "Defector": 248083.18,
+          "Tit-for-Tat": 227736.51
+        }
+      }
+    },
+    {
+      "round_num": 16,
+      "date": "2025-03-25",
+      "regime": "bear",
+      "market": {
+        "daily_return": -0.0148,
+        "daily_return_pct": -1.48
+      },
+      "benchmark_return_pct": -1.48,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 23.95,
+          "reasoning": "Cooperator: Group=29.9%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=23.9%"
+        },
+        "Defector": {
+          "position_pct": 75.18,
+          "reasoning": "Defector: DEFECT: Group bearish (19.6%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=75.2%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (5.0%) | normal copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": -0.1142,
+          "Cooperator": -0.3545,
+          "Defector": -1.1126,
+          "Tit-for-Tat": -0.222
+        },
+        "dollar_returns": {
+          "Signal Follower": -313.28,
+          "Cooperator": -885.36,
+          "Defector": -2760.15,
+          "Tit-for-Tat": -505.58
+        },
+        "allocations_after": {
+          "Signal Follower": 297665.94,
+          "Cooperator": 255642.82,
+          "Defector": 205911.96,
+          "Tit-for-Tat": 240779.28
+        }
+      }
+    },
+    {
+      "round_num": 17,
+      "date": "2025-03-20",
+      "regime": "bear",
+      "market": {
+        "daily_return": -0.0079,
+        "daily_return_pct": -0.79
+      },
+      "benchmark_return_pct": -0.79,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 25.84,
+          "reasoning": "Cooperator: Group=32.6%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=25.8%"
+        },
+        "Defector": {
+          "position_pct": 77.22,
+          "reasoning": "Defector: DEFECT: Group bearish (15.6%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=77.2%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (7.7%) | streak=3 \u2192 90% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": -0.0609,
+          "Cooperator": -0.2041,
+          "Defector": -0.6101,
+          "Tit-for-Tat": -0.1185
+        },
+        "dollar_returns": {
+          "Signal Follower": -181.4,
+          "Cooperator": -521.87,
+          "Defector": -1256.19,
+          "Tit-for-Tat": -285.32
+        },
+        "allocations_after": {
+          "Signal Follower": 320066.03,
+          "Cooperator": 258035.08,
+          "Defector": 169377.65,
+          "Tit-for-Tat": 252521.23
+        }
+      }
+    },
+    {
+      "round_num": 18,
+      "date": "2025-03-17",
+      "regime": "bear",
+      "market": {
+        "daily_return": 0.0083,
+        "daily_return_pct": 0.83
+      },
+      "benchmark_return_pct": 0.83,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "HOLD",
+          "position": 5.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "BUY",
+          "position": 10.5,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 32.85,
+          "reasoning": "Signal Follower: agg=5.0%, neu=10.5%, con=0.0% | Using max=10.5% | Consensus=57% (mult=1.04) | Base=31.5% \u2192 Final=32.8%"
+        },
+        "Cooperator": {
+          "position_pct": 27.97,
+          "reasoning": "Cooperator: Group=33.3%\u00d70.7 + LLM=15.5%\u00d70.3 | LLM consensus=57% (adj: none) | Final=28.0%"
+        },
+        "Defector": {
+          "position_pct": 76.91,
+          "reasoning": "Defector: DEFECT: Group bearish (16.2%) \u2192 go bullish | LLM avg=5.2% (no LLM adjustment) | Final=76.9%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (7.7%) | streak=4 \u2192 90% copy | Own=15.5% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.2726,
+          "Cooperator": 0.2321,
+          "Defector": 0.6383,
+          "Tit-for-Tat": 0.1245
+        },
+        "dollar_returns": {
+          "Signal Follower": 872.55,
+          "Cooperator": 599.0,
+          "Defector": 1081.19,
+          "Tit-for-Tat": 314.39
+        },
+        "allocations_after": {
+          "Signal Follower": 317694.91,
+          "Cooperator": 250635.04,
+          "Defector": 200674.36,
+          "Tit-for-Tat": 230995.7
+        }
+      }
+    },
+    {
+      "round_num": 19,
+      "date": "2025-03-07",
+      "regime": "bear",
+      "market": {
+        "daily_return": 0.0107,
+        "daily_return_pct": 1.07
+      },
+      "benchmark_return_pct": 1.07,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 32.11,
+          "reasoning": "Cooperator: Group=41.6%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=53% (adj: none) | Final=32.1%"
+        },
+        "Defector": {
+          "position_pct": 72.36,
+          "reasoning": "Defector: DEFECT: Group bearish (25.3%) \u2192 go bullish | LLM avg=3.3% (no LLM adjustment) | Final=72.4%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 58.34,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (76.9%) | new winner \u2192 70% copy | Own=15.0% | Final=58.3%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.1088,
+          "Cooperator": 0.3436,
+          "Defector": 0.7743,
+          "Tit-for-Tat": 0.6242
+        },
+        "dollar_returns": {
+          "Signal Follower": 345.77,
+          "Cooperator": 861.1,
+          "Defector": 1553.82,
+          "Tit-for-Tat": 1441.85
+        },
+        "allocations_after": {
+          "Signal Follower": 278429.79,
+          "Cooperator": 243006.94,
+          "Defector": 228871.55,
+          "Tit-for-Tat": 249691.72
+        }
+      }
+    },
+    {
+      "round_num": 20,
+      "date": "2025-02-27",
+      "regime": "bear",
+      "market": {
+        "daily_return": 0.0066,
+        "daily_return_pct": 0.66
+      },
+      "benchmark_return_pct": 0.66,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 35.87,
+          "reasoning": "Cooperator: Group=47.0%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=35.9%"
+        },
+        "Defector": {
+          "position_pct": 68.23,
+          "reasoning": "Defector: DEFECT: Group bearish (33.5%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=68.2%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 60.89,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (72.4%) | normal copy | Own=15.0% | Final=60.9%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.0509,
+          "Cooperator": 0.2367,
+          "Defector": 0.4503,
+          "Tit-for-Tat": 0.4019
+        },
+        "dollar_returns": {
+          "Signal Follower": 141.76,
+          "Cooperator": 575.3,
+          "Defector": 1030.66,
+          "Tit-for-Tat": 1003.47
+        },
+        "allocations_after": {
+          "Signal Follower": 238319.59,
+          "Cooperator": 237014.81,
+          "Defector": 254636.43,
+          "Tit-for-Tat": 270029.17
+        }
+      }
+    },
+    {
+      "round_num": 21,
+      "date": "2025-02-24",
+      "regime": "bear",
+      "market": {
+        "daily_return": 0.0019,
+        "daily_return_pct": 0.19
+      },
+      "benchmark_return_pct": 0.19,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 34.93,
+          "reasoning": "Cooperator: Group=45.6%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=34.9%"
+        },
+        "Defector": {
+          "position_pct": 67.59,
+          "reasoning": "Defector: DEFECT: Group bearish (34.8%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=67.6%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 62.91,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (68.2%) | streak=3 \u2192 90% copy | Own=15.0% | Final=62.9%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.0147,
+          "Cooperator": 0.0664,
+          "Defector": 0.1284,
+          "Tit-for-Tat": 0.1195
+        },
+        "dollar_returns": {
+          "Signal Follower": 34.93,
+          "Cooperator": 157.29,
+          "Defector": 326.99,
+          "Tit-for-Tat": 322.75
+        },
+        "allocations_after": {
+          "Signal Follower": 202183.98,
+          "Cooperator": 227799.0,
+          "Defector": 279187.66,
+          "Tit-for-Tat": 290829.35
+        }
+      }
+    },
+    {
+      "round_num": 22,
+      "date": "2025-02-19",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0023,
+        "daily_return_pct": 0.23
+      },
+      "benchmark_return_pct": 0.23,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 35.25,
+          "reasoning": "Cooperator: Group=46.1%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=35.2%"
+        },
+        "Defector": {
+          "position_pct": 67.41,
+          "reasoning": "Defector: DEFECT: Group bearish (35.2%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=67.4%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 62.33,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (67.6%) | streak=4 \u2192 90% copy | Own=15.0% | Final=62.3%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.0177,
+          "Cooperator": 0.0811,
+          "Defector": 0.155,
+          "Tit-for-Tat": 0.1434
+        },
+        "dollar_returns": {
+          "Signal Follower": 35.87,
+          "Cooperator": 184.68,
+          "Defector": 432.85,
+          "Tit-for-Tat": 416.92
+        },
+        "allocations_after": {
+          "Signal Follower": 169724.71,
+          "Cooperator": 217166.15,
+          "Defector": 303285.92,
+          "Tit-for-Tat": 309823.23
+        }
+      }
+    },
+    {
+      "round_num": 23,
+      "date": "2025-02-13",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0082,
+        "daily_return_pct": 0.82
+      },
+      "benchmark_return_pct": 0.82,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "BUY",
+          "position": 10.4,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 32.45,
+          "reasoning": "Signal Follower: agg=7.0%, neu=10.4%, con=0.0% | Using max=10.4% | Consensus=57% (mult=1.04) | Base=31.2% \u2192 Final=32.5%"
+        },
+        "Cooperator": {
+          "position_pct": 37.29,
+          "reasoning": "Cooperator: Group=45.8%\u00d70.7 + LLM=17.4%\u00d70.3 | LLM consensus=57% (adj: none) | Final=37.3%"
+        },
+        "Defector": {
+          "position_pct": 67.45,
+          "reasoning": "Defector: DEFECT: Group bearish (35.1%) \u2192 go bullish | LLM avg=5.8% (no LLM adjustment) | Final=67.5%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 62.41,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (67.4%) | streak=5 \u2192 90% copy | Own=17.4% | Final=62.4%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.2661,
+          "Cooperator": 0.3058,
+          "Defector": 0.5531,
+          "Tit-for-Tat": 0.5117
+        },
+        "dollar_returns": {
+          "Signal Follower": 451.69,
+          "Cooperator": 664.08,
+          "Defector": 1677.48,
+          "Tit-for-Tat": 1585.49
+        },
+        "allocations_after": {
+          "Signal Follower": 146907.68,
+          "Cooperator": 194713.92,
+          "Defector": 330641.02,
+          "Tit-for-Tat": 327737.37
+        }
+      }
+    },
+    {
+      "round_num": 24,
+      "date": "2025-01-31",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0001,
+        "daily_return_pct": -0.01
+      },
+      "benchmark_return_pct": -0.01,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "HIGH"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 5.0,
+          "reasoning": "Signal Follower: agg=0.0%, neu=0.0%, con=0.0% | Using avg=0.0% | Consensus=100% (mult=1.30) | Base=0.0% \u2192 Final=5.0%"
+        },
+        "Cooperator": {
+          "position_pct": 44.96,
+          "reasoning": "Cooperator: Group=54.1%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=100% (adj: +10% (high LLM consensus)) | Final=45.0%"
+        },
+        "Defector": {
+          "position_pct": 10.0,
+          "reasoning": "Defector: NEUTRAL: Group neutral (44.1%) \u2192 use LLM | LLM avg=0.0% (no LLM adjustment) | Final=10.0%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 62.21,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (67.5%) | streak=6 \u2192 90% copy | Own=15.0% | Final=62.2%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.0005,
+          "Cooperator": -0.0045,
+          "Defector": -0.001,
+          "Tit-for-Tat": -0.0062
+        },
+        "dollar_returns": {
+          "Signal Follower": -0.73,
+          "Cooperator": -8.75,
+          "Defector": -3.31,
+          "Tit-for-Tat": -20.39
+        },
+        "allocations_after": {
+          "Signal Follower": 164424.31,
+          "Cooperator": 185011.41,
+          "Defector": 363070.82,
+          "Tit-for-Tat": 287493.46
+        }
+      }
+    },
+    {
+      "round_num": 25,
+      "date": "2025-01-23",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0139,
+        "daily_return_pct": 1.39
+      },
+      "benchmark_return_pct": 1.39,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "HOLD",
+          "position": 3.5,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "HIGH"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 5.0,
+          "reasoning": "Signal Follower: agg=3.5%, neu=0.0%, con=0.0% | Using avg=1.2% | Consensus=84% (mult=1.20) | Base=3.5% \u2192 Final=5.0%"
+        },
+        "Cooperator": {
+          "position_pct": 23.12,
+          "reasoning": "Cooperator: Group=25.7%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=84% (adj: +10% (high LLM consensus)) | Final=23.1%"
+        },
+        "Defector": {
+          "position_pct": 66.31,
+          "reasoning": "Defector: DEFECT: Group bearish (37.4%) \u2192 go bullish | LLM avg=1.2% (no LLM adjustment) | Final=66.3%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (5.0%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.0695,
+          "Cooperator": 0.3213,
+          "Defector": 0.9216,
+          "Tit-for-Tat": 0.2085
+        },
+        "dollar_returns": {
+          "Signal Follower": 114.27,
+          "Cooperator": 594.47,
+          "Defector": 3346.23,
+          "Tit-for-Tat": 599.42
+        },
+        "allocations_after": {
+          "Signal Follower": 144907.9,
+          "Cooperator": 177017.87,
+          "Defector": 412725.18,
+          "Tit-for-Tat": 265349.04
+        }
+      }
+    },
+    {
+      "round_num": 26,
+      "date": "2025-01-17",
+      "regime": "bull",
+      "market": {
+        "daily_return": 0.0087,
+        "daily_return_pct": 0.87
+      },
+      "benchmark_return_pct": 0.87,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 23.14,
+          "reasoning": "Cooperator: Group=28.8%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=23.1%"
+        },
+        "Defector": {
+          "position_pct": 77.81,
+          "reasoning": "Defector: DEFECT: Group bearish (14.4%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=77.8%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 50.91,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (66.3%) | new winner \u2192 70% copy | Own=15.0% | Final=50.9%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.0671,
+          "Cooperator": 0.2013,
+          "Defector": 0.677,
+          "Tit-for-Tat": 0.443
+        },
+        "dollar_returns": {
+          "Signal Follower": 97.25,
+          "Cooperator": 356.34,
+          "Defector": 2794.07,
+          "Tit-for-Tat": 1175.37
+        },
+        "allocations_after": {
+          "Signal Follower": 122515.03,
+          "Cooperator": 159446.54,
+          "Defector": 452618.56,
+          "Tit-for-Tat": 265419.87
+        }
+      }
+    },
+    {
+      "round_num": 27,
+      "date": "2025-01-14",
+      "regime": "bull",
+      "market": {
+        "daily_return": 0.0056,
+        "daily_return_pct": 0.56
+      },
+      "benchmark_return_pct": 0.56,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 5.0,
+          "reasoning": "Signal Follower: agg=0.0%, neu=0.0%, con=0.0% | Using avg=0.0% | Consensus=100% (mult=1.30) | Base=0.0% \u2192 Final=5.0%"
+        },
+        "Cooperator": {
+          "position_pct": 38.32,
+          "reasoning": "Cooperator: Group=45.5%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=100% (adj: +10% (high LLM consensus)) | Final=38.3%"
+        },
+        "Defector": {
+          "position_pct": 71.37,
+          "reasoning": "Defector: DEFECT: Group bearish (27.3%) \u2192 go bullish | LLM avg=0.0% (no LLM adjustment) | Final=71.4%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 65.25,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (77.8%) | normal copy | Own=15.0% | Final=65.3%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.028,
+          "Cooperator": 0.2146,
+          "Defector": 0.3997,
+          "Tit-for-Tat": 0.3654
+        },
+        "dollar_returns": {
+          "Signal Follower": 34.3,
+          "Cooperator": 342.16,
+          "Defector": 1809.05,
+          "Tit-for-Tat": 969.86
+        },
+        "allocations_after": {
+          "Signal Follower": 99520.63,
+          "Cooperator": 148940.52,
+          "Defector": 477479.21,
+          "Tit-for-Tat": 274059.64
+        }
+      }
+    },
+    {
+      "round_num": 28,
+      "date": "2025-01-03",
+      "regime": "bull",
+      "market": {
+        "daily_return": -0.0067,
+        "daily_return_pct": -0.67
+      },
+      "benchmark_return_pct": -0.67,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 5.0,
+          "reasoning": "Signal Follower: agg=0.0%, neu=0.0%, con=0.0% | Using avg=0.0% | Consensus=100% (mult=1.30) | Base=0.0% \u2192 Final=5.0%"
+        },
+        "Cooperator": {
+          "position_pct": 39.65,
+          "reasoning": "Cooperator: Group=47.2%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=100% (adj: +10% (high LLM consensus)) | Final=39.7%"
+        },
+        "Defector": {
+          "position_pct": 66.9,
+          "reasoning": "Defector: DEFECT: Group bearish (36.2%) \u2192 go bullish | LLM avg=0.0% (no LLM adjustment) | Final=66.9%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 65.74,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (71.4%) | streak=3 \u2192 90% copy | Own=15.0% | Final=65.7%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": -0.0335,
+          "Cooperator": -0.2657,
+          "Defector": -0.4483,
+          "Tit-for-Tat": -0.4404
+        },
+        "dollar_returns": {
+          "Signal Follower": -33.34,
+          "Cooperator": -395.67,
+          "Defector": -2140.36,
+          "Tit-for-Tat": -1207.03
+        },
+        "allocations_after": {
+          "Signal Follower": 120839.34,
+          "Cooperator": 159322.57,
+          "Defector": 456489.22,
+          "Tit-for-Tat": 263348.88
+        }
+      }
+    },
+    {
+      "round_num": 29,
+      "date": "2024-12-30",
+      "regime": "bull",
+      "market": {
+        "daily_return": -0.0094,
+        "daily_return_pct": -0.94
+      },
+      "benchmark_return_pct": -0.94,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "HIGH"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "HIGH"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 5.0,
+          "reasoning": "Signal Follower: agg=0.0%, neu=0.0%, con=0.0% | Using avg=0.0% | Consensus=100% (mult=1.30) | Base=0.0% \u2192 Final=5.0%"
+        },
+        "Cooperator": {
+          "position_pct": 38.63,
+          "reasoning": "Cooperator: Group=45.9%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=100% (adj: +10% (high LLM consensus)) | Final=38.6%"
+        },
+        "Defector": {
+          "position_pct": 66.6,
+          "reasoning": "Defector: DEFECT: Group bearish (36.8%) \u2192 go bullish | LLM avg=0.0% (no LLM adjustment) | Final=66.6%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (5.0%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.047,
+          "Cooperator": -0.3631,
+          "Defector": -0.6261,
+          "Tit-for-Tat": -0.141
+        },
+        "dollar_returns": {
+          "Signal Follower": -56.79,
+          "Cooperator": -578.5,
+          "Defector": -2857.91,
+          "Tit-for-Tat": -371.32
+        },
+        "allocations_after": {
+          "Signal Follower": 139999.36,
+          "Cooperator": 161060.51,
+          "Defector": 405398.14,
+          "Tit-for-Tat": 293541.98
+        }
+      }
+    },
+    {
+      "round_num": 30,
+      "date": "2024-12-19",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0011,
+        "daily_return_pct": 0.11
+      },
+      "benchmark_return_pct": 0.11,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 5.0,
+          "reasoning": "Signal Follower: agg=0.0%, neu=0.0%, con=0.0% | Using avg=0.0% | Consensus=100% (mult=1.30) | Base=0.0% \u2192 Final=5.0%"
+        },
+        "Cooperator": {
+          "position_pct": 25.53,
+          "reasoning": "Cooperator: Group=28.9%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=100% (adj: +10% (high LLM consensus)) | Final=25.5%"
+        },
+        "Defector": {
+          "position_pct": 75.23,
+          "reasoning": "Defector: DEFECT: Group bearish (19.5%) \u2192 go bullish | LLM avg=0.0% (no LLM adjustment) | Final=75.2%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (5.0%) | normal copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.0055,
+          "Cooperator": 0.0281,
+          "Defector": 0.0828,
+          "Tit-for-Tat": 0.0165
+        },
+        "dollar_returns": {
+          "Signal Follower": 7.7,
+          "Cooperator": 45.23,
+          "Defector": 335.47,
+          "Tit-for-Tat": 48.43
+        },
+        "allocations_after": {
+          "Signal Follower": 122612.24,
+          "Cooperator": 152886.87,
+          "Defector": 456912.74,
+          "Tit-for-Tat": 267588.15
+        }
+      }
+    },
+    {
+      "round_num": 31,
+      "date": "2024-12-11",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0138,
+        "daily_return_pct": -1.38
+      },
+      "benchmark_return_pct": -1.38,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 25.22,
+          "reasoning": "Cooperator: Group=31.7%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=25.2%"
+        },
+        "Defector": {
+          "position_pct": 77.41,
+          "reasoning": "Defector: DEFECT: Group bearish (15.2%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=77.4%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 57.16,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (75.2%) | new winner \u2192 70% copy | Own=15.0% | Final=57.2%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": -0.1065,
+          "Cooperator": -0.348,
+          "Defector": -1.0683,
+          "Tit-for-Tat": -0.7888
+        },
+        "dollar_returns": {
+          "Signal Follower": -130.53,
+          "Cooperator": -532.1,
+          "Defector": -4881.13,
+          "Tit-for-Tat": -2110.76
+        },
+        "allocations_after": {
+          "Signal Follower": 145345.62,
+          "Cooperator": 170841.85,
+          "Defector": 417982.86,
+          "Tit-for-Tat": 265829.67
+        }
+      }
+    },
+    {
+      "round_num": 32,
+      "date": "2024-12-03",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0187,
+        "daily_return_pct": -1.87
+      },
+      "benchmark_return_pct": -1.87,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 36.2,
+          "reasoning": "Cooperator: Group=47.4%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=53% (adj: none) | Final=36.2%"
+        },
+        "Defector": {
+          "position_pct": 69.98,
+          "reasoning": "Defector: DEFECT: Group bearish (30.0%) \u2192 go bullish | LLM avg=3.3% (no LLM adjustment) | Final=70.0%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (7.7%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.1902,
+          "Cooperator": -0.6769,
+          "Defector": -1.3087,
+          "Tit-for-Tat": -0.2805
+        },
+        "dollar_returns": {
+          "Signal Follower": -276.46,
+          "Cooperator": -1156.5,
+          "Defector": -5470.17,
+          "Tit-for-Tat": -745.65
+        },
+        "allocations_after": {
+          "Signal Follower": 164963.06,
+          "Cooperator": 174370.3,
+          "Defector": 364594.99,
+          "Tit-for-Tat": 296071.65
+        }
+      }
+    },
+    {
+      "round_num": 33,
+      "date": "2024-11-27",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0036,
+        "daily_return_pct": -0.36
+      },
+      "benchmark_return_pct": -0.36,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 25.2,
+          "reasoning": "Cooperator: Group=31.7%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=25.2%"
+        },
+        "Defector": {
+          "position_pct": 74.77,
+          "reasoning": "Defector: DEFECT: Group bearish (20.5%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=74.8%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (10.2%) | normal copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": -0.0278,
+          "Cooperator": -0.0907,
+          "Defector": -0.2692,
+          "Tit-for-Tat": -0.054
+        },
+        "dollar_returns": {
+          "Signal Follower": -45.81,
+          "Cooperator": -158.21,
+          "Defector": -981.41,
+          "Tit-for-Tat": -159.88
+        },
+        "allocations_after": {
+          "Signal Follower": 184119.2,
+          "Cooperator": 182677.5,
+          "Defector": 311197.61,
+          "Tit-for-Tat": 322005.69
+        }
+      }
+    },
+    {
+      "round_num": 34,
+      "date": "2024-11-22",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0122,
+        "daily_return_pct": 1.22
+      },
+      "benchmark_return_pct": 1.22,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 25.75,
+          "reasoning": "Cooperator: Group=32.5%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=53% (adj: none) | Final=25.7%"
+        },
+        "Defector": {
+          "position_pct": 77.01,
+          "reasoning": "Defector: DEFECT: Group bearish (16.0%) \u2192 go bullish | LLM avg=3.3% (no LLM adjustment) | Final=77.0%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (7.7%) | streak=3 \u2192 90% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.1241,
+          "Cooperator": 0.3141,
+          "Defector": 0.9396,
+          "Tit-for-Tat": 0.183
+        },
+        "dollar_returns": {
+          "Signal Follower": 228.48,
+          "Cooperator": 573.81,
+          "Defector": 2923.91,
+          "Tit-for-Tat": 589.27
+        },
+        "allocations_after": {
+          "Signal Follower": 166896.8,
+          "Cooperator": 176150.55,
+          "Defector": 359296.27,
+          "Tit-for-Tat": 297656.38
+        }
+      }
+    },
+    {
+      "round_num": 35,
+      "date": "2024-11-19",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0004,
+        "daily_return_pct": 0.04
+      },
+      "benchmark_return_pct": 0.04,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 26.84,
+          "reasoning": "Cooperator: Group=34.1%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=26.8%"
+        },
+        "Defector": {
+          "position_pct": 76.51,
+          "reasoning": "Defector: DEFECT: Group bearish (17.0%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=76.5%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 58.41,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (77.0%) | new winner \u2192 70% copy | Own=15.0% | Final=58.4%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.0031,
+          "Cooperator": 0.0107,
+          "Defector": 0.0306,
+          "Tit-for-Tat": 0.0234
+        },
+        "dollar_returns": {
+          "Signal Follower": 5.15,
+          "Cooperator": 18.91,
+          "Defector": 109.96,
+          "Tit-for-Tat": 69.54
+        },
+        "allocations_after": {
+          "Signal Follower": 140801.64,
+          "Cooperator": 160810.23,
+          "Defector": 392629.94,
+          "Tit-for-Tat": 305758.18
+        }
+      }
+    },
+    {
+      "round_num": 36,
+      "date": "2024-11-14",
+      "regime": "bear",
+      "market": {
+        "daily_return": 0.0022,
+        "daily_return_pct": 0.22
+      },
+      "benchmark_return_pct": 0.22,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 36.28,
+          "reasoning": "Cooperator: Group=47.5%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=53% (adj: none) | Final=36.3%"
+        },
+        "Defector": {
+          "position_pct": 69.51,
+          "reasoning": "Defector: DEFECT: Group bearish (31.0%) \u2192 go bullish | LLM avg=3.3% (no LLM adjustment) | Final=69.5%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 64.21,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (76.5%) | normal copy | Own=15.0% | Final=64.2%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.0224,
+          "Cooperator": 0.0798,
+          "Defector": 0.1529,
+          "Tit-for-Tat": 0.1413
+        },
+        "dollar_returns": {
+          "Signal Follower": 31.51,
+          "Cooperator": 128.36,
+          "Defector": 600.38,
+          "Tit-for-Tat": 431.93
+        },
+        "allocations_after": {
+          "Signal Follower": 115685.92,
+          "Cooperator": 149140.58,
+          "Defector": 416998.59,
+          "Tit-for-Tat": 318174.91
+        }
+      }
+    },
+    {
+      "round_num": 37,
+      "date": "2024-11-11",
+      "regime": "bear",
+      "market": {
+        "daily_return": -0.0058,
+        "daily_return_pct": -0.58
+      },
+      "benchmark_return_pct": -0.58,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.5,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 31.59,
+          "reasoning": "Signal Follower: agg=10.5%, neu=0.0%, con=0.0% | Using max=10.5% | Consensus=51% (mult=1.00) | Base=31.5% \u2192 Final=31.6%"
+        },
+        "Cooperator": {
+          "position_pct": 36.72,
+          "reasoning": "Cooperator: Group=48.0%\u00d70.7 + LLM=10.5%\u00d70.3 | LLM consensus=51% (adj: none) | Final=36.7%"
+        },
+        "Defector": {
+          "position_pct": 66.56,
+          "reasoning": "Defector: DEFECT: Group bearish (36.9%) \u2192 go bullish | LLM avg=3.5% (no LLM adjustment) | Final=66.6%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 64.05,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (69.5%) | streak=3 \u2192 90% copy | Own=15.0% | Final=64.1%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.1833,
+          "Cooperator": -0.213,
+          "Defector": -0.386,
+          "Tit-for-Tat": -0.3715
+        },
+        "dollar_returns": {
+          "Signal Follower": -212.0,
+          "Cooperator": -317.67,
+          "Defector": -1609.72,
+          "Tit-for-Tat": -1182.08
+        },
+        "allocations_after": {
+          "Signal Follower": 135551.39,
+          "Cooperator": 169634.22,
+          "Defector": 391087.3,
+          "Tit-for-Tat": 303727.09
+        }
+      }
+    },
+    {
+      "round_num": 38,
+      "date": "2024-11-06",
+      "regime": "bear",
+      "market": {
+        "daily_return": -0.0275,
+        "daily_return_pct": -2.75
+      },
+      "benchmark_return_pct": -2.75,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "BUY",
+          "position": 9.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "HIGH"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 17.1,
+          "reasoning": "Signal Follower: agg=7.0%, neu=9.0%, con=0.0% | Using avg=5.3% | Consensus=61% (mult=1.07) | Base=16.0% \u2192 Final=17.1%"
+        },
+        "Cooperator": {
+          "position_pct": 42.65,
+          "reasoning": "Cooperator: Group=54.1%\u00d70.7 + LLM=16.0%\u00d70.3 | LLM consensus=61% (adj: none) | Final=42.6%"
+        },
+        "Defector": {
+          "position_pct": 16.0,
+          "reasoning": "Defector: NEUTRAL: Group neutral (44.1%) \u2192 use LLM | LLM avg=5.3% (no LLM adjustment) | Final=16.0%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 26.92,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (31.6%) | new winner \u2192 70% copy | Own=16.0% | Final=26.9%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.4701,
+          "Cooperator": -1.1728,
+          "Defector": -0.44,
+          "Tit-for-Tat": -0.7402
+        },
+        "dollar_returns": {
+          "Signal Follower": -637.27,
+          "Cooperator": -1989.51,
+          "Defector": -1720.78,
+          "Tit-for-Tat": -2248.2
+        },
+        "allocations_after": {
+          "Signal Follower": 144153.9,
+          "Cooperator": 140468.0,
+          "Defector": 419854.69,
+          "Tit-for-Tat": 295523.41
+        }
+      }
+    },
+    {
+      "round_num": 39,
+      "date": "2024-11-01",
+      "regime": "bear",
+      "market": {
+        "daily_return": -0.0013,
+        "daily_return_pct": -0.13
+      },
+      "benchmark_return_pct": -0.13,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 17.0,
+          "reasoning": "Cooperator: Group=20.0%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=17.0%"
+        },
+        "Defector": {
+          "position_pct": 70.56,
+          "reasoning": "Defector: DEFECT: Group bearish (28.9%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=70.6%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 16.68,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (17.1%) | normal copy | Own=15.0% | Final=16.7%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.01,
+          "Cooperator": -0.0221,
+          "Defector": -0.0917,
+          "Tit-for-Tat": -0.0217
+        },
+        "dollar_returns": {
+          "Signal Follower": -14.46,
+          "Cooperator": -31.05,
+          "Defector": -385.11,
+          "Tit-for-Tat": -64.07
+        },
+        "allocations_after": {
+          "Signal Follower": 162489.44,
+          "Cooperator": 152864.37,
+          "Defector": 362638.44,
+          "Tit-for-Tat": 322007.75
+        }
+      }
+    },
+    {
+      "round_num": 40,
+      "date": "2024-10-29",
+      "regime": "bear",
+      "market": {
+        "daily_return": -0.01,
+        "daily_return_pct": -1.0
+      },
+      "benchmark_return_pct": -1.0,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 25.15,
+          "reasoning": "Cooperator: Group=31.6%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=25.2%"
+        },
+        "Defector": {
+          "position_pct": 78.1,
+          "reasoning": "Defector: DEFECT: Group bearish (13.8%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=78.1%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (7.7%) | streak=3 \u2192 90% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": -0.0771,
+          "Cooperator": -0.2515,
+          "Defector": -0.781,
+          "Tit-for-Tat": -0.15
+        },
+        "dollar_returns": {
+          "Signal Follower": -125.35,
+          "Cooperator": -384.52,
+          "Defector": -2832.25,
+          "Tit-for-Tat": -483.01
+        },
+        "allocations_after": {
+          "Signal Follower": 180909.88,
+          "Cooperator": 160296.61,
+          "Defector": 308991.28,
+          "Tit-for-Tat": 349802.22
+        }
+      }
+    },
+    {
+      "round_num": 41,
+      "date": "2024-10-24",
+      "regime": "bear",
+      "market": {
+        "daily_return": 0.0012,
+        "daily_return_pct": 0.12
+      },
+      "benchmark_return_pct": 0.12,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.5,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "HIGH"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 31.59,
+          "reasoning": "Signal Follower: agg=10.5%, neu=0.0%, con=0.0% | Using max=10.5% | Consensus=51% (mult=1.00) | Base=31.5% \u2192 Final=31.6%"
+        },
+        "Cooperator": {
+          "position_pct": 26.67,
+          "reasoning": "Cooperator: Group=33.6%\u00d70.7 + LLM=10.5%\u00d70.3 | LLM consensus=51% (adj: none) | Final=26.7%"
+        },
+        "Defector": {
+          "position_pct": 77.02,
+          "reasoning": "Defector: DEFECT: Group bearish (16.0%) \u2192 go bullish | LLM avg=3.5% (no LLM adjustment) | Final=77.0%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (7.7%) | streak=4 \u2192 90% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.0379,
+          "Cooperator": 0.032,
+          "Defector": 0.0924,
+          "Tit-for-Tat": 0.018
+        },
+        "dollar_returns": {
+          "Signal Follower": 68.59,
+          "Cooperator": 51.31,
+          "Defector": 285.59,
+          "Tit-for-Tat": 62.96
+        },
+        "allocations_after": {
+          "Signal Follower": 175230.2,
+          "Cooperator": 151936.35,
+          "Defector": 358500.1,
+          "Tit-for-Tat": 314333.36
+        }
+      }
+    },
+    {
+      "round_num": 42,
+      "date": "2024-10-21",
+      "regime": "bear",
+      "market": {
+        "daily_return": -0.0084,
+        "daily_return_pct": -0.84
+      },
+      "benchmark_return_pct": -0.84,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 15.0,
+          "confidence": "HIGH"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "HIGH"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 39.41,
+          "reasoning": "Signal Follower: agg=15.0%, neu=0.0%, con=0.0% | Using max=15.0% | Consensus=29% (mult=0.88) | Base=45.0% \u2192 Final=39.4%"
+        },
+        "Cooperator": {
+          "position_pct": 30.01,
+          "reasoning": "Cooperator: Group=41.2%\u00d70.7 + LLM=15.0%\u00d70.3 | LLM consensus=29% (adj: -10% (low LLM consensus)) | Final=30.0%"
+        },
+        "Defector": {
+          "position_pct": 72.79,
+          "reasoning": "Defector: DEFECT: Group bearish (24.4%) \u2192 go bullish | LLM avg=5.0% (no LLM adjustment) | Final=72.8%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 58.42,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (77.0%) | new winner \u2192 70% copy | Own=15.0% | Final=58.4%"
+        }
+      },
+      "round_results": {
+        "winner": "Cooperator",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.331,
+          "Cooperator": -0.2521,
+          "Defector": -0.6114,
+          "Tit-for-Tat": -0.4907
+        },
+        "dollar_returns": {
+          "Signal Follower": -580.06,
+          "Cooperator": -383.0,
+          "Defector": -2191.96,
+          "Tit-for-Tat": -1542.4
+        },
+        "allocations_after": {
+          "Signal Follower": 193292.57,
+          "Cooperator": 176511.16,
+          "Defector": 320755.76,
+          "Tit-for-Tat": 309440.5
+        }
+      }
+    },
+    {
+      "round_num": 43,
+      "date": "2024-10-11",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0096,
+        "daily_return_pct": 0.96
+      },
+      "benchmark_return_pct": 0.96,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 15.0,
+          "confidence": "HIGH"
+        },
+        "neutral": {
+          "stance": "BUY",
+          "position": 12.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 41.0,
+          "reasoning": "Signal Follower: agg=15.0%, neu=12.0%, con=0.0% | Using max=15.0% | Consensus=35% (mult=0.91) | Base=45.0% \u2192 Final=41.0%"
+        },
+        "Cooperator": {
+          "position_pct": 47.91,
+          "reasoning": "Cooperator: Group=56.9%\u00d70.7 + LLM=27.0%\u00d70.3 | LLM consensus=35% (adj: none) | Final=47.9%"
+        },
+        "Defector": {
+          "position_pct": 27.0,
+          "reasoning": "Defector: NEUTRAL: Group neutral (42.6%) \u2192 use LLM | LLM avg=9.0% (no LLM adjustment) | Final=27.0%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 29.11,
+          "reasoning": "Tit-for-Tat: Copying 'Cooperator' (30.0%) | new winner \u2192 70% copy | Own=27.0% | Final=29.1%"
+        }
+      },
+      "round_results": {
+        "winner": "Tit-for-Tat",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.3936,
+          "Cooperator": 0.4599,
+          "Defector": 0.2592,
+          "Tit-for-Tat": 0.2794
+        },
+        "dollar_returns": {
+          "Signal Follower": 760.84,
+          "Cooperator": 811.83,
+          "Defector": 831.4,
+          "Tit-for-Tat": 864.65
+        },
+        "allocations_after": {
+          "Signal Follower": 209351.28,
+          "Cooperator": 205744.45,
+          "Defector": 293738.49,
+          "Tit-for-Tat": 291165.79
+        }
+      }
+    },
+    {
+      "round_num": 44,
+      "date": "2024-10-08",
+      "regime": "bear",
+      "market": {
+        "daily_return": 0.0079,
+        "daily_return_pct": 0.79
+      },
+      "benchmark_return_pct": 0.79,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "HOLD",
+          "position": 5.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "BUY",
+          "position": 12.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 36.17,
+          "reasoning": "Signal Follower: agg=5.0%, neu=12.0%, con=0.0% | Using max=12.0% | Consensus=51% (mult=1.00) | Base=36.0% \u2192 Final=36.2%"
+        },
+        "Cooperator": {
+          "position_pct": 27.76,
+          "reasoning": "Cooperator: Group=32.4%\u00d70.7 + LLM=17.0%\u00d70.3 | LLM consensus=51% (adj: none) | Final=27.8%"
+        },
+        "Defector": {
+          "position_pct": 65.33,
+          "reasoning": "Defector: DEFECT: Group bearish (39.3%) \u2192 go bullish | LLM avg=5.7% (no LLM adjustment) | Final=65.3%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 25.47,
+          "reasoning": "Tit-for-Tat: Copying 'Tit-for-Tat' (29.1%) | new winner \u2192 70% copy | Own=17.0% | Final=25.5%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.2857,
+          "Cooperator": 0.2193,
+          "Defector": 0.5161,
+          "Tit-for-Tat": 0.2012
+        },
+        "dollar_returns": {
+          "Signal Follower": 598.2,
+          "Cooperator": 451.18,
+          "Defector": 1516.01,
+          "Tit-for-Tat": 585.97
+        },
+        "allocations_after": {
+          "Signal Follower": 204485.92,
+          "Cooperator": 190156.12,
+          "Defector": 340405.64,
+          "Tit-for-Tat": 264952.32
+        }
+      }
+    },
+    {
+      "round_num": 45,
+      "date": "2024-10-03",
+      "regime": "bear",
+      "market": {
+        "daily_return": -0.0073,
+        "daily_return_pct": -0.73
+      },
+      "benchmark_return_pct": -0.73,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 32.63,
+          "reasoning": "Cooperator: Group=42.3%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=53% (adj: none) | Final=32.6%"
+        },
+        "Defector": {
+          "position_pct": 70.1,
+          "reasoning": "Defector: DEFECT: Group bearish (29.8%) \u2192 go bullish | LLM avg=3.3% (no LLM adjustment) | Final=70.1%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 50.23,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (65.3%) | new winner \u2192 70% copy | Own=15.0% | Final=50.2%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.0743,
+          "Cooperator": -0.2382,
+          "Defector": -0.5117,
+          "Tit-for-Tat": -0.3667
+        },
+        "dollar_returns": {
+          "Signal Follower": -151.84,
+          "Cooperator": -452.91,
+          "Defector": -1741.95,
+          "Tit-for-Tat": -971.55
+        },
+        "allocations_after": {
+          "Signal Follower": 237850.06,
+          "Cooperator": 201436.2,
+          "Defector": 301612.78,
+          "Tit-for-Tat": 259100.95
+        }
+      }
+    },
+    {
+      "round_num": 46,
+      "date": "2024-09-30",
+      "regime": "bear",
+      "market": {
+        "daily_return": -0.0031,
+        "daily_return_pct": -0.31
+      },
+      "benchmark_return_pct": -0.31,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.5,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "BUY",
+          "position": 12.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "HIGH"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 35.27,
+          "reasoning": "Signal Follower: agg=10.5%, neu=12.0%, con=0.0% | Using max=12.0% | Consensus=47% (mult=0.98) | Base=36.0% \u2192 Final=35.3%"
+        },
+        "Cooperator": {
+          "position_pct": 37.2,
+          "reasoning": "Cooperator: Group=43.5%\u00d70.7 + LLM=22.5%\u00d70.3 | LLM consensus=47% (adj: none) | Final=37.2%"
+        },
+        "Defector": {
+          "position_pct": 69.49,
+          "reasoning": "Defector: DEFECT: Group bearish (31.0%) \u2192 go bullish | LLM avg=7.5% (no LLM adjustment) | Final=69.5%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (10.2%) | new winner \u2192 70% copy | Own=22.5% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Tit-for-Tat",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.1093,
+          "Cooperator": -0.1153,
+          "Defector": -0.2154,
+          "Tit-for-Tat": -0.0465
+        },
+        "dollar_returns": {
+          "Signal Follower": -260.05,
+          "Cooperator": -232.3,
+          "Defector": -649.78,
+          "Tit-for-Tat": -120.48
+        },
+        "allocations_after": {
+          "Signal Follower": 244557.6,
+          "Cooperator": 205107.19,
+          "Defector": 256805.57,
+          "Tit-for-Tat": 293529.65
+        }
+      }
+    },
+    {
+      "round_num": 47,
+      "date": "2024-09-25",
+      "regime": "bear",
+      "market": {
+        "daily_return": -0.0104,
+        "daily_return_pct": -1.04
+      },
+      "benchmark_return_pct": -1.04,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 30.94,
+          "reasoning": "Cooperator: Group=39.9%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=30.9%"
+        },
+        "Defector": {
+          "position_pct": 70.42,
+          "reasoning": "Defector: DEFECT: Group bearish (29.2%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=70.4%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Tit-for-Tat' (15.0%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.0802,
+          "Cooperator": -0.3218,
+          "Defector": -0.7324,
+          "Tit-for-Tat": -0.156
+        },
+        "dollar_returns": {
+          "Signal Follower": -196.2,
+          "Cooperator": -660.09,
+          "Defector": -1880.81,
+          "Tit-for-Tat": -457.91
+        },
+        "allocations_after": {
+          "Signal Follower": 267731.06,
+          "Cooperator": 204918.24,
+          "Defector": 214815.3,
+          "Tit-for-Tat": 312535.4
+        }
+      }
+    },
+    {
+      "round_num": 48,
+      "date": "2024-09-20",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0158,
+        "daily_return_pct": 1.58
+      },
+      "benchmark_return_pct": 1.58,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 24.73,
+          "reasoning": "Cooperator: Group=31.0%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=24.7%"
+        },
+        "Defector": {
+          "position_pct": 76.06,
+          "reasoning": "Defector: DEFECT: Group bearish (17.9%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=76.1%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (7.7%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.1219,
+          "Cooperator": 0.3908,
+          "Defector": 1.2017,
+          "Tit-for-Tat": 0.237
+        },
+        "dollar_returns": {
+          "Signal Follower": 326.32,
+          "Cooperator": 800.74,
+          "Defector": 2581.43,
+          "Tit-for-Tat": 740.71
+        },
+        "allocations_after": {
+          "Signal Follower": 247077.51,
+          "Cooperator": 202267.95,
+          "Defector": 253637.22,
+          "Tit-for-Tat": 297017.32
+        }
+      }
+    },
+    {
+      "round_num": 49,
+      "date": "2024-09-17",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0042,
+        "daily_return_pct": -0.42
+      },
+      "benchmark_return_pct": -0.42,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 15.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "BUY",
+          "position": 12.0,
+          "confidence": "MEDIUM"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 41.0,
+          "reasoning": "Signal Follower: agg=15.0%, neu=12.0%, con=0.0% | Using max=15.0% | Consensus=35% (mult=0.91) | Base=45.0% \u2192 Final=41.0%"
+        },
+        "Cooperator": {
+          "position_pct": 31.15,
+          "reasoning": "Cooperator: Group=32.9%\u00d70.7 + LLM=27.0%\u00d70.3 | LLM consensus=35% (adj: none) | Final=31.1%"
+        },
+        "Defector": {
+          "position_pct": 77.09,
+          "reasoning": "Defector: DEFECT: Group bearish (15.8%) \u2192 go bullish | LLM avg=9.0% (no LLM adjustment) | Final=77.1%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 61.34,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (76.1%) | new winner \u2192 70% copy | Own=27.0% | Final=61.3%"
+        }
+      },
+      "round_results": {
+        "winner": "Cooperator",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.1722,
+          "Cooperator": -0.1308,
+          "Defector": -0.3238,
+          "Tit-for-Tat": -0.2576
+        },
+        "dollar_returns": {
+          "Signal Follower": -425.49,
+          "Cooperator": -264.6,
+          "Defector": -821.25,
+          "Tit-for-Tat": -765.2
+        },
+        "allocations_after": {
+          "Signal Follower": 265536.59,
+          "Cooperator": 228660.91,
+          "Defector": 220781.44,
+          "Tit-for-Tat": 285021.06
+        }
+      }
+    },
+    {
+      "round_num": 50,
+      "date": "2024-09-12",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0025,
+        "daily_return_pct": -0.25
+      },
+      "benchmark_return_pct": -0.25,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 44.87,
+          "reasoning": "Cooperator: Group=59.8%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=53% (adj: none) | Final=44.9%"
+        },
+        "Defector": {
+          "position_pct": 10.0,
+          "reasoning": "Defector: NEUTRAL: Group neutral (44.5%) \u2192 use LLM | LLM avg=3.3% (no LLM adjustment) | Final=10.0%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 26.3,
+          "reasoning": "Tit-for-Tat: Copying 'Cooperator' (31.1%) | new winner \u2192 70% copy | Own=15.0% | Final=26.3%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.0254,
+          "Cooperator": -0.1122,
+          "Defector": -0.025,
+          "Tit-for-Tat": -0.0658
+        },
+        "dollar_returns": {
+          "Signal Follower": -67.52,
+          "Cooperator": -256.49,
+          "Defector": -55.2,
+          "Tit-for-Tat": -187.42
+        },
+        "allocations_after": {
+          "Signal Follower": 288643.13,
+          "Cooperator": 193299.66,
+          "Defector": 240257.3,
+          "Tit-for-Tat": 277799.91
+        }
+      }
+    },
+    {
+      "round_num": 51,
+      "date": "2024-09-09",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.003,
+        "daily_return_pct": 0.3
+      },
+      "benchmark_return_pct": 0.3,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 13.84,
+          "reasoning": "Cooperator: Group=15.5%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=13.8%"
+        },
+        "Defector": {
+          "position_pct": 71.44,
+          "reasoning": "Defector: DEFECT: Group bearish (27.1%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=71.4%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (10.0%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.0231,
+          "Cooperator": 0.0415,
+          "Defector": 0.2143,
+          "Tit-for-Tat": 0.045
+        },
+        "dollar_returns": {
+          "Signal Follower": 66.8,
+          "Cooperator": 80.28,
+          "Defector": 514.94,
+          "Tit-for-Tat": 125.01
+        },
+        "allocations_after": {
+          "Signal Follower": 267867.92,
+          "Cooperator": 183991.74,
+          "Defector": 282469.19,
+          "Tit-for-Tat": 265671.14
+        }
+      }
+    },
+    {
+      "round_num": 52,
+      "date": "2024-09-04",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0131,
+        "daily_return_pct": 1.31
+      },
+      "benchmark_return_pct": 1.31,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 24.97,
+          "reasoning": "Cooperator: Group=31.4%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=25.0%"
+        },
+        "Defector": {
+          "position_pct": 78.91,
+          "reasoning": "Defector: DEFECT: Group bearish (12.2%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=78.9%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 60.15,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (71.4%) | normal copy | Own=15.0% | Final=60.2%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.1011,
+          "Cooperator": 0.3271,
+          "Defector": 1.0337,
+          "Tit-for-Tat": 0.788
+        },
+        "dollar_returns": {
+          "Signal Follower": 270.69,
+          "Cooperator": 601.85,
+          "Defector": 2919.83,
+          "Tit-for-Tat": 2093.55
+        },
+        "allocations_after": {
+          "Signal Follower": 232614.55,
+          "Cooperator": 171004.49,
+          "Defector": 316407.48,
+          "Tit-for-Tat": 279973.48
+        }
+      }
+    },
+    {
+      "round_num": 53,
+      "date": "2024-08-26",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0098,
+        "daily_return_pct": 0.98
+      },
+      "benchmark_return_pct": 0.98,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 37.25,
+          "reasoning": "Cooperator: Group=48.9%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=37.2%"
+        },
+        "Defector": {
+          "position_pct": 69.53,
+          "reasoning": "Defector: DEFECT: Group bearish (30.9%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=69.5%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 72.52,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (78.9%) | streak=3 \u2192 90% copy | Own=15.0% | Final=72.5%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.0756,
+          "Cooperator": 0.365,
+          "Defector": 0.6814,
+          "Tit-for-Tat": 0.7107
+        },
+        "dollar_returns": {
+          "Signal Follower": 175.85,
+          "Cooperator": 624.21,
+          "Defector": 2155.89,
+          "Tit-for-Tat": 1989.66
+        },
+        "allocations_after": {
+          "Signal Follower": 195526.95,
+          "Cooperator": 162574.86,
+          "Defector": 338900.46,
+          "Tit-for-Tat": 302997.73
+        }
+      }
+    },
+    {
+      "round_num": 54,
+      "date": "2024-08-21",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0002,
+        "daily_return_pct": -0.02
+      },
+      "benchmark_return_pct": -0.02,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 5.0,
+          "reasoning": "Signal Follower: agg=0.0%, neu=0.0%, con=0.0% | Using avg=0.0% | Consensus=100% (mult=1.30) | Base=0.0% \u2192 Final=5.0%"
+        },
+        "Cooperator": {
+          "position_pct": 41.74,
+          "reasoning": "Cooperator: Group=49.9%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=100% (adj: +10% (high LLM consensus)) | Final=41.7%"
+        },
+        "Defector": {
+          "position_pct": 65.42,
+          "reasoning": "Defector: DEFECT: Group bearish (39.2%) \u2192 go bullish | LLM avg=0.0% (no LLM adjustment) | Final=65.4%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 64.07,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (69.5%) | streak=4 \u2192 90% copy | Own=15.0% | Final=64.1%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.001,
+          "Cooperator": -0.0083,
+          "Defector": -0.0131,
+          "Tit-for-Tat": -0.0128
+        },
+        "dollar_returns": {
+          "Signal Follower": -1.96,
+          "Cooperator": -13.57,
+          "Defector": -44.34,
+          "Tit-for-Tat": -38.83
+        },
+        "allocations_after": {
+          "Signal Follower": 231802.43,
+          "Cooperator": 167751.04,
+          "Defector": 316114.54,
+          "Tit-for-Tat": 284331.99
+        }
+      }
+    },
+    {
+      "round_num": 55,
+      "date": "2024-08-16",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0004,
+        "daily_return_pct": 0.04
+      },
+      "benchmark_return_pct": 0.04,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.5,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "BUY",
+          "position": 12.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 35.27,
+          "reasoning": "Signal Follower: agg=10.5%, neu=12.0%, con=0.0% | Using max=12.0% | Consensus=47% (mult=0.98) | Base=36.0% \u2192 Final=35.3%"
+        },
+        "Cooperator": {
+          "position_pct": 38.13,
+          "reasoning": "Cooperator: Group=44.8%\u00d70.7 + LLM=22.5%\u00d70.3 | LLM consensus=47% (adj: none) | Final=38.1%"
+        },
+        "Defector": {
+          "position_pct": 66.53,
+          "reasoning": "Defector: DEFECT: Group bearish (36.9%) \u2192 go bullish | LLM avg=7.5% (no LLM adjustment) | Final=66.5%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (5.0%) | new winner \u2192 70% copy | Own=22.5% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.0141,
+          "Cooperator": 0.0153,
+          "Defector": 0.0266,
+          "Tit-for-Tat": 0.006
+        },
+        "dollar_returns": {
+          "Signal Follower": 32.7,
+          "Cooperator": 25.59,
+          "Defector": 84.13,
+          "Tit-for-Tat": 17.06
+        },
+        "allocations_after": {
+          "Signal Follower": 226030.67,
+          "Cooperator": 166174.18,
+          "Defector": 361739.04,
+          "Tit-for-Tat": 246056.11
+        }
+      }
+    },
+    {
+      "round_num": 56,
+      "date": "2024-08-08",
+      "regime": "bull",
+      "market": {
+        "daily_return": 0.0086,
+        "daily_return_pct": 0.86
+      },
+      "benchmark_return_pct": 0.86,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 30.25,
+          "reasoning": "Cooperator: Group=38.9%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=30.3%"
+        },
+        "Defector": {
+          "position_pct": 70.27,
+          "reasoning": "Defector: DEFECT: Group bearish (29.5%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=70.3%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 51.07,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (66.5%) | new winner \u2192 70% copy | Own=15.0% | Final=51.1%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.0663,
+          "Cooperator": 0.2602,
+          "Defector": 0.6043,
+          "Tit-for-Tat": 0.4392
+        },
+        "dollar_returns": {
+          "Signal Follower": 149.95,
+          "Cooperator": 432.35,
+          "Defector": 2185.96,
+          "Tit-for-Tat": 1080.72
+        },
+        "allocations_after": {
+          "Signal Follower": 190875.94,
+          "Cooperator": 156055.42,
+          "Defector": 400486.89,
+          "Tit-for-Tat": 252581.75
+        }
+      }
+    },
+    {
+      "round_num": 57,
+      "date": "2024-08-05",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0165,
+        "daily_return_pct": -1.65
+      },
+      "benchmark_return_pct": -1.65,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 33.11,
+          "reasoning": "Cooperator: Group=43.0%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=53% (adj: none) | Final=33.1%"
+        },
+        "Defector": {
+          "position_pct": 70.16,
+          "reasoning": "Defector: DEFECT: Group bearish (29.7%) \u2192 go bullish | LLM avg=3.3% (no LLM adjustment) | Final=70.2%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 59.21,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (70.3%) | normal copy | Own=15.0% | Final=59.2%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.1678,
+          "Cooperator": -0.5464,
+          "Defector": -1.1576,
+          "Tit-for-Tat": -0.977
+        },
+        "dollar_returns": {
+          "Signal Follower": -320.35,
+          "Cooperator": -852.61,
+          "Defector": -4636.2,
+          "Tit-for-Tat": -2467.77
+        },
+        "allocations_after": {
+          "Signal Follower": 224617.31,
+          "Cooperator": 167817.13,
+          "Defector": 365087.78,
+          "Tit-for-Tat": 242477.78
+        }
+      }
+    },
+    {
+      "round_num": 58,
+      "date": "2024-07-26",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0111,
+        "daily_return_pct": 1.11
+      },
+      "benchmark_return_pct": 1.11,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 35.56,
+          "reasoning": "Cooperator: Group=46.5%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=53% (adj: none) | Final=35.6%"
+        },
+        "Defector": {
+          "position_pct": 67.92,
+          "reasoning": "Defector: DEFECT: Group bearish (34.2%) \u2192 go bullish | LLM avg=3.3% (no LLM adjustment) | Final=67.9%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (10.2%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.1129,
+          "Cooperator": 0.3947,
+          "Defector": 0.7539,
+          "Tit-for-Tat": 0.1665
+        },
+        "dollar_returns": {
+          "Signal Follower": 253.6,
+          "Cooperator": 662.41,
+          "Defector": 2752.33,
+          "Tit-for-Tat": 403.73
+        },
+        "allocations_after": {
+          "Signal Follower": 198936.77,
+          "Cooperator": 167003.18,
+          "Defector": 414256.24,
+          "Tit-for-Tat": 219803.82
+        }
+      }
+    },
+    {
+      "round_num": 59,
+      "date": "2024-07-23",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0089,
+        "daily_return_pct": -0.89
+      },
+      "benchmark_return_pct": -0.89,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "HOLD",
+          "position": 5.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "BUY",
+          "position": 3.6,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.09,
+          "reasoning": "Signal Follower: agg=5.0%, neu=3.6%, con=0.0% | Using avg=2.9% | Consensus=79% (mult=1.17) | Base=8.6% \u2192 Final=10.1%"
+        },
+        "Cooperator": {
+          "position_pct": 27.19,
+          "reasoning": "Cooperator: Group=31.0%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=79% (adj: +10% (high LLM consensus)) | Final=27.2%"
+        },
+        "Defector": {
+          "position_pct": 74.88,
+          "reasoning": "Defector: DEFECT: Group bearish (20.2%) \u2192 go bullish | LLM avg=2.9% (no LLM adjustment) | Final=74.9%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 52.04,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (67.9%) | new winner \u2192 70% copy | Own=15.0% | Final=52.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.0898,
+          "Cooperator": -0.242,
+          "Defector": -0.6664,
+          "Tit-for-Tat": -0.4632
+        },
+        "dollar_returns": {
+          "Signal Follower": -178.71,
+          "Cooperator": -404.17,
+          "Defector": -2760.66,
+          "Tit-for-Tat": -1018.07
+        },
+        "allocations_after": {
+          "Signal Follower": 231493.12,
+          "Cooperator": 182323.98,
+          "Defector": 369184.7,
+          "Tit-for-Tat": 216998.21
+        }
+      }
+    },
+    {
+      "round_num": 60,
+      "date": "2024-07-15",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0114,
+        "daily_return_pct": -1.14
+      },
+      "benchmark_return_pct": -1.14,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 5.0,
+          "reasoning": "Signal Follower: agg=0.0%, neu=0.0%, con=0.0% | Using avg=0.0% | Consensus=100% (mult=1.30) | Base=0.0% \u2192 Final=5.0%"
+        },
+        "Cooperator": {
+          "position_pct": 38.47,
+          "reasoning": "Cooperator: Group=45.7%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=100% (adj: +10% (high LLM consensus)) | Final=38.5%"
+        },
+        "Defector": {
+          "position_pct": 70.11,
+          "reasoning": "Defector: DEFECT: Group bearish (29.8%) \u2192 go bullish | LLM avg=0.0% (no LLM adjustment) | Final=70.1%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (10.1%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": -0.057,
+          "Cooperator": -0.4385,
+          "Defector": -0.7993,
+          "Tit-for-Tat": -0.171
+        },
+        "dollar_returns": {
+          "Signal Follower": -131.95,
+          "Cooperator": -799.53,
+          "Defector": -2950.81,
+          "Tit-for-Tat": -371.07
+        },
+        "allocations_after": {
+          "Signal Follower": 261966.41,
+          "Cooperator": 181464.82,
+          "Defector": 319846.3,
+          "Tit-for-Tat": 236722.47
+        }
+      }
+    },
+    {
+      "round_num": 61,
+      "date": "2024-07-10",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0054,
+        "daily_return_pct": 0.54
+      },
+      "benchmark_return_pct": 0.54,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 10.0,
+          "confidence": "MEDIUM"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 10.17,
+          "reasoning": "Signal Follower: agg=10.0%, neu=0.0%, con=0.0% | Using avg=3.3% | Consensus=53% (mult=1.02) | Base=10.0% \u2192 Final=10.2%"
+        },
+        "Cooperator": {
+          "position_pct": 24.03,
+          "reasoning": "Cooperator: Group=30.0%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=53% (adj: none) | Final=24.0%"
+        },
+        "Defector": {
+          "position_pct": 75.26,
+          "reasoning": "Defector: DEFECT: Group bearish (19.5%) \u2192 go bullish | LLM avg=3.3% (no LLM adjustment) | Final=75.3%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (5.0%) | normal copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.0549,
+          "Cooperator": 0.1297,
+          "Defector": 0.4064,
+          "Tit-for-Tat": 0.081
+        },
+        "dollar_returns": {
+          "Signal Follower": 143.89,
+          "Cooperator": 235.43,
+          "Defector": 1299.79,
+          "Tit-for-Tat": 191.75
+        },
+        "allocations_after": {
+          "Signal Follower": 237606.54,
+          "Cooperator": 174143.01,
+          "Defector": 369197.65,
+          "Tit-for-Tat": 219052.8
+        }
+      }
+    },
+    {
+      "round_num": 62,
+      "date": "2024-07-05",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0073,
+        "daily_return_pct": 0.73
+      },
+      "benchmark_return_pct": 0.73,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "MEDIUM"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 5.0,
+          "reasoning": "Signal Follower: agg=0.0%, neu=0.0%, con=0.0% | Using avg=0.0% | Consensus=100% (mult=1.30) | Base=0.0% \u2192 Final=5.0%"
+        },
+        "Cooperator": {
+          "position_pct": 29.08,
+          "reasoning": "Cooperator: Group=33.5%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=100% (adj: +10% (high LLM consensus)) | Final=29.1%"
+        },
+        "Defector": {
+          "position_pct": 76.8,
+          "reasoning": "Defector: DEFECT: Group bearish (16.4%) \u2192 go bullish | LLM avg=0.0% (no LLM adjustment) | Final=76.8%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 57.18,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (75.3%) | new winner \u2192 70% copy | Own=15.0% | Final=57.2%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": true,
+        "returns_pct": {
+          "Signal Follower": 0.0365,
+          "Cooperator": 0.2123,
+          "Defector": 0.5606,
+          "Tit-for-Tat": 0.4174
+        },
+        "dollar_returns": {
+          "Signal Follower": 86.73,
+          "Cooperator": 369.63,
+          "Defector": 2069.88,
+          "Tit-for-Tat": 914.34
+        },
+        "allocations_after": {
+          "Signal Follower": 201590.43,
+          "Cooperator": 162831.11,
+          "Defector": 408607.03,
+          "Tit-for-Tat": 226971.44
+        }
+      }
+    },
+    {
+      "round_num": 63,
+      "date": "2024-07-01",
+      "regime": "sideways",
+      "market": {
+        "daily_return": -0.0173,
+        "daily_return_pct": -1.73
+      },
+      "benchmark_return_pct": -1.73,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "AVOID",
+          "position": 0.0,
+          "confidence": "HIGH"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 35.43,
+          "reasoning": "Cooperator: Group=46.3%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=35.4%"
+        },
+        "Defector": {
+          "position_pct": 69.79,
+          "reasoning": "Defector: DEFECT: Group bearish (30.4%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=69.8%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 64.44,
+          "reasoning": "Tit-for-Tat: Copying 'Defector' (76.8%) | normal copy | Own=15.0% | Final=64.4%"
+        }
+      },
+      "round_results": {
+        "winner": "Signal Follower",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": -0.1335,
+          "Cooperator": -0.6129,
+          "Defector": -1.2074,
+          "Tit-for-Tat": -1.1148
+        },
+        "dollar_returns": {
+          "Signal Follower": -269.03,
+          "Cooperator": -998.01,
+          "Defector": -4933.44,
+          "Tit-for-Tat": -2530.32
+        },
+        "allocations_after": {
+          "Signal Follower": 237130.35,
+          "Cooperator": 172928.85,
+          "Defector": 376047.58,
+          "Tit-for-Tat": 213893.22
+        }
+      }
+    },
+    {
+      "round_num": 64,
+      "date": "2024-06-17",
+      "regime": "sideways",
+      "market": {
+        "daily_return": 0.0099,
+        "daily_return_pct": 0.99
+      },
+      "benchmark_return_pct": 0.99,
+      "llm_signals": {
+        "aggressive": {
+          "stance": "BUY",
+          "position": 7.0,
+          "confidence": "LOW"
+        },
+        "neutral": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        },
+        "conservative": {
+          "stance": "HOLD",
+          "position": 0.0,
+          "confidence": "LOW"
+        }
+      },
+      "strategy_decisions": {
+        "Signal Follower": {
+          "position_pct": 7.71,
+          "reasoning": "Signal Follower: agg=7.0%, neu=0.0%, con=0.0% | Using avg=2.3% | Consensus=67% (mult=1.10) | Base=7.0% \u2192 Final=7.7%"
+        },
+        "Cooperator": {
+          "position_pct": 36.12,
+          "reasoning": "Cooperator: Group=47.3%\u00d70.7 + LLM=10.0%\u00d70.3 | LLM consensus=67% (adj: none) | Final=36.1%"
+        },
+        "Defector": {
+          "position_pct": 67.07,
+          "reasoning": "Defector: DEFECT: Group bearish (35.9%) \u2192 go bullish | LLM avg=2.3% (no LLM adjustment) | Final=67.1%"
+        },
+        "Tit-for-Tat": {
+          "position_pct": 15.0,
+          "reasoning": "Tit-for-Tat: Copying 'Signal Follower' (7.7%) | new winner \u2192 70% copy | Own=15.0% | Final=15.0%"
+        }
+      },
+      "round_results": {
+        "winner": "Defector",
+        "high_variance": false,
+        "returns_pct": {
+          "Signal Follower": 0.0764,
+          "Cooperator": 0.3576,
+          "Defector": 0.664,
+          "Tit-for-Tat": 0.1485
+        },
+        "dollar_returns": {
+          "Signal Follower": 181.09,
+          "Cooperator": 618.38,
+          "Defector": 2496.91,
+          "Tit-for-Tat": 317.63
+        },
+        "allocations_after": {
+          "Signal Follower": 208139.1,
+          "Cooperator": 172646.35,
+          "Defector": 424854.02,
+          "Tit-for-Tat": 194360.54
+        }
+      }
+    }
+  ],
+  "summary": {
+    "ticker": "PG",
+    "total_rounds": 64,
+    "start_time": "2025-12-03T01:41:34.577885",
+    "total_capital": 1000000,
+    "reallocation_rate": 0.1,
+    "final_allocations": {
+      "Signal Follower": 208139.1,
+      "Cooperator": 172646.35,
+      "Defector": 424854.02,
+      "Tit-for-Tat": 194360.54
+    },
+    "allocation_pcts": {
+      "Signal Follower": 20.81,
+      "Cooperator": 17.26,
+      "Defector": 42.49,
+      "Tit-for-Tat": 19.44
+    },
+    "wins_per_strategy": {
+      "Signal Follower": 25,
+      "Cooperator": 2,
+      "Defector": 33,
+      "Tit-for-Tat": 4
+    },
+    "win_rates": {
+      "Signal Follower": 39.1,
+      "Cooperator": 3.1,
+      "Defector": 51.6,
+      "Tit-for-Tat": 6.2
+    },
+    "total_returns_pct": {
+      "Signal Follower": 1.25,
+      "Cooperator": -1.08,
+      "Defector": -2.24,
+      "Tit-for-Tat": 0.58
+    },
+    "cooperation_rate": 0.554,
+    "allocation_gini": 0.193,
+    "defection_stats": {
+      "total_rounds": 64,
+      "defection_rounds": 23,
+      "defection_rate": 0.359375,
+      "defector_wins_in_defection": 14,
+      "defector_win_rate_when_defecting": 0.6086956521739131
+    }
+  },
+  "benchmark_summary": {
+    "total_return_pct": -2.5453362996822992,
+    "final_equity": 974546.637003177
+  }
+}
