@@ -192,9 +192,14 @@ CONFIGURATION:
             s.reset()
         self.benchmark.reset()
         
-        benchmark_returns, benchmark_equity = [], [self.total_capital]
-        capital_history = {name: [self.total_capital / len(self.strategies)] for name in self.strategy_names}
-        capital_history['Buy-and-Hold'] = [self.total_capital]
+        # benchmark_returns, benchmark_equity = [], [self.total_capital]
+        # capital_history = {name: [self.total_capital / len(self.strategies)] for name in self.strategy_names}
+        # capital_history['Buy-and-Hold'] = [self.total_capital]
+        
+        benchmark_starting = self.total_capital / len(self.strategies)  # Same as each strategy: $250K
+        benchmark_returns, benchmark_equity = [], [benchmark_starting]
+        capital_history = {name: [benchmark_starting] for name in self.strategy_names}
+        capital_history['Buy-and-Hold'] = [benchmark_starting]
         
         logger = self._init_logger(ticker, ticker_dir)
         readable_log = open(ticker_dir / f"{ticker}_readable.txt", 'w', encoding='utf-8')
@@ -1360,8 +1365,11 @@ CONFIGURATION:
         f.write("  Tournament Strategies (competing for capital):\n")
         for name in self.strategy_names:
             f.write(f"    * {name}: ${initial_alloc:,.0f}\n")
-        f.write(f"\n  Benchmark (tracked separately):\n")
-        f.write(f"    * Buy-and-Hold: ${self.total_capital:,.0f}\n")
+        # f.write(f"\n  Benchmark (tracked separately):\n")
+        # f.write(f"    * Buy-and-Hold: ${self.total_capital:,.0f}\n")
+        # 250k change
+        f.write(f"\n  Benchmark (tracked separately, same starting capital):\n")
+        f.write(f"    * Buy-and-Hold: ${initial_alloc:,.0f}\n")
         f.write("\n" + "=" * 90 + "\n\n")
     
     def _write_readable_round(self, f, round_num, ctx, decisions, result, game, alloc_before, bench_before, bench_after, benchmark_ret):
@@ -1423,7 +1431,9 @@ CONFIGURATION:
             win_rate = summary['win_rates'].get(name, 0)
             results.append((name, initial_alloc, end_cap, change, ret_pct, win_rate))
         
-        results.append(('Buy-and-Hold', self.total_capital, capital_history['Buy-and-Hold'][-1], capital_history['Buy-and-Hold'][-1] - self.total_capital, benchmark_return, 0))
+        # results.append(('Buy-and-Hold', self.total_capital, capital_history['Buy-and-Hold'][-1], capital_history['Buy-and-Hold'][-1] - self.total_capital, benchmark_return, 0))
+        benchmark_starting = self.total_capital / len(self.strategy_names)
+        results.append(('Buy-and-Hold', benchmark_starting, capital_history['Buy-and-Hold'][-1], capital_history['Buy-and-Hold'][-1] - benchmark_starting, benchmark_return, 0))
         results.sort(key=lambda x: x[4], reverse=True)
         
         for name, start, end, change, ret_pct, win_rate in results:

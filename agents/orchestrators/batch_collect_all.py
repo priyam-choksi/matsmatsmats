@@ -760,10 +760,10 @@ SELECTED_TICKERS = [
     'NVDA', 'AAPL', 'MSFT', 'GOOGL', 'META',
     'JPM', 'GS', 'V',
     'LLY', 'JNJ', 'UNH'
-    # 'AMZN', 'TSLA', 'WMT',
-    # 'XOM', 'CVX',
-    # 'SPY', 'QQQ',
-    # 'PG', 'KO'
+    'AMZN', 'TSLA', 'WMT',
+    'XOM', 'CVX',
+    'SPY', 'QQQ',
+    'PG', 'KO'
 ]
 
 

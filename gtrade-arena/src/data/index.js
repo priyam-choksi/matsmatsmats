@@ -8,7 +8,7 @@
 // ============================================================
 
 // Tournament folder name - UPDATE THIS when you run a new tournament
-export const TOURNAMENT_FOLDER = 'gt_tournament_20251203_012947'
+export const TOURNAMENT_FOLDER = 'gt_tournament_20251206_141939'
 
 export const STRATEGY_CONFIG = {
   'Signal Follower': {
