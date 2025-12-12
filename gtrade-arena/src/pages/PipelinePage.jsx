@@ -1,9 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { useTheme } from '../App'
+import { useTheme, usePipeline } from '../App'
 
-// ========== CONSTANTS ==========
+// ========== DEMO DISPLAY OPTIONS ==========
+const DEMO_OPTIONS = {
+  BANNER: true,
+  INLINE_SIDEBAR: false,
+  HEADER_BADGE: false,
+  FOOTER: true,
+}
+
+// ========== TICKERS (for dropdown) ==========
 const TICKERS = ['NVDA', 'AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN', 'TSLA', 'JPM', 'V', 'JNJ', 'LLY']
 
+// ========== PHASES (for UI display only) ==========
 const PHASES = [
   { 
     num: 1, 
@@ -68,80 +77,6 @@ const PHASES = [
   },
 ]
 
-// ========== GENERATE AGENT OUTPUTS ==========
-const generateAgentOutput = (agentName, ticker) => {
-  const outputs = {
-    'Technical Analyst': {
-      signal: ['BULLISH', 'BEARISH', 'NEUTRAL'][Math.floor(Math.random() * 3)],
-      rsi: (30 + Math.random() * 40).toFixed(1),
-      macd: Math.random() > 0.5 ? 'Bullish Crossover' : 'Bearish Divergence',
-      trend: Math.random() > 0.4 ? 'Uptrend' : 'Consolidation',
-      support: '$' + (100 + Math.random() * 50).toFixed(2),
-      resistance: '$' + (150 + Math.random() * 50).toFixed(2),
-    },
-    'News Analyst': {
-      sentiment: ['Positive', 'Negative', 'Mixed'][Math.floor(Math.random() * 3)],
-      articles_analyzed: Math.floor(10 + Math.random() * 20),
-      key_catalyst: `${ticker} earnings beat expectations`,
-      sentiment_score: (Math.random() * 2 - 1).toFixed(2),
-    },
-    'Fundamental Analyst': {
-      pe_ratio: (15 + Math.random() * 30).toFixed(1),
-      revenue_growth: (5 + Math.random() * 25).toFixed(1) + '%',
-      profit_margin: (10 + Math.random() * 20).toFixed(1) + '%',
-      valuation: ['Undervalued', 'Fair Value', 'Overvalued'][Math.floor(Math.random() * 3)],
-    },
-    'Macro Analyst': {
-      regime: ['Bull Market', 'Bear Market', 'Sideways'][Math.floor(Math.random() * 3)],
-      sector_outlook: 'Favorable',
-      fed_impact: 'Neutral',
-      recommendation: ['Overweight', 'Neutral', 'Underweight'][Math.floor(Math.random() * 3)],
-    },
-    'Bull Researcher': {
-      thesis: `Strong growth catalysts for ${ticker} including market expansion`,
-      upside_target: '+' + (15 + Math.random() * 25).toFixed(0) + '%',
-      catalysts: ['Earnings beat', 'New product launch', 'Market share gains'],
-      confidence: ['HIGH', 'MEDIUM'][Math.floor(Math.random() * 2)],
-    },
-    'Bear Researcher': {
-      thesis: `Key risks include valuation concerns and competitive pressures`,
-      downside_risk: '-' + (10 + Math.random() * 20).toFixed(0) + '%',
-      risks: ['Valuation stretched', 'Margin compression', 'Competition'],
-      confidence: ['HIGH', 'MEDIUM', 'LOW'][Math.floor(Math.random() * 3)],
-    },
-    'Research Manager': {
-      winner: Math.random() > 0.4 ? 'BULL' : 'BEAR',
-      probability_bull: (40 + Math.random() * 30).toFixed(0) + '%',
-      probability_bear: (20 + Math.random() * 25).toFixed(0) + '%',
-      synthesis: `After debate, ${Math.random() > 0.4 ? 'bullish' : 'bearish'} thesis prevails`,
-    },
-    'Aggressive Evaluator': {
-      stance: ['STRONG BUY', 'BUY', 'HOLD'][Math.floor(Math.random() * 3)],
-      position_pct: (50 + Math.random() * 40).toFixed(0) + '%',
-      reasoning: 'High conviction on growth catalysts',
-    },
-    'Neutral Evaluator': {
-      stance: ['BUY', 'HOLD', 'AVOID'][Math.floor(Math.random() * 3)],
-      position_pct: (25 + Math.random() * 30).toFixed(0) + '%',
-      reasoning: 'Balanced view considering risks and rewards',
-    },
-    'Conservative Evaluator': {
-      stance: ['HOLD', 'AVOID', 'STRONG AVOID'][Math.floor(Math.random() * 3)],
-      position_pct: (5 + Math.random() * 20).toFixed(0) + '%',
-      reasoning: 'Prefer capital preservation',
-    },
-    'Risk Manager': {
-      verdict: ['BUY', 'HOLD', 'REJECT'][Math.floor(Math.random() * 3)],
-      position_dollars: '$' + (Math.floor(Math.random() * 15000) + 5000).toLocaleString(),
-      confidence: ['HIGH', 'MEDIUM', 'LOW'][Math.floor(Math.random() * 3)],
-      stop_loss: '-8%',
-      target: '+15%',
-      reasoning: 'Final decision based on evaluator consensus and risk parameters',
-    },
-  }
-  return outputs[agentName] || { status: 'Complete' }
-}
-
 // ========== ICONS ==========
 const Icons = {
   Play: ({ size = 16 }) => (
@@ -151,7 +86,8 @@ const Icons = {
   ),
   X: ({ size = 16 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+      <path d="M18 6 6 18"/>
+      <path d="m6 6 12 12"/>
     </svg>
   ),
   Check: ({ size = 16 }) => (
@@ -159,7 +95,147 @@ const Icons = {
       <polyline points="20 6 9 17 4 12"/>
     </svg>
   ),
+  Github: ({ size = 16 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+    </svg>
+  ),
+  Info: ({ size = 16 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 16v-4"/>
+      <path d="M12 8h.01"/>
+    </svg>
+  ),
 }
+
+// ========== DEMO BANNER COMPONENT ==========
+const DemoBanner = ({ isDark }) => {
+  const [dismissed, setDismissed] = useState(false)
+  
+  if (dismissed) return null
+  
+  return (
+    <div style={{
+      background: isDark ? '#18181b' : '#f4f4f5',
+      border: `1px solid ${isDark ? '#27272a' : '#e4e4e7'}`,
+      borderRadius: '10px',
+      padding: '12px 16px',
+      marginBottom: '16px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      position: 'relative'
+    }}>
+      <div style={{
+        width: '28px',
+        height: '28px',
+        borderRadius: '6px',
+        background: isDark ? '#27272a' : '#e4e4e7',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        color: 'var(--text-muted)'
+      }}>
+        <Icons.Info size={14} />
+      </div>
+      
+      <p style={{ 
+        margin: 0, 
+        fontSize: '12px', 
+        color: 'var(--text-muted)',
+        lineHeight: '1.4',
+        flex: 1
+      }}>
+        <span style={{ fontWeight: '600', color: 'var(--text-secondary)' }}>Demo mode</span> — Interactive visualization of the 11-agent pipeline. Production system uses FastAPI with real-time LLM orchestration and live market data.
+      </p>
+      
+      <button
+        onClick={() => setDismissed(true)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          color: 'var(--text-muted)',
+          padding: '4px',
+          borderRadius: '4px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: 0.6
+        }}
+      >
+        <Icons.X size={14} />
+      </button>
+    </div>
+  )
+}
+
+// ========== SIDEBAR DEMO NOTE COMPONENT ==========
+const SidebarDemoNote = ({ isDark }) => (
+  <div style={{
+    marginTop: '12px',
+    padding: '10px 12px',
+    background: isDark ? '#18181b' : '#fafafa',
+    borderRadius: '8px',
+    border: `1px solid ${isDark ? '#27272a' : '#e4e4e7'}`,
+  }}>
+    <div style={{ 
+      fontSize: '10px', 
+      fontWeight: '600', 
+      color: 'var(--text-muted)',
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px',
+      marginBottom: '4px'
+    }}>
+      Demo Mode
+    </div>
+    <p style={{ 
+      margin: 0, 
+      fontSize: '11px', 
+      color: 'var(--text-muted)',
+      lineHeight: '1.4'
+    }}>
+      Simulated pipeline execution. Production uses FastAPI + live LLM calls.
+    </p>
+  </div>
+)
+
+// ========== DEMO FOOTER COMPONENT ==========
+const DemoFooter = ({ isDark }) => (
+  <div style={{
+    padding: '6px 20px',
+    borderTop: `1px solid ${isDark ? '#27272a' : '#e4e4e7'}`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    background: 'var(--bg-secondary)',
+    flexShrink: 0
+  }}>
+    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+      Interactive demo • Production system runs 11 LLM agents with live market data
+    </span>
+    <span style={{ color: 'var(--text-muted)', opacity: 0.4 }}>•</span>
+    <a
+      href="https://github.com/priyam-03/Capstone"
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        fontSize: '11px',
+        color: 'var(--text-muted)',
+        textDecoration: 'none',
+      }}
+    >
+      <Icons.Github size={12} />
+      View Source
+    </a>
+  </div>
+)
 
 // ========== AGENT CARD COMPONENT ==========
 const AgentCard = ({ agent, status, output, isActive, phaseColor, isDark }) => {
@@ -242,11 +318,7 @@ const AgentCard = ({ agent, status, output, isActive, phaseColor, isDark }) => {
           fontSize: '11px',
           fontFamily: 'monospace'
         }}>
-          <pre style={{ 
-            margin: 0, 
-            whiteSpace: 'pre-wrap', 
-            color: 'var(--text-secondary)' 
-          }}>
+          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>
             {JSON.stringify(output, null, 2)}
           </pre>
         </div>
@@ -279,11 +351,7 @@ const ResultCard = ({ result, ticker, isDark }) => {
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>
             {ticker} Analysis Complete
           </div>
-          <div style={{
-            fontSize: '32px',
-            fontWeight: '800',
-            color: c.text,
-          }}>
+          <div style={{ fontSize: '32px', fontWeight: '800', color: c.text }}>
             {result.verdict}
           </div>
         </div>
@@ -314,140 +382,89 @@ const ResultCard = ({ result, ticker, isDark }) => {
         }}>
           Reasoning
         </div>
-        <p style={{
-          margin: 0,
-          fontSize: '13px',
-          color: 'var(--text-secondary)',
-          lineHeight: '1.5'
-        }}>
+        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
           {result.reasoning}
         </p>
       </div>
 
       <div style={{ marginTop: '12px', display: 'flex', gap: '10px' }}>
-        <div style={{ 
-          flex: 1,
-          padding: '12px', 
-          background: 'var(--bg-primary)', 
-          borderRadius: '10px', 
-          textAlign: 'center'
-        }}>
+        <div style={{ flex: 1, padding: '12px', background: 'var(--bg-primary)', borderRadius: '10px', textAlign: 'center' }}>
           <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px' }}>Stop Loss</div>
           <div style={{ fontSize: '16px', fontWeight: '700', color: '#ef4444' }}>{result.stop_loss}</div>
         </div>
-        <div style={{ 
-          flex: 1,
-          padding: '12px', 
-          background: 'var(--bg-primary)', 
-          borderRadius: '10px', 
-          textAlign: 'center'
-        }}>
+        <div style={{ flex: 1, padding: '12px', background: 'var(--bg-primary)', borderRadius: '10px', textAlign: 'center' }}>
           <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px' }}>Target</div>
           <div style={{ fontSize: '16px', fontWeight: '700', color: '#22c55e' }}>{result.target}</div>
         </div>
       </div>
+      
+      {/* Evaluator Consensus */}
+      {result.evaluator_consensus && (
+        <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+          {Object.entries(result.evaluator_consensus).map(([type, stance]) => (
+            <div key={type} style={{ 
+              flex: 1, 
+              padding: '10px', 
+              background: 'var(--bg-primary)', 
+              borderRadius: '8px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'capitalize' }}>
+                {type}
+              </div>
+              <div style={{ 
+                fontSize: '11px', 
+                fontWeight: '700', 
+                color: stance.includes('BUY') ? '#22c55e' : stance === 'HOLD' ? '#f59e0b' : '#ef4444'
+              }}>
+                {stance}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
-// ========== MAIN COMPONENT ==========
+// ========== MAIN PIPELINE PAGE COMPONENT ==========
 export default function PipelinePage() {
   const { isDark } = useTheme()
-  const [ticker, setTicker] = useState('NVDA')
-  const [researchMode, setResearchMode] = useState('deep')
-  const [isRunning, setIsRunning] = useState(false)
-  const [currentPhase, setCurrentPhase] = useState(0)
-  const [currentAgent, setCurrentAgent] = useState('')
-  const [progress, setProgress] = useState(0)
-  const [logs, setLogs] = useState([])
-  const [agentStatuses, setAgentStatuses] = useState({})
-  const [agentOutputs, setAgentOutputs] = useState({})
-  const [result, setResult] = useState(null)
-  const [selectedPhase, setSelectedPhase] = useState(null)
+  
+  // Get all state and actions from PipelineContext (defined in App.jsx)
+  const {
+    ticker,
+    setTicker,
+    researchMode,
+    setResearchMode,
+    isRunning,
+    currentPhase,
+    currentAgent,
+    progress,
+    logs,
+    agentStatuses,
+    agentOutputs,
+    result,
+    selectedPhase,
+    setSelectedPhase,
+    runPipeline,
+    resetPipeline,
+  } = usePipeline()
+  
   const logsEndRef = useRef(null)
 
+  // Auto-scroll logs
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs])
 
-  const addLog = (message, type = 'info') => {
-    const time = new Date().toLocaleTimeString('en-US', { hour12: false })
-    setLogs(prev => [...prev, { time, message, type }])
-  }
-
-  const runPipeline = async () => {
-    setIsRunning(true)
-    setLogs([])
-    setResult(null)
-    setAgentStatuses({})
-    setAgentOutputs({})
-    setProgress(0)
-    setCurrentPhase(0)
-
-    addLog(`Starting ${ticker} analysis pipeline`, 'info')
-    addLog(`Mode: ${researchMode.toUpperCase()} | Model: GPT-4o-mini`, 'info')
-
-    const totalAgents = PHASES.reduce((sum, p) => sum + p.agents.length, 0)
-    let completedAgents = 0
-
-    for (let i = 0; i < PHASES.length; i++) {
-      const phase = PHASES[i]
-      setCurrentPhase(i + 1)
-      setSelectedPhase(i + 1)
-      
-      addLog(`Phase ${phase.num}: ${phase.name.toUpperCase()}`, 'phase')
-
-      for (const agent of phase.agents) {
-        setCurrentAgent(agent.name)
-        setAgentStatuses(prev => ({ ...prev, [agent.name]: 'running' }))
-        addLog(`  Running ${agent.name}...`, 'agent_start')
-
-        const delay = researchMode === 'shallow' ? 400 : researchMode === 'deep' ? 700 : 1000
-        await new Promise(r => setTimeout(r, delay + Math.random() * 300))
-
-        const output = generateAgentOutput(agent.name, ticker)
-        setAgentOutputs(prev => ({ ...prev, [agent.name]: output }))
-        setAgentStatuses(prev => ({ ...prev, [agent.name]: 'complete' }))
-        
-        completedAgents++
-        setProgress((completedAgents / totalAgents) * 100)
-
-        let outputSummary = ''
-        if (output.signal) outputSummary = `Signal: ${output.signal}`
-        else if (output.sentiment) outputSummary = `Sentiment: ${output.sentiment}`
-        else if (output.thesis) outputSummary = output.thesis.slice(0, 40) + '...'
-        else if (output.stance) outputSummary = `${output.stance} @ ${output.position_pct}`
-        else if (output.verdict) outputSummary = `${output.verdict} - ${output.position_dollars}`
-        else if (output.winner) outputSummary = `Winner: ${output.winner}`
-
-        addLog(`  ${agent.name} complete → ${outputSummary}`, 'success')
-      }
-
-      addLog(`  Output: ${phase.output}`, 'info')
-    }
-
-    const finalOutput = generateAgentOutput('Risk Manager', ticker)
-    setResult(finalOutput)
-    addLog(`FINAL: ${finalOutput.verdict} ${finalOutput.verdict !== 'REJECT' ? finalOutput.position_dollars : ''}`, 'result')
-    
-    setIsRunning(false)
-    setCurrentPhase(0)
-    setCurrentAgent('')
-  }
-
-  const resetPipeline = () => {
-    setIsRunning(false)
-    setLogs([])
-    setResult(null)
-    setAgentStatuses({})
-    setAgentOutputs({})
-    setProgress(0)
-    setCurrentPhase(0)
-    setSelectedPhase(null)
-  }
-
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)' }}>
+    <div style={{ 
+      height: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      background: 'var(--bg-secondary)' 
+    }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
@@ -455,7 +472,7 @@ export default function PipelinePage() {
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* Header */}
+      {/* ==================== HEADER ==================== */}
       <header style={{
         background: 'var(--bg-primary)',
         borderBottom: '1px solid var(--border-primary)',
@@ -472,23 +489,32 @@ export default function PipelinePage() {
             5-Phase LLM Workflow • 11 Agents
           </p>
         </div>
+        
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px' }}>
+          {/* Header Badge (optional) */}
+          {DEMO_OPTIONS.HEADER_BADGE && (
+            <span style={{ 
+              padding: '5px 10px', 
+              background: isDark ? '#1e1b4b' : '#eef2ff', 
+              borderRadius: '6px', 
+              color: isDark ? '#a5b4fc' : '#4f46e5',
+              fontSize: '11px',
+              fontWeight: '500'
+            }}>
+              Demo Mode
+            </span>
+          )}
+          
           <span style={{ 
             padding: '5px 10px', 
             background: 'var(--bg-tertiary)', 
-            borderRadius: '6px',
-            color: 'var(--text-secondary)'
+            borderRadius: '6px', 
+            color: 'var(--text-secondary)' 
           }}>
             {PHASES.reduce((sum, p) => sum + p.agents.length, 0)} Agents
           </span>
-          <span style={{ 
-            padding: '5px 10px', 
-            background: 'var(--bg-tertiary)', 
-            borderRadius: '6px',
-            color: 'var(--text-secondary)'
-          }}>
-            5 Phases
-          </span>
+          
+          {/* Processing indicator */}
           {isRunning && (
             <span style={{
               padding: '5px 10px',
@@ -509,11 +535,29 @@ export default function PipelinePage() {
               Processing
             </span>
           )}
+          
+          {/* Complete indicator */}
+          {!isRunning && progress === 100 && (
+            <span style={{
+              padding: '5px 10px',
+              background: isDark ? '#0f1f0f' : '#f0fdf4',
+              borderRadius: '6px',
+              color: '#22c55e',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <Icons.Check size={12} />
+              Complete
+            </span>
+          )}
         </div>
       </header>
 
+      {/* ==================== MAIN LAYOUT ==================== */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Left Panel - Config */}
+        
+        {/* ==================== LEFT SIDEBAR ==================== */}
         <aside style={{
           width: '300px',
           background: 'var(--bg-card)',
@@ -521,25 +565,21 @@ export default function PipelinePage() {
           display: 'flex',
           flexDirection: 'column'
         }}>
-          {/* Configuration */}
+          {/* Configuration Section */}
           <div style={{ padding: '16px', borderBottom: '1px solid var(--border-primary)' }}>
             <div style={{ 
               fontSize: '11px', 
-              fontWeight: '600',
-              color: 'var(--text-muted)',
-              marginBottom: '12px',
-              textTransform: 'uppercase'
+              fontWeight: '600', 
+              color: 'var(--text-muted)', 
+              marginBottom: '12px', 
+              textTransform: 'uppercase' 
             }}>
               Configuration
             </div>
             
+            {/* Ticker Select */}
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '11px', 
-                color: 'var(--text-muted)', 
-                marginBottom: '6px' 
-              }}>
+              <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px' }}>
                 Ticker
               </label>
               <select
@@ -562,13 +602,9 @@ export default function PipelinePage() {
               </select>
             </div>
 
+            {/* Research Mode */}
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '11px', 
-                color: 'var(--text-muted)', 
-                marginBottom: '6px' 
-              }}>
+              <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px' }}>
                 Research Mode
               </label>
               <div style={{ display: 'flex', gap: '6px' }}>
@@ -589,23 +625,20 @@ export default function PipelinePage() {
                         : '1px solid var(--border-primary)',
                       borderRadius: '8px',
                       background: researchMode === mode.id 
-                        ? (isDark ? '#27272a' : '#f4f4f5')
+                        ? (isDark ? '#27272a' : '#f4f4f5') 
                         : 'var(--bg-secondary)',
                       cursor: isRunning ? 'not-allowed' : 'pointer',
                       fontSize: '11px'
                     }}
                   >
-                    <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
-                      {mode.label}
-                    </div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
-                      {mode.time}
-                    </div>
+                    <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{mode.label}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '10px' }}>{mode.time}</div>
                   </button>
                 ))}
               </div>
             </div>
 
+            {/* Run / Cancel Button */}
             {!isRunning ? (
               <button
                 onClick={runPipeline}
@@ -625,7 +658,8 @@ export default function PipelinePage() {
                   gap: '8px'
                 }}
               >
-                <Icons.Play size={14} /> Run Pipeline
+                <Icons.Play size={14} /> 
+                {progress === 100 ? 'Run Again' : 'Run Pipeline'}
               </button>
             ) : (
               <button
@@ -649,30 +683,51 @@ export default function PipelinePage() {
                 <Icons.X size={14} /> Cancel
               </button>
             )}
+            
+            {/* Clear Results Button */}
+            {!isRunning && progress === 100 && (
+              <button
+                onClick={resetPipeline}
+                style={{
+                  width: '100%',
+                  marginTop: '8px',
+                  padding: '10px',
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: '10px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                }}
+              >
+                Clear Results
+              </button>
+            )}
+            
+            {/* Sidebar Demo Note */}
+            {DEMO_OPTIONS.INLINE_SIDEBAR && <SidebarDemoNote isDark={isDark} />}
           </div>
 
-          {/* Progress */}
+          {/* Progress Section */}
           {(isRunning || progress > 0) && (
             <div style={{ padding: '16px', borderBottom: '1px solid var(--border-primary)' }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                fontSize: '12px', 
-                marginBottom: '8px' 
-              }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '8px' }}>
                 <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>Progress</span>
                 <span style={{ color: 'var(--text-muted)' }}>{Math.round(progress)}%</span>
               </div>
-              <div style={{
-                height: '6px',
-                background: 'var(--bg-tertiary)',
-                borderRadius: '3px',
-                overflow: 'hidden'
+              <div style={{ 
+                height: '6px', 
+                background: 'var(--bg-tertiary)', 
+                borderRadius: '3px', 
+                overflow: 'hidden' 
               }}>
                 <div style={{
                   height: '100%',
                   width: `${progress}%`,
-                  background: PHASES[Math.max(0, currentPhase - 1)]?.color || 'var(--text-primary)',
+                  background: progress === 100 
+                    ? '#22c55e' 
+                    : (PHASES[Math.max(0, currentPhase - 1)]?.color || 'var(--text-primary)'),
                   transition: 'width 0.3s',
                   borderRadius: '3px'
                 }} />
@@ -701,15 +756,16 @@ export default function PipelinePage() {
 
           {/* Phase Navigation */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }} className="hide-scrollbar">
-            <div style={{
-              fontSize: '11px',
-              fontWeight: '600',
-              color: 'var(--text-muted)',
-              marginBottom: '10px',
-              textTransform: 'uppercase'
+            <div style={{ 
+              fontSize: '11px', 
+              fontWeight: '600', 
+              color: 'var(--text-muted)', 
+              marginBottom: '10px', 
+              textTransform: 'uppercase' 
             }}>
               Phases
             </div>
+            
             {PHASES.map((phase) => {
               const phaseComplete = currentPhase > phase.num || (!isRunning && progress === 100)
               const phaseActive = currentPhase === phase.num && isRunning
@@ -733,29 +789,19 @@ export default function PipelinePage() {
                         : 'var(--bg-secondary)'
                   }}
                 >
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between' 
-                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span style={{ fontSize: '18px' }}>{phase.icon}</span>
                       <div>
-                        <div style={{ 
-                          fontWeight: '600', 
-                          fontSize: '12px',
-                          color: 'var(--text-primary)'
-                        }}>
+                        <div style={{ fontWeight: '600', fontSize: '12px', color: 'var(--text-primary)' }}>
                           Phase {phase.num}: {phase.name}
                         </div>
-                        <div style={{ 
-                          fontSize: '10px', 
-                          color: 'var(--text-muted)' 
-                        }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                           {phase.agents.length} agents • {phase.duration}
                         </div>
                       </div>
                     </div>
+                    
                     {phaseComplete && (
                       <span style={{ color: '#22c55e', display: 'flex' }}>
                         <Icons.Check size={14} />
@@ -778,158 +824,137 @@ export default function PipelinePage() {
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
-          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            {/* Result Card */}
-            <ResultCard result={result} ticker={ticker} isDark={isDark} />
+        {/* ==================== MAIN CONTENT ==================== */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <main style={{ flex: 1, padding: '20px', overflowY: 'auto', minHeight: 0 }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+              
+              {/* Demo Banner */}
+              {DEMO_OPTIONS.BANNER && <DemoBanner isDark={isDark} />}
+              
+              {/* Result Card */}
+              <ResultCard result={result} ticker={ticker} isDark={isDark} />
 
-            {/* Phase Detail */}
-            {selectedPhase && (
+              {/* Phase Detail */}
+              {selectedPhase && (
+                <div style={{
+                  background: 'var(--bg-card)',
+                  borderRadius: '14px',
+                  border: '1px solid var(--border-primary)',
+                  padding: '20px',
+                  marginBottom: '16px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                    <div style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '12px',
+                      background: PHASES[selectedPhase - 1].color + '22',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '22px'
+                    }}>
+                      {PHASES[selectedPhase - 1].icon}
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                        Phase {selectedPhase}: {PHASES[selectedPhase - 1].name}
+                      </h3>
+                      <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+                        {PHASES[selectedPhase - 1].agents.length} agents • Output: {PHASES[selectedPhase - 1].output}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {PHASES[selectedPhase - 1].agents.map(agent => (
+                    <AgentCard
+                      key={agent.name}
+                      agent={agent}
+                      status={agentStatuses[agent.name] || 'pending'}
+                      output={agentOutputs[agent.name]}
+                      isActive={currentAgent === agent.name}
+                      phaseColor={PHASES[selectedPhase - 1].color}
+                      isDark={isDark}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Execution Log */}
               <div style={{
-                background: 'var(--bg-card)',
+                background: isDark ? '#0a0a0a' : '#1e1e1e',
                 borderRadius: '14px',
-                border: '1px solid var(--border-primary)',
-                padding: '20px',
-                marginBottom: '16px'
+                padding: '16px',
+                minHeight: '250px'
               }}>
                 <div style={{ 
                   display: 'flex', 
+                  justifyContent: 'space-between', 
                   alignItems: 'center', 
-                  gap: '12px', 
-                  marginBottom: '16px' 
+                  marginBottom: '12px' 
                 }}>
-                  <div style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '12px',
-                    background: PHASES[selectedPhase - 1].color + '22',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '22px'
-                  }}>
-                    {PHASES[selectedPhase - 1].icon}
-                  </div>
-                  <div>
-                    <h3 style={{ 
-                      margin: 0, 
-                      fontSize: '16px', 
-                      fontWeight: '600',
-                      color: 'var(--text-primary)'
-                    }}>
-                      Phase {selectedPhase}: {PHASES[selectedPhase - 1].name}
-                    </h3>
-                    <p style={{ 
-                      margin: '2px 0 0', 
-                      fontSize: '12px', 
-                      color: 'var(--text-muted)' 
-                    }}>
-                      {PHASES[selectedPhase - 1].agents.length} agents • Output: {PHASES[selectedPhase - 1].output}
-                    </p>
+                  <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#e5e7eb' }}>
+                    Execution Log
+                  </h3>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', color: '#6b7280' }}>{logs.length} entries</span>
                   </div>
                 </div>
                 
-                {PHASES[selectedPhase - 1].agents.map(agent => (
-                  <AgentCard
-                    key={agent.name}
-                    agent={agent}
-                    status={agentStatuses[agent.name] || 'pending'}
-                    output={agentOutputs[agent.name]}
-                    isActive={currentAgent === agent.name}
-                    phaseColor={PHASES[selectedPhase - 1].color}
-                    isDark={isDark}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Execution Log */}
-            <div style={{
-              background: isDark ? '#0a0a0a' : '#1e1e1e',
-              borderRadius: '14px',
-              padding: '16px',
-              minHeight: '250px'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '12px'
-              }}>
-                <h3 style={{ 
-                  margin: 0, 
-                  fontSize: '14px', 
-                  fontWeight: '600', 
-                  color: '#e5e7eb' 
-                }}>
-                  Execution Log
-                </h3>
-                {logs.length > 0 && (
-                  <button
-                    onClick={() => setLogs([])}
-                    style={{
-                      padding: '4px 10px',
-                      background: '#374151',
-                      border: 'none',
-                      borderRadius: '4px',
-                      color: '#9ca3af',
-                      fontSize: '11px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-              <div style={{ 
-                maxHeight: '300px', 
-                overflowY: 'auto', 
-                fontFamily: 'monospace',
-                fontSize: '12px'
-              }} className="hide-scrollbar">
-                {logs.length === 0 ? (
-                  <div style={{ color: '#6b7280', padding: '20px', textAlign: 'center' }}>
-                    Click "Run Pipeline" to start analysis...
-                  </div>
-                ) : (
-                  logs.map((log, i) => {
-                    const colors = {
-                      phase: '#6366f1',
-                      success: '#22c55e',
-                      result: '#f59e0b',
-                      info: '#6b7280',
-                      agent_start: '#9ca3af'
-                    }
-                    return (
-                      <div
-                        key={i}
-                        style={{
-                          padding: '4px 0',
-                          color: colors[log.type] || '#6b7280',
-                          fontWeight: log.type === 'phase' || log.type === 'result' ? '600' : '400',
-                          borderLeft: log.type === 'phase' 
-                            ? '3px solid #6366f1' 
-                            : log.type === 'result' 
-                              ? '3px solid #f59e0b' 
-                              : 'none',
-                          paddingLeft: log.type === 'phase' || log.type === 'result' ? '10px' : '0',
-                          marginLeft: log.type === 'phase' || log.type === 'result' ? '0' : '13px'
-                        }}
-                      >
-                        <span style={{ color: '#4b5563', marginRight: '10px' }}>
-                          [{log.time}]
-                        </span>
-                        {log.message}
-                      </div>
-                    )
-                  })
-                )}
-                <div ref={logsEndRef} />
+                <div 
+                  style={{ 
+                    maxHeight: '300px', 
+                    overflowY: 'auto', 
+                    fontFamily: 'monospace', 
+                    fontSize: '12px' 
+                  }} 
+                  className="hide-scrollbar"
+                >
+                  {logs.length === 0 ? (
+                    <div style={{ color: '#6b7280', padding: '20px', textAlign: 'center' }}>
+                      Click "Run Pipeline" to start analysis...
+                    </div>
+                  ) : (
+                    logs.map((log, i) => {
+                      const colors = {
+                        phase: '#6366f1',
+                        success: '#22c55e',
+                        result: '#f59e0b',
+                        info: '#6b7280',
+                        agent_start: '#9ca3af'
+                      }
+                      return (
+                        <div
+                          key={i}
+                          style={{
+                            padding: '4px 0',
+                            color: colors[log.type] || '#6b7280',
+                            fontWeight: log.type === 'phase' || log.type === 'result' ? '600' : '400',
+                            borderLeft: log.type === 'phase' 
+                              ? '3px solid #6366f1' 
+                              : log.type === 'result' 
+                                ? '3px solid #f59e0b' 
+                                : 'none',
+                            paddingLeft: log.type === 'phase' || log.type === 'result' ? '10px' : '0',
+                            marginLeft: log.type === 'phase' || log.type === 'result' ? '0' : '13px'
+                          }}
+                        >
+                          <span style={{ color: '#4b5563', marginRight: '10px' }}>[{log.time}]</span>
+                          {log.message}
+                        </div>
+                      )
+                    })
+                  )}
+                  <div ref={logsEndRef} />
+                </div>
               </div>
             </div>
-          </div>
-        </main>
+          </main>
+          
+          {/* Demo Footer */}
+          {DEMO_OPTIONS.FOOTER && <DemoFooter isDark={isDark} />}
+        </div>
       </div>
     </div>
   )

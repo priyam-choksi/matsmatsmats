@@ -14,14 +14,13 @@ const CORS_PROXIES = [
 let currentProxyIndex = 0
 
 async function fetchWithProxy(url) {
-  // Try each proxy until one works
   for (let i = 0; i < CORS_PROXIES.length; i++) {
     const proxyIndex = (currentProxyIndex + i) % CORS_PROXIES.length
     const proxy = CORS_PROXIES[proxyIndex]
     try {
       const res = await fetch(proxy + encodeURIComponent(url))
       if (res.ok) {
-        currentProxyIndex = proxyIndex // Remember working proxy
+        currentProxyIndex = proxyIndex
         return res
       }
     } catch (e) {
@@ -56,9 +55,23 @@ const COMPANY_INFO = {
   INTC: { name: 'Intel Corp', sector: 'Semiconductors' },
 }
 
-// ========== YAHOO FINANCE API (Primary - No API Key Needed) ==========
+// ========== THEME-AWARE COLORS ==========
+const getColors = (isDark) => ({
+  success: '#10b981',
+  successLight: isDark ? 'rgba(16, 185, 129, 0.15)' : '#dcfce7',
+  successText: isDark ? '#34d399' : '#166534',
+  danger: '#ef4444',
+  dangerLight: isDark ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2',
+  dangerText: isDark ? '#f87171' : '#991b1b',
+  neutral: isDark ? '#3f3f46' : '#f4f4f5',
+  neutralText: isDark ? '#a1a1aa' : '#666',
+  gridLine: isDark ? '#27272a' : '#e5e5e5',
+  tooltipBg: isDark ? '#27272a' : '#18181b',
+  chartDot: isDark ? '#0a0a0a' : '#fff',
+})
 
-// Get quote + chart data in one call
+// ========== YAHOO FINANCE API ==========
+
 async function yahooQuoteAndChart(symbol, range = '1mo', interval = '1d') {
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`
@@ -72,7 +85,6 @@ async function yahooQuoteAndChart(symbol, range = '1mo', interval = '1d') {
     const quotes = result.indicators?.quote?.[0] || {}
     const timestamps = result.timestamp || []
     
-    // Build chart from timestamps + quotes
     const chart = timestamps.map((t, i) => ({
       date: new Date(t * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       open: quotes.open?.[i],
@@ -82,7 +94,6 @@ async function yahooQuoteAndChart(symbol, range = '1mo', interval = '1d') {
       volume: quotes.volume?.[i],
     })).filter(d => d.close != null)
     
-    // Build quote from meta + today's candle data
     const prevClose = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPreviousClose
     const price = meta.regularMarketPrice
     const todayCandle = chart.length > 0 ? chart[chart.length - 1] : {}
@@ -108,7 +119,6 @@ async function yahooQuoteAndChart(symbol, range = '1mo', interval = '1d') {
   }
 }
 
-// Fetch additional quote data (for market cap, etc)
 async function yahooQuoteSummary(symbol) {
   try {
     const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=price,summaryDetail`
@@ -136,13 +146,12 @@ async function yahooQuoteSummary(symbol) {
   return null
 }
 
-// Just get quote (faster for bulk)
 async function yahooQuote(symbol) {
   const { quote } = await yahooQuoteAndChart(symbol, '1d', '1d')
   return quote
 }
 
-// ========== FINNHUB API (Backup + Fundamentals) ==========
+// ========== FINNHUB API ==========
 
 async function finnhubMetrics(symbol) {
   if (!FINNHUB_KEY) return null
@@ -173,7 +182,7 @@ async function finnhubNews(symbol) {
   } catch (e) { return [] }
 }
 
-// ========== GOOGLE NEWS (Free Fallback) ==========
+// ========== GOOGLE NEWS ==========
 
 async function googleNews(symbol) {
   try {
@@ -197,7 +206,7 @@ async function googleNews(symbol) {
   } catch (e) { return [] }
 }
 
-// ========== SEC FILINGS (via proxy) ==========
+// ========== SEC FILINGS ==========
 
 async function secFilings(symbol) {
   try {
@@ -221,8 +230,9 @@ async function secFilings(symbol) {
 
 // ========== CHART COMPONENT ==========
 function PriceChart({ data, price, isDark }) {
-  const [hover, setHover] = React.useState(null) // { x, y, index, price, date }
+  const [hover, setHover] = React.useState(null)
   const svgRef = React.useRef(null)
+  const colors = getColors(isDark)
   
   if (!data || data.length < 2) {
     return <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>Loading chart...</div>
@@ -235,7 +245,7 @@ function PriceChart({ data, price, isDark }) {
   const max = Math.max(...allPrices) * 1.005
   const range = max - min || 1
   const isUp = currentPrice >= closes[0]
-  const color = isUp ? '#22c55e' : '#ef4444'
+  const color = isUp ? colors.success : colors.danger
 
   const w = 760, h = 200
   const pad = { t: 20, r: 60, b: 25, l: 50 }
@@ -247,14 +257,11 @@ function PriceChart({ data, price, isDark }) {
   const line = closes.map((c, i) => `${i === 0 ? 'M' : 'L'}${x(i)},${y(c)}`).join(' ')
   const area = `${line} L${x(closes.length - 1)},${pad.t + ch} L${pad.l},${pad.t + ch} Z`
 
-  // Handle mouse move
   const handleMouseMove = (e) => {
     if (!svgRef.current) return
     const rect = svgRef.current.getBoundingClientRect()
     const mouseX = ((e.clientX - rect.left) / rect.width) * w
-    const mouseY = ((e.clientY - rect.top) / rect.height) * h
     
-    // Find closest data point
     const chartX = mouseX - pad.l
     if (chartX < 0 || chartX > cw) {
       setHover(null)
@@ -276,7 +283,6 @@ function PriceChart({ data, price, isDark }) {
         low: dataPoint.low,
         volume: dataPoint.volume,
         date: dataPoint.date,
-        mouseY
       })
     }
   }
@@ -292,7 +298,7 @@ function PriceChart({ data, price, isDark }) {
       onMouseLeave={handleMouseLeave}
     >
       <defs>
-        <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`chartGrad-${isDark}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.2" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
@@ -301,50 +307,44 @@ function PriceChart({ data, price, isDark }) {
       {/* Grid */}
       {[0, 0.5, 1].map((p, i) => (
         <g key={i}>
-          <line x1={pad.l} y1={pad.t + ch * (1-p)} x2={w - pad.r} y2={pad.t + ch * (1-p)} stroke={isDark ? '#333' : '#e5e5e5'} strokeDasharray="4,4" />
-          <text x={pad.l - 8} y={pad.t + ch * (1-p) + 4} fill={isDark ? '#666' : '#999'} fontSize="10" textAnchor="end">${(min + range * p).toFixed(0)}</text>
+          <line x1={pad.l} y1={pad.t + ch * (1-p)} x2={w - pad.r} y2={pad.t + ch * (1-p)} stroke={colors.gridLine} strokeDasharray="4,4" />
+          <text x={pad.l - 8} y={pad.t + ch * (1-p) + 4} fill="var(--text-muted)" fontSize="10" textAnchor="end">${(min + range * p).toFixed(0)}</text>
         </g>
       ))}
       
       {/* Area and Line */}
-      <path d={area} fill="url(#chartGrad)" />
+      <path d={area} fill={`url(#chartGrad-${isDark})`} />
       <path d={line} fill="none" stroke={color} strokeWidth="2" />
       
       {/* Hover crosshair and tooltip */}
       {hover && (
         <g>
-          {/* Vertical line */}
-          <line x1={hover.x} y1={pad.t} x2={hover.x} y2={pad.t + ch} stroke={isDark ? '#555' : '#ccc'} strokeWidth="1" strokeDasharray="4,4" />
-          {/* Horizontal line */}
-          <line x1={pad.l} y1={hover.y} x2={w - pad.r} y2={hover.y} stroke={isDark ? '#555' : '#ccc'} strokeWidth="1" strokeDasharray="4,4" />
-          {/* Data point circle */}
-          <circle cx={hover.x} cy={hover.y} r="5" fill={color} stroke={isDark ? '#18181b' : '#fff'} strokeWidth="2" />
+          <line x1={hover.x} y1={pad.t} x2={hover.x} y2={pad.t + ch} stroke={colors.gridLine} strokeWidth="1" strokeDasharray="4,4" />
+          <line x1={pad.l} y1={hover.y} x2={w - pad.r} y2={hover.y} stroke={colors.gridLine} strokeWidth="1" strokeDasharray="4,4" />
+          <circle cx={hover.x} cy={hover.y} r="5" fill={color} stroke={colors.chartDot} strokeWidth="2" />
           
-          {/* Price label on right */}
-          <rect x={w - pad.r + 5} y={hover.y - 10} width="50" height="20" rx="4" fill={isDark ? '#333' : '#1a1a1a'} />
+          <rect x={w - pad.r + 5} y={hover.y - 10} width="50" height="20" rx="4" fill={colors.tooltipBg} />
           <text x={w - pad.r + 30} y={hover.y + 4} fill="#fff" fontSize="10" fontWeight="600" textAnchor="middle">${hover.price.toFixed(2)}</text>
           
-          {/* Date label on bottom */}
-          <rect x={hover.x - 30} y={pad.t + ch + 5} width="60" height="16" rx="3" fill={isDark ? '#333' : '#1a1a1a'} />
+          <rect x={hover.x - 30} y={pad.t + ch + 5} width="60" height="16" rx="3" fill={colors.tooltipBg} />
           <text x={hover.x} y={pad.t + ch + 16} fill="#fff" fontSize="9" textAnchor="middle">{hover.date}</text>
           
-          {/* Tooltip box */}
           <g transform={`translate(${hover.x < w/2 ? hover.x + 15 : hover.x - 125}, ${Math.max(pad.t, Math.min(hover.y - 40, pad.t + ch - 80))})`}>
-            <rect x="0" y="0" width="110" height="72" rx="6" fill={isDark ? '#27272a' : '#1a1a1a'} opacity="0.95" />
+            <rect x="0" y="0" width="110" height="72" rx="6" fill={colors.tooltipBg} opacity="0.95" />
             <text x="8" y="16" fill="#fff" fontSize="11" fontWeight="600">{hover.date}</text>
             <text x="8" y="32" fill="#9ca3af" fontSize="9">O: <tspan fill="#fff">${hover.open?.toFixed(2) || '—'}</tspan></text>
-            <text x="60" y="32" fill="#9ca3af" fontSize="9">H: <tspan fill="#22c55e">${hover.high?.toFixed(2) || '—'}</tspan></text>
-            <text x="8" y="46" fill="#9ca3af" fontSize="9">L: <tspan fill="#ef4444">${hover.low?.toFixed(2) || '—'}</tspan></text>
+            <text x="60" y="32" fill="#9ca3af" fontSize="9">H: <tspan fill={colors.success}>${hover.high?.toFixed(2) || '—'}</tspan></text>
+            <text x="8" y="46" fill="#9ca3af" fontSize="9">L: <tspan fill={colors.danger}>${hover.low?.toFixed(2) || '—'}</tspan></text>
             <text x="60" y="46" fill="#9ca3af" fontSize="9">C: <tspan fill="#fff">${hover.price?.toFixed(2) || '—'}</tspan></text>
             <text x="8" y="62" fill="#9ca3af" fontSize="9">Vol: <tspan fill="#fff">{hover.volume ? (hover.volume >= 1e6 ? (hover.volume/1e6).toFixed(1) + 'M' : hover.volume.toLocaleString()) : '—'}</tspan></text>
           </g>
         </g>
       )}
       
-      {/* Current price marker (only show when not hovering) */}
+      {/* Current price marker */}
       {!hover && (
         <g>
-          <circle cx={x(closes.length - 1)} cy={y(currentPrice)} r="4" fill={isDark ? '#18181b' : '#fff'} stroke={color} strokeWidth="2" />
+          <circle cx={x(closes.length - 1)} cy={y(currentPrice)} r="4" fill={colors.chartDot} stroke={color} strokeWidth="2" />
           <rect x={w - pad.r + 5} y={y(currentPrice) - 10} width="50" height="20" rx="4" fill={color} />
           <text x={w - pad.r + 30} y={y(currentPrice) + 4} fill="#fff" fontSize="10" fontWeight="600" textAnchor="middle">${currentPrice.toFixed(2)}</text>
         </g>
@@ -354,9 +354,14 @@ function PriceChart({ data, price, isDark }) {
 }
 
 // ========== NEWS ITEM ==========
-function NewsItem({ item, expanded, onToggle }) {
-  const colors = { bullish: { bg: '#dcfce7', c: '#166534' }, bearish: { bg: '#fee2e2', c: '#991b1b' }, neutral: { bg: '#f4f4f5', c: '#666' } }
-  const s = colors[item.sentiment] || colors.neutral
+function NewsItem({ item, expanded, onToggle, isDark }) {
+  const colors = getColors(isDark)
+  const sentimentColors = { 
+    bullish: { bg: colors.successLight, c: colors.successText }, 
+    bearish: { bg: colors.dangerLight, c: colors.dangerText }, 
+    neutral: { bg: colors.neutral, c: colors.neutralText } 
+  }
+  const s = sentimentColors[item.sentiment] || sentimentColors.neutral
   
   const ago = item.datetime ? (() => {
     const mins = Math.floor((Date.now() / 1000 - item.datetime) / 60)
@@ -385,8 +390,8 @@ function NewsItem({ item, expanded, onToggle }) {
 
 // ========== FILING ITEM ==========
 function FilingItem({ item }) {
-  const typeColors = { '10-K': '#8b5cf6', '10-Q': '#3b82f6', '8-K': '#f59e0b', '4': '#22c55e' }
-  const color = Object.entries(typeColors).find(([k]) => item.type?.includes(k))?.[1] || '#888'
+  const typeColors = { '10-K': '#8b5cf6', '10-Q': '#3b82f6', '8-K': '#f59e0b', '4': '#10b981' }
+  const color = Object.entries(typeColors).find(([k]) => item.type?.includes(k))?.[1] || '#71717a'
   
   return (
     <a href={item.link} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: '1px solid var(--border-primary)', textDecoration: 'none' }}>
@@ -402,6 +407,7 @@ function FilingItem({ item }) {
 // ========== MAIN COMPONENT ==========
 export default function MarketPage() {
   const { isDark } = useTheme()
+  const colors = getColors(isDark)
   
   const [tickers, setTickers] = useState(DEFAULT_TICKERS)
   const [selected, setSelected] = useState('NVDA')
@@ -417,7 +423,6 @@ export default function MarketPage() {
   const [searchInput, setSearchInput] = useState('')
   const [loadingQuotes, setLoadingQuotes] = useState(true)
 
-  // Fetch all quotes using Yahoo
   const fetchAllQuotes = useCallback(async () => {
     setLoadingQuotes(true)
     const results = await Promise.all(tickers.map(t => yahooQuote(t)))
@@ -428,9 +433,7 @@ export default function MarketPage() {
     setLoadingQuotes(false)
   }, [tickers])
 
-  // Fetch selected ticker data
   const fetchTickerData = useCallback(async (ticker, timeRange) => {
-    // Get chart with appropriate range
     const periodMap = {
       '1D': { range: '1d', interval: '5m' },
       '1W': { range: '5d', interval: '15m' },
@@ -439,13 +442,11 @@ export default function MarketPage() {
     }
     const { range, interval } = periodMap[timeRange] || periodMap['1M']
     
-    // Fetch chart + quote together
     const [{ quote, chart: chartData }, summary] = await Promise.all([
       yahooQuoteAndChart(ticker, range, interval),
       yahooQuoteSummary(ticker)
     ])
     
-    // Merge quote with summary data
     if (quote) {
       const mergedQuote = {
         ...quote,
@@ -459,18 +460,14 @@ export default function MarketPage() {
     }
     setChart(chartData)
     
-    // Fetch news - try Finnhub first, fallback to Google
     let newsData = await finnhubNews(ticker)
     if (newsData.length === 0) newsData = await googleNews(ticker)
     setNews(newsData)
     
-    // Fetch filings
     const filingsData = await secFilings(ticker)
     setFilings(filingsData)
     
-    // Fetch metrics from Finnhub (if available)
     const metricsData = await finnhubMetrics(ticker)
-    // Merge with Yahoo summary data
     const mergedMetrics = {
       ...metricsData,
       beta: metricsData?.beta || summary?.beta,
@@ -480,7 +477,6 @@ export default function MarketPage() {
     setMetrics(mergedMetrics)
   }, [])
 
-  // Initial load
   useEffect(() => {
     fetchAllQuotes()
     fetchTickerData(selected, period)
@@ -488,12 +484,10 @@ export default function MarketPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // When ticker or period changes
   useEffect(() => {
     fetchTickerData(selected, period)
   }, [selected, period])
 
-  // Add ticker
   const addTicker = (ticker) => {
     const t = (ticker || searchInput).toUpperCase().trim()
     if (t && t.length <= 5 && !tickers.includes(t)) {
@@ -504,10 +498,9 @@ export default function MarketPage() {
     }
   }
 
-  // Remove ticker
   const removeTicker = (ticker, e) => {
     e.stopPropagation()
-    if (tickers.length <= 1) return // Keep at least 1
+    if (tickers.length <= 1) return
     setTickers(prev => prev.filter(t => t !== ticker))
     setQuotes(prev => { const n = { ...prev }; delete n[ticker]; return n })
     if (selected === ticker) setSelected(tickers.find(t => t !== ticker) || tickers[0])
@@ -537,11 +530,11 @@ export default function MarketPage() {
           <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>{tickers.length} tickers • Yahoo Finance + Finnhub + SEC</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <input value={searchInput} onChange={e => setSearchInput(e.target.value.toUpperCase())} onKeyDown={e => e.key === 'Enter' && addTicker()} placeholder="Add ticker..." style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-primary)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '12px', width: '100px' }} />
-          <button onClick={() => addTicker()} style={{ padding: '8px 14px', borderRadius: '6px', border: 'none', background: 'var(--accent-primary)', color: 'white', fontSize: '12px', cursor: 'pointer' }}>Add</button>
+          <input value={searchInput} onChange={e => setSearchInput(e.target.value.toUpperCase())} onKeyDown={e => e.key === 'Enter' && addTicker()} placeholder="Add ticker..." style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-primary)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '12px', width: '100px' }} />
+          <button onClick={() => addTicker()} style={{ padding: '8px 14px', borderRadius: '6px', border: 'none', background: 'var(--accent-primary)', color: isDark ? '#0a0a0a' : '#fff', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Add</button>
           <button onClick={fetchAllQuotes} disabled={loadingQuotes} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-primary)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '11px', cursor: 'pointer', opacity: loadingQuotes ? 0.6 : 1 }}>↻ {loadingQuotes ? 'Loading...' : 'Refresh'}</button>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{lastUpdate?.toLocaleTimeString() || '—'}</span>
-          <span style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', background: upCount > totalLoaded / 2 ? '#dcfce7' : '#fee2e2', color: upCount > totalLoaded / 2 ? '#166534' : '#991b1b' }}>
+          <span style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', background: upCount > totalLoaded / 2 ? colors.successLight : colors.dangerLight, color: upCount > totalLoaded / 2 ? colors.successText : colors.dangerText }}>
             {upCount > totalLoaded / 2 ? 'Bull' : 'Bear'} ({upCount}/{totalLoaded})
           </span>
         </div>
@@ -557,12 +550,12 @@ export default function MarketPage() {
           return (
             <button key={t} onClick={() => setSelected(t)} style={{
               display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap', position: 'relative',
-              border: sel ? `2px solid ${up ? '#22c55e' : '#ef4444'}` : '1px solid var(--border-primary)',
-              background: sel ? (up ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)') : 'var(--bg-card)',
+              border: sel ? `2px solid ${up ? colors.success : colors.danger}` : '1px solid var(--border-primary)',
+              background: sel ? (up ? colors.successLight : colors.dangerLight) : 'var(--bg-card)',
             }}>
               <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>{t}</span>
               {hasData ? (
-                <span style={{ fontSize: '12px', fontWeight: '600', color: up ? '#22c55e' : '#ef4444' }}>{up ? '▲' : '▼'}{Math.abs(q.changePercent || 0).toFixed(2)}%</span>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: up ? colors.success : colors.danger }}>{up ? '▲' : '▼'}{Math.abs(q.changePercent || 0).toFixed(2)}%</span>
               ) : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>...</span>}
               {tickers.length > 1 && (
                 <span onClick={(e) => removeTicker(t, e)} style={{ marginLeft: '4px', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: 'var(--text-muted)', cursor: 'pointer', background: 'var(--bg-tertiary)' }} title="Remove">×</span>
@@ -588,7 +581,7 @@ export default function MarketPage() {
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--text-primary)' }}>{fmt.price(quote.price)}</div>
-                <div style={{ fontSize: '16px', fontWeight: '600', color: isUp ? '#22c55e' : '#ef4444' }}>
+                <div style={{ fontSize: '16px', fontWeight: '600', color: isUp ? colors.success : colors.danger }}>
                   {quote.change != null ? `${isUp ? '+' : ''}${quote.change.toFixed(2)} (${fmt.pct(quote.changePercent)})` : '—'}
                 </div>
               </div>
@@ -596,8 +589,8 @@ export default function MarketPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px' }}>
               {[
                 { l: 'Open', v: fmt.price(quote.open) },
-                { l: 'High', v: fmt.price(quote.high), c: '#22c55e' },
-                { l: 'Low', v: fmt.price(quote.low), c: '#ef4444' },
+                { l: 'High', v: fmt.price(quote.high), c: colors.success },
+                { l: 'Low', v: fmt.price(quote.low), c: colors.danger },
                 { l: 'Volume', v: fmt.vol(quote.volume) },
                 { l: 'Mkt Cap', v: fmt.cap(quote.marketCap) },
                 { l: 'Prev Close', v: fmt.price(quote.prevClose) },
@@ -618,7 +611,7 @@ export default function MarketPage() {
                 {['1D', '1W', '1M', '3M'].map(p => (
                   <button key={p} onClick={() => setPeriod(p)} style={{
                     padding: '6px 12px', fontSize: '11px', fontWeight: '500', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                    background: period === p ? 'var(--bg-primary)' : 'transparent',
+                    background: period === p ? 'var(--bg-card)' : 'transparent',
                     color: period === p ? 'var(--text-primary)' : 'var(--text-muted)',
                   }}>{p}</button>
                 ))}
@@ -651,12 +644,12 @@ export default function MarketPage() {
                     const up = (q.change || 0) >= 0
                     const hasData = q.price > 0
                     return (
-                      <tr key={t} onClick={() => setSelected(t)} style={{ cursor: 'pointer', borderBottom: '1px solid var(--border-primary)', background: t === selected ? (isDark ? '#1a1a1a' : '#f9f9f9') : 'transparent' }}>
+                      <tr key={t} onClick={() => setSelected(t)} style={{ cursor: 'pointer', borderBottom: '1px solid var(--border-primary)', background: t === selected ? 'var(--bg-hover)' : 'transparent' }}>
                         <td style={{ padding: '12px 14px', fontWeight: '700', color: 'var(--text-primary)' }}>{t}</td>
                         <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>{c.name}</td>
                         <td style={{ padding: '12px 14px', textAlign: 'right', fontFamily: 'monospace', fontWeight: '600', color: 'var(--text-primary)' }}>{hasData ? fmt.price(q.price) : '—'}</td>
-                        <td style={{ padding: '12px 14px', textAlign: 'right', fontFamily: 'monospace', color: up ? '#22c55e' : '#ef4444' }}>{hasData ? `${up ? '+' : ''}${q.change.toFixed(2)}` : '—'}</td>
-                        <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: '600', color: up ? '#22c55e' : '#ef4444' }}>{hasData ? `${up ? '▲' : '▼'}${Math.abs(q.changePercent).toFixed(2)}%` : '—'}</td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', fontFamily: 'monospace', color: up ? colors.success : colors.danger }}>{hasData ? `${up ? '+' : ''}${q.change.toFixed(2)}` : '—'}</td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: '600', color: up ? colors.success : colors.danger }}>{hasData ? `${up ? '▲' : '▼'}${Math.abs(q.changePercent).toFixed(2)}%` : '—'}</td>
                         <td style={{ padding: '12px 14px', textAlign: 'center' }}>
                           {tickers.length > 1 && (
                             <span onClick={(e) => removeTicker(t, e)} style={{ width: '20px', height: '20px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', color: 'var(--text-muted)', cursor: 'pointer', background: 'var(--bg-tertiary)' }} title="Remove">×</span>
@@ -686,7 +679,7 @@ export default function MarketPage() {
           
           <div className="hide-scroll" style={{ flex: 1, overflowY: 'auto', padding: '0 14px' }}>
             {tab === 'News' && (
-              news.length > 0 ? news.map(n => <NewsItem key={n.id} item={n} expanded={expandedNews === n.id} onToggle={() => setExpandedNews(expandedNews === n.id ? null : n.id)} />)
+              news.length > 0 ? news.map(n => <NewsItem key={n.id} item={n} expanded={expandedNews === n.id} onToggle={() => setExpandedNews(expandedNews === n.id ? null : n.id)} isDark={isDark} />)
               : <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading news...</div>
             )}
             
@@ -731,14 +724,14 @@ export default function MarketPage() {
                   { l: 'Open', v: fmt.price(quote.open) },
                   { l: 'Volume', v: fmt.vol(quote.volume) },
                   { l: 'Market Cap', v: fmt.cap(quote.marketCap) },
-                  { l: 'Day Change', v: quote.change != null ? `${isUp ? '+' : ''}${quote.change.toFixed(2)}` : '—', c: isUp ? '#22c55e' : '#ef4444' },
-                  { l: 'Day Change %', v: fmt.pct(quote.changePercent), c: isUp ? '#22c55e' : '#ef4444' },
-                  { l: '52W High', v: quote.fiftyTwoWeekHigh ? fmt.price(quote.fiftyTwoWeekHigh) : (metrics?.['52WeekHigh'] ? `${metrics['52WeekHigh'].toFixed(2)}` : '—') },
-                  { l: '52W Low', v: quote.fiftyTwoWeekLow ? fmt.price(quote.fiftyTwoWeekLow) : (metrics?.['52WeekLow'] ? `${metrics['52WeekLow'].toFixed(2)}` : '—') },
+                  { l: 'Day Change', v: quote.change != null ? `${isUp ? '+' : ''}${quote.change.toFixed(2)}` : '—', c: isUp ? colors.success : colors.danger },
+                  { l: 'Day Change %', v: fmt.pct(quote.changePercent), c: isUp ? colors.success : colors.danger },
+                  { l: '52W High', v: quote.fiftyTwoWeekHigh ? fmt.price(quote.fiftyTwoWeekHigh) : (metrics?.['52WeekHigh'] ? `$${metrics['52WeekHigh'].toFixed(2)}` : '—') },
+                  { l: '52W Low', v: quote.fiftyTwoWeekLow ? fmt.price(quote.fiftyTwoWeekLow) : (metrics?.['52WeekLow'] ? `$${metrics['52WeekLow'].toFixed(2)}` : '—') },
                   { l: 'Beta', v: quote.beta?.toFixed(2) || metrics?.beta?.toFixed(2) || '—' },
                   { l: 'P/E Ratio', v: quote.peRatio?.toFixed(2) || metrics?.peBasicExclExtraTTM?.toFixed(2) || '—' },
-                  { l: 'Trend', v: isUp ? 'Uptrend' : 'Downtrend', c: isUp ? '#22c55e' : '#ef4444' },
-                  { l: 'Signal', v: isUp ? 'BULLISH' : 'BEARISH', c: isUp ? '#22c55e' : '#ef4444' },
+                  { l: 'Trend', v: isUp ? 'Uptrend' : 'Downtrend', c: isUp ? colors.success : colors.danger },
+                  { l: 'Signal', v: isUp ? 'BULLISH' : 'BEARISH', c: isUp ? colors.success : colors.danger },
                 ].map((x, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border-primary)' }}>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{x.l}</span>

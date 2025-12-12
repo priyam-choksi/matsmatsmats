@@ -19,6 +19,16 @@ const Icons = {
       <circle cx="18" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><path d="M6 21V9a9 9 0 0 0 9 9" />
     </svg>
   ),
+  // ADD THIS - replace LLMArena with Models
+  LLMArena: ({ size = 20 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <rect x="9" y="9" width="6" height="6" />
+      <path d="M9 1v3" /><path d="M15 1v3" /><path d="M9 20v3" /><path d="M15 20v3" />
+      <path d="M20 9h3" /><path d="M20 14h3" /><path d="M1 9h3" /><path d="M1 14h3" />
+    </svg>
+  ),
+
   // ADD THIS: History icon
   History: ({ size = 20 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -55,12 +65,13 @@ const Icons = {
 }
 
 const navItems = [
-  { path: '/', icon: 'Arena', label: 'Arena' },
-  { path: '/market', icon: 'Market', label: 'Market' },
-  { path: '/pipeline', icon: 'Pipeline', label: 'Pipeline' },
-  { path: '/history', icon: 'History', label: 'History' },  // <-- ADD THIS
-  { path: '/agents', icon: 'Agents', label: 'Agents' },
-  { path: '/docs', icon: 'Docs', label: 'Docs' },
+  { path: '/market', icon: 'Market', label: 'Market' },       // 1. See market overview
+  { path: '/pipeline', icon: 'Pipeline', label: 'Pipeline' }, // 2. Run analysis
+  { path: '/', icon: 'Arena', label: 'GT Arena' },               // 3. Strategy competition
+  { path: '/llm-arena', icon: 'LLMArena', label: 'LLM Arena' }, // 4. Model competition
+  { path: '/history', icon: 'History', label: 'History' },    // 5. View past results
+  { path: '/agents', icon: 'Agents', label: 'Agents' },       // 6. System docs
+  { path: '/docs', icon: 'Docs', label: 'Docs' },             // 7. General docs
 ]
 
 export default function Nav() {
@@ -68,29 +79,24 @@ export default function Nav() {
   const location = useLocation()
 
   return (
-    <nav 
+    <nav
       className="w-20 flex flex-col items-center py-5 border-r"
-      style={{ 
+      style={{
         backgroundColor: 'var(--bg-card)',
         borderColor: 'var(--border-primary)'
       }}
     >
       {/* Logo */}
-      <div 
-        className="w-11 h-11 rounded-xl flex items-center justify-center mb-8 cursor-pointer transition-transform hover:scale-105"
-        style={{ 
-          background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))'
-        }}
-      >
-        <span className="text-white font-bold text-base">GT</span>
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-8 cursor-pointer transition-transform hover:scale-105 overflow-hidden">
+        <img src="/logo.png" alt="Trade Arena" className="w-full h-full object-cover" />
       </div>
-      
+
       {/* Navigation Items */}
       <div className="flex flex-col gap-1 flex-1">
         {navItems.map(({ path, icon, label }) => {
           const Icon = Icons[icon]
           const isActive = location.pathname === path
-          
+
           return (
             <NavLink
               key={path}
@@ -165,15 +171,15 @@ export default function Nav() {
       </div>
 
       {/* Status Indicator */}
-      <div 
+      <div
         className="mt-4 flex items-center gap-1.5 px-2 py-1 rounded-md"
         style={{ backgroundColor: 'var(--success-bg)' }}
       >
-        <span 
+        <span
           className="w-1.5 h-1.5 rounded-full animate-pulse"
           style={{ backgroundColor: 'var(--success)' }}
         />
-        <span 
+        <span
           className="text-[9px] font-semibold"
           style={{ color: 'var(--success)' }}
         >

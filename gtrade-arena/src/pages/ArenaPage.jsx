@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useTheme } from '../App'
+import GameTheoryChat from '../components/chat/game_theory_rag';
 
 const FOLDER = 'gt_tournament_20251206_141939'
 const PATH = '/data/game_theory_results'
-const TICKERS = ['NVDA','AAPL','MSFT','GOOGL','META','JPM','GS','V','LLY','JNJ','UNH','AMZN','TSLA','WMT','XOM','CVX','SPY','QQQ','PG','KO']
+const TICKERS = ['NVDA', 'AAPL', 'MSFT', 'GOOGL', 'META', 'JPM', 'GS', 'V', 'LLY', 'JNJ', 'UNH', 'AMZN', 'TSLA', 'WMT', 'XOM', 'CVX', 'SPY', 'QQQ', 'PG', 'KO']
 
 const S = {
   'Signal Follower': { c: '#6366f1', s: 'Signal', d: 'LLM-powered AI signals' },
@@ -29,7 +30,7 @@ async function loadAll() {
 }
 
 const fmtPct = n => `${n >= 0 ? '+' : ''}${(n || 0).toFixed(2)}%`
-const fmtK = n => n >= 1e6 ? `$${(n/1e6).toFixed(2)}M` : `$${(n/1e3).toFixed(0)}K`
+const fmtK = n => n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : `$${(n / 1e3).toFixed(0)}K`
 
 export default function ArenaPage() {
   const { isDark } = useTheme()
@@ -53,45 +54,35 @@ export default function ArenaPage() {
   ]
 
   return (
-    <div style={{ height: '100%', display: 'flex', background: isDark ? '#09090b' : '#fafafa' }}>
-      {/* Main Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-{/* Header */}
-        <div style={{ padding: '16px 24px', borderBottom: `1px solid ${bdr}`, background: isDark ? '#0a0a0a' : '#fff', flexShrink: 0 }}>
-          <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <div>
-                <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
-                  Strategy Arena
-                </h1>
-                <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>
-                  Game theory tournament · {all.length} tickers · {(all.length * 90).toLocaleString()} rounds
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                {O.map(s => (
-                  <div key={s} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: S[s].c }} />
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{S[s].s}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '2px', justifyContent: 'center' }}>
-              {tabs.map(t => (
-                <button key={t.id} onClick={() => setTab(t.id)} style={{
-                  padding: '8px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                  fontSize: '12px', fontWeight: '500',
-                  background: tab === t.id ? (isDark ? '#27272a' : '#e4e4e7') : 'transparent',
-                  color: tab === t.id ? 'var(--text-primary)' : 'var(--text-muted)'
-                }}>{t.label}</button>
-              ))}
-            </div>
-          </div>
-        </div>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: isDark ? '#09090b' : '#fafafa', overflow: 'hidden' }}>
+      <style>{`.hide-scroll::-webkit-scrollbar{display:none}.hide-scroll{-ms-overflow-style:none;scrollbar-width:none}`}</style>
 
-        {/* Scrollable Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+      {/* Header */}
+      <div style={{ padding: '12px 24px', borderBottom: `1px solid ${bdr}`, background: isDark ? '#0a0a0a' : '#fff', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+          <h1 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
+            Strategy Arena
+          </h1>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            {all.length} tickers · {(all.length * 90).toLocaleString()} rounds · $250K
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{
+              padding: '8px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              fontSize: '12px', fontWeight: '500',
+              background: tab === t.id ? (isDark ? '#27272a' : '#e4e4e7') : 'transparent',
+              color: tab === t.id ? 'var(--text-primary)' : 'var(--text-muted)'
+            }}>{t.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Body - flex row */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        {/* Main Content - scrollable */}
+        <main className="hide-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
           <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)', fontSize: '13px' }}>
@@ -109,11 +100,11 @@ export default function ArenaPage() {
               </>
             )}
           </div>
-        </div>
-      </div>
+        </main>
 
-      {/* Right Sidebar */}
-      <RightSidebar all={all} dark={isDark} sidebarTab={sidebarTab} setSidebarTab={setSidebarTab} />
+        {/* Right Sidebar */}
+        <RightSidebar all={all} dark={isDark} sidebarTab={sidebarTab} setSidebarTab={setSidebarTab} />
+      </div>
     </div>
   )
 }
@@ -153,20 +144,20 @@ function RightSidebar({ all, dark, sidebarTab, setSidebarTab }) {
   const portfolioData = useMemo(() => {
     if (!all.length) return []
     const final = {}
-    O.forEach(s => { 
-      final[s] = { 
-        name: s, 
-        totalValue: 0, 
-        totalReturn: 0, 
-        wins: 0, 
+    O.forEach(s => {
+      final[s] = {
+        name: s,
+        totalValue: 0,
+        totalReturn: 0,
+        wins: 0,
         holdings: [],
         bestTicker: null,
         worstTicker: null,
         avgPosition: 0,
         totalPositions: 0
-      } 
+      }
     })
-    
+
     all.forEach(({ sum, det, t }) => {
       const lastRound = det?.rounds?.[det.rounds.length - 1]
       O.forEach(s => {
@@ -176,7 +167,7 @@ function RightSidebar({ all, dark, sidebarTab, setSidebarTab }) {
         final[s].totalReturn += ret
         final[s].wins += sum?.wins_per_strategy?.[s] || 0
         final[s].holdings.push({ ticker: t, value: alloc, return: ret })
-        
+
         // Track positions
         det?.rounds?.forEach(r => {
           final[s].avgPosition += r.strategy_decisions?.[s]?.position_pct || 0
@@ -184,15 +175,15 @@ function RightSidebar({ all, dark, sidebarTab, setSidebarTab }) {
         })
       })
     })
-    
-    O.forEach(s => { 
+
+    O.forEach(s => {
       final[s].avgReturn = final[s].totalReturn / all.length
       final[s].avgPosition = final[s].totalPositions > 0 ? final[s].avgPosition / final[s].totalPositions : 0
       final[s].holdings.sort((a, b) => b.return - a.return)
       final[s].bestTicker = final[s].holdings[0]
       final[s].worstTicker = final[s].holdings[final[s].holdings.length - 1]
     })
-    
+
     return Object.values(final).sort((a, b) => b.totalValue - a.totalValue)
   }, [all])
 
@@ -206,25 +197,25 @@ function RightSidebar({ all, dark, sidebarTab, setSidebarTab }) {
       O.forEach(s => { winsByStrategy[s] += sum?.wins_per_strategy?.[s] || 0 })
     })
     const leader = Object.entries(winsByStrategy).sort((a, b) => b[1] - a[1])[0]
-    
+
     return { totalRounds, winsByStrategy, leader: leader[0], leaderWins: leader[1] }
   }, [all])
 
   return (
-    <aside style={{ 
-      width: '340px', 
-      background: dark ? '#0a0a0a' : '#fff', 
-      borderLeft: `1px solid ${bdr}`, 
-      display: 'flex', 
-      flexDirection: 'column', 
+    <aside style={{
+      width: '340px',
+      background: dark ? '#0a0a0a' : '#fff',
+      borderLeft: `1px solid ${bdr}`,
+      display: 'flex',
+      flexDirection: 'column',
       flexShrink: 0,
-      height: '100%'
+      overflow: 'hidden'
     }}>
       {/* Tab Headers */}
       <div style={{ display: 'flex', borderBottom: `1px solid ${bdr}`, flexShrink: 0 }}>
         {['feed', 'portfolios', 'stats', 'chat'].map(tab => (
           <button key={tab} onClick={() => setSidebarTab(tab)} style={{
-            flex: 1, padding: '11px 8px', fontSize: '10px', fontWeight: '600', 
+            flex: 1, padding: '11px 8px', fontSize: '10px', fontWeight: '600',
             background: 'none', border: 'none', cursor: 'pointer',
             textTransform: 'uppercase', letterSpacing: '0.5px',
             borderBottom: sidebarTab === tab ? '2px solid var(--text-primary)' : '2px solid transparent',
@@ -236,11 +227,16 @@ function RightSidebar({ all, dark, sidebarTab, setSidebarTab }) {
       </div>
 
       {/* Tab Content */}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div className="hide-scroll" style={{ flex: 1, overflowY: 'auto' }}>
         {sidebarTab === 'feed' && <FeedTab feedData={feedData} expandedFeed={expandedFeed} setExpandedFeed={setExpandedFeed} dark={dark} />}
         {sidebarTab === 'portfolios' && <PortfoliosTab portfolioData={portfolioData} expandedPortfolio={expandedPortfolio} setExpandedPortfolio={setExpandedPortfolio} dark={dark} />}
         {sidebarTab === 'stats' && <StatsTab all={all} tournamentStats={tournamentStats} dark={dark} />}
-        {sidebarTab === 'chat' && <ChatTab dark={dark} all={all} />}
+        {sidebarTab === 'chat' && (
+          <GameTheoryChat
+            isDark={dark}
+            tournamentPath="/data/game_theory_results/gt_tournament_20251206_141939"
+          />
+        )}
       </div>
     </aside>
   )
@@ -254,37 +250,37 @@ function FeedTab({ feedData, expandedFeed, setExpandedFeed, dark }) {
   const regimeColors = { bull: '#10b981', bear: '#ef4444', sideways: '#f59e0b' }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+    <div style={{ padding: '12px' }}>
       <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', justifyContent: 'space-between' }}>
         <span>Recent Rounds</span>
         <span>{feedData.length}</span>
       </div>
-      
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {feedData.map(item => {
           const isExp = expandedFeed === item.id
           return (
             <div key={item.id} onClick={() => setExpandedFeed(isExp ? null : item.id)} style={{
-              padding: '10px 12px', 
-              borderRadius: '6px', 
-              background: dark ? '#18181b' : '#f8f8f8', 
-              border: `1px solid ${isExp ? S[item.winner].c + '40' : bdr}`, 
+              padding: '10px 12px',
+              borderRadius: '6px',
+              background: dark ? '#18181b' : '#f8f8f8',
+              border: `1px solid ${isExp ? S[item.winner].c + '40' : bdr}`,
               cursor: 'pointer'
             }}>
               {/* Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontWeight: '600', fontSize: '12px', color: 'var(--text-primary)', fontFamily: 'monospace' }}>{item.ticker}</span>
-                  <span style={{ 
-                    fontSize: '9px', padding: '2px 5px', borderRadius: '3px', 
-                    background: `${regimeColors[item.regime]}15`, 
-                    color: regimeColors[item.regime], 
-                    fontWeight: '500', textTransform: 'uppercase' 
+                  <span style={{
+                    fontSize: '9px', padding: '2px 5px', borderRadius: '3px',
+                    background: `${regimeColors[item.regime]}15`,
+                    color: regimeColors[item.regime],
+                    fontWeight: '500', textTransform: 'uppercase'
                   }}>{item.regime}</span>
                 </div>
                 <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>R{item.round}</span>
               </div>
-              
+
               {/* Winner & Market */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -295,7 +291,7 @@ function FeedTab({ feedData, expandedFeed, setExpandedFeed, dark }) {
                   {item.market >= 0 ? '+' : ''}{item.market.toFixed(2)}%
                 </span>
               </div>
-              
+
               {/* Expanded */}
               {isExp && item.decisions && (
                 <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: `1px solid ${bdr}` }}>
@@ -304,8 +300,8 @@ function FeedTab({ feedData, expandedFeed, setExpandedFeed, dark }) {
                     const ret = item.returns?.[s] || 0
                     const isWinner = s === item.winner
                     return (
-                      <div key={s} style={{ 
-                        display: 'flex', alignItems: 'center', gap: '8px', 
+                      <div key={s} style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
                         marginBottom: '4px', padding: '5px 6px', borderRadius: '4px',
                         background: isWinner ? `${S[s].c}10` : 'transparent'
                       }}>
@@ -335,22 +331,22 @@ function PortfoliosTab({ portfolioData, expandedPortfolio, setExpandedPortfolio,
   const bdr = dark ? '#27272a' : '#e4e4e7'
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+    <div style={{ padding: '12px' }}>
       <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
         Strategy Portfolios
       </div>
-      
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {portfolioData.map((p, idx) => {
           const isExp = expandedPortfolio === p.name
           const pnl = p.totalValue - (250000 * (p.holdings?.length || 1))
           const pnlPct = (pnl / (250000 * (p.holdings?.length || 1))) * 100
-          
+
           return (
-            <div key={p.name} onClick={() => setExpandedPortfolio(isExp ? null : p.name)} style={{ 
-              borderRadius: '6px', 
-              border: `1px solid ${S[p.name].c}25`, 
-              overflow: 'hidden', 
+            <div key={p.name} onClick={() => setExpandedPortfolio(isExp ? null : p.name)} style={{
+              borderRadius: '6px',
+              border: `1px solid ${S[p.name].c}25`,
+              overflow: 'hidden',
               cursor: 'pointer',
               background: dark ? '#18181b' : '#fff'
             }}>
@@ -364,7 +360,7 @@ function PortfoliosTab({ portfolioData, expandedPortfolio, setExpandedPortfolio,
                   </div>
                   <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: 'monospace' }}>{fmtK(p.totalValue)}</span>
                 </div>
-                
+
                 <div style={{ display: 'flex', gap: '16px', fontSize: '10px' }}>
                   <span style={{ color: 'var(--text-muted)' }}>{p.wins} wins</span>
                   <span style={{ color: 'var(--text-muted)' }}>{p.avgPosition.toFixed(0)}% avg pos</span>
@@ -373,7 +369,7 @@ function PortfoliosTab({ portfolioData, expandedPortfolio, setExpandedPortfolio,
                   </span>
                 </div>
               </div>
-              
+
               {/* Expanded */}
               {isExp && (
                 <div style={{ background: dark ? '#0a0a0a' : '#fafafa' }}>
@@ -393,7 +389,7 @@ function PortfoliosTab({ portfolioData, expandedPortfolio, setExpandedPortfolio,
                       </div>
                     </div>
                   </div>
-                  
+
                   <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
                     {p.holdings.map((h, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '6px 12px', borderBottom: `1px solid ${bdr}`, fontSize: '10px' }}>
@@ -420,7 +416,7 @@ function PortfoliosTab({ portfolioData, expandedPortfolio, setExpandedPortfolio,
    ============================================ */
 function StatsTab({ all, tournamentStats, dark }) {
   const bdr = dark ? '#27272a' : '#e4e4e7'
-  
+
   const regimeData = useMemo(() => {
     const data = { bull: 0, bear: 0, sideways: 0 }
     all.forEach(({ det }) => {
@@ -456,7 +452,7 @@ function StatsTab({ all, tournamentStats, dark }) {
   if (!tournamentStats) return <div style={{ padding: '20px', color: 'var(--text-muted)' }}>Loading...</div>
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+    <div style={{ padding: '12px' }}>
       {/* Overview */}
       <div style={{ marginBottom: '14px' }}>
         <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -523,10 +519,10 @@ function StatsTab({ all, tournamentStats, dark }) {
             { key: 'bear', label: 'Bear', color: '#ef4444' },
             { key: 'sideways', label: 'Flat', color: '#f59e0b' }
           ].map(r => (
-            <div key={r.key} style={{ 
-              background: dark ? '#18181b' : '#f8f8f8', 
-              borderRadius: '6px', 
-              padding: '10px', 
+            <div key={r.key} style={{
+              background: dark ? '#18181b' : '#f8f8f8',
+              borderRadius: '6px',
+              padding: '10px',
               textAlign: 'center',
               border: `1px solid ${bdr}`
             }}>
@@ -558,118 +554,7 @@ function StatsTab({ all, tournamentStats, dark }) {
   )
 }
 
-/* ============================================
-   CHAT TAB - Clean design
-   ============================================ */
-function ChatTab({ dark, all }) {
-  const bdr = dark ? '#27272a' : '#e4e4e7'
-  const [messages, setMessages] = useState([
-    { id: 1, role: 'assistant', content: "Ask me about the tournament results. Try:\n\n• Who's winning?\n• Best strategy for bull markets?\n• Compare Signal vs Defector\n• NVDA performance" }
-  ])
-  const [input, setInput] = useState('')
-  const messagesEndRef = useRef(null)
-  
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
-  const handleSend = () => {
-    if (!input.trim()) return
-    const q = input.toLowerCase()
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: input }])
-    setInput('')
-    
-    let response = "I can help analyze tournament data. Try asking about winners, strategies, regimes, or tickers."
-    
-    if (q.includes('winner') || q.includes('winning') || q.includes('best') || q.includes('leader')) {
-      const returns = {}
-      O.forEach(s => { returns[s] = 0 })
-      all.forEach(({ sum }) => { O.forEach(s => { returns[s] += sum?.total_returns_pct?.[s] || 0 }) })
-      const sorted = Object.entries(returns).sort((a, b) => b[1] - a[1])
-      response = `Tournament Rankings:\n\n${sorted.map(([s, r], i) => `${i + 1}. ${s}: ${(r / all.length).toFixed(2)}% avg`).join('\n')}`
-    }
-    else if (q.includes('bull') || q.includes('bear') || q.includes('regime')) {
-      const regime = q.includes('bull') ? 'bull' : q.includes('bear') ? 'bear' : 'sideways'
-      const data = {}
-      O.forEach(s => { data[s] = { returns: [], wins: 0 } })
-      all.forEach(({ det }) => {
-        det?.rounds?.forEach(r => {
-          if (r.regime === regime) {
-            O.forEach(s => {
-              data[s].returns.push(r.round_results?.returns_pct?.[s] || 0)
-              if (r.round_results?.winner === s) data[s].wins++
-            })
-          }
-        })
-      })
-      const sorted = O.map(s => ({ s, avg: data[s].returns.length ? data[s].returns.reduce((a,b) => a+b, 0) / data[s].returns.length : 0, wins: data[s].wins })).sort((a, b) => b.avg - a.avg)
-      response = `${regime.charAt(0).toUpperCase() + regime.slice(1)} Market:\n\n${sorted.map(({ s, avg, wins }, i) => `${i + 1}. ${s}: ${avg.toFixed(2)}%/round (${wins} wins)`).join('\n')}`
-    }
-    else if (q.includes('compare') || q.includes('vs')) {
-      const s1 = O.find(s => q.includes(s.toLowerCase()) || q.includes(S[s].s.toLowerCase()))
-      const remaining = O.filter(s => s !== s1)
-      const s2 = remaining.find(s => q.includes(s.toLowerCase()) || q.includes(S[s].s.toLowerCase())) || remaining[0]
-      if (s1) {
-        let w1 = 0, w2 = 0
-        all.forEach(({ det }) => {
-          det?.rounds?.forEach(r => {
-            const r1 = r.round_results?.returns_pct?.[s1] || 0
-            const r2 = r.round_results?.returns_pct?.[s2] || 0
-            if (r1 > r2) w1++; else if (r2 > r1) w2++
-          })
-        })
-        response = `${s1} vs ${s2}:\n\n${s1}: ${w1} wins (${((w1/(w1+w2))*100).toFixed(1)}%)\n${s2}: ${w2} wins (${((w2/(w1+w2))*100).toFixed(1)}%)`
-      }
-    }
-    else if (all.some(({ t }) => q.includes(t.toLowerCase()))) {
-      const ticker = all.find(({ t }) => q.includes(t.toLowerCase()))
-      if (ticker) {
-        const rets = ticker.sum?.total_returns_pct || {}
-        const best = O.reduce((a, b) => (rets[b] || 0) > (rets[a] || 0) ? b : a)
-        response = `${ticker.t}:\n\n${O.map(s => `${s}: ${(rets[s] || 0).toFixed(2)}%${s === best ? ' (best)' : ''}`).join('\n')}\n\nBenchmark: ${(ticker.sum?.benchmark?.total_return_pct || 0).toFixed(2)}%`
-      }
-    }
-    
-    setTimeout(() => { setMessages(prev => [...prev, { id: Date.now() + 1, role: 'assistant', content: response }]) }, 200)
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {messages.map(m => (
-          <div key={m.id} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-            <div style={{
-              maxWidth: '90%', padding: '10px 12px', borderRadius: '8px',
-              fontSize: '11px', lineHeight: '1.5', whiteSpace: 'pre-wrap',
-              background: m.role === 'user' ? (dark ? '#27272a' : '#e4e4e7') : (dark ? '#18181b' : '#f4f4f5'),
-              color: 'var(--text-primary)',
-              border: `1px solid ${bdr}`
-            }}>{m.content}</div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-      <div style={{ padding: '10px', borderTop: `1px solid ${bdr}`, flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <input 
-            value={input} 
-            onChange={e => setInput(e.target.value)} 
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
-            placeholder="Ask about the tournament..." 
-            style={{
-              flex: 1, padding: '8px 12px', borderRadius: '6px', border: `1px solid ${bdr}`,
-              background: dark ? '#18181b' : '#fff', color: 'var(--text-primary)', fontSize: '11px',
-              outline: 'none'
-            }} 
-          />
-          <button onClick={handleSend} style={{ 
-            padding: '8px 14px', borderRadius: '6px', border: 'none', 
-            background: dark ? '#27272a' : '#18181b', color: '#fff', fontWeight: '500', 
-            cursor: 'pointer', fontSize: '11px'
-          }}>Send</button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 /* ============================================
    MAIN CONTENT COMPONENTS (unchanged logic, cleaned up)
@@ -717,7 +602,7 @@ function Overview({ all, dark }) {
   const x = r => p.l + (r / stats.maxR) * cw, y = v => p.t + ch - ((v - minY) / (maxY - minY)) * ch
   const path = k => hist.map((d, i) => `${i === 0 ? 'M' : 'L'}${x(d.r)},${y(d[k])}`).join(' ')
   const currentData = hovRound !== null ? hist[hovRound] : hist[hist.length - 1]
-  
+
   const getAlpha = (ret) => ret - stats.benchRet
 
   return (
@@ -797,16 +682,16 @@ function Overview({ all, dark }) {
                 return (
                   <tr key={t} style={{ borderBottom: `1px solid ${bdr}` }}>
                     <td style={{ padding: '8px 16px', fontWeight: '600', color: 'var(--text-primary)', fontSize: '11px' }}>{t}</td>
-                    {O.map(s => { 
+                    {O.map(s => {
                       const r = rets[s] || 0
                       const beatsBench = r > bench
                       const isBest = s === best
                       return (
                         <td key={s} style={{ padding: '6px 8px', textAlign: 'center' }}>
-                          <span style={{ 
-                            padding: '3px 8px', 
-                            borderRadius: '4px', 
-                            fontSize: '10px', 
+                          <span style={{
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            fontSize: '10px',
                             fontWeight: '500',
                             fontFamily: 'monospace',
                             background: isBest ? `${S[s].c}15` : beatsBench ? 'rgba(16,185,129,0.1)' : 'transparent',
@@ -1208,12 +1093,14 @@ function HeadToHead({ all, dark }) {
 
   const matrix = useMemo(() => {
     const m = {}
-    O.forEach(strat1 => { m[strat1] = {}; O.forEach(strat2 => {
-      if (strat1 === strat2) { m[strat1][strat2] = null; return }
-      let wins = 0, total = 0
-      all.forEach(({ det }) => { det?.rounds?.forEach(r => { const r1 = r.round_results?.returns_pct?.[strat1] || 0, r2 = r.round_results?.returns_pct?.[strat2] || 0; total++; if (r1 > r2) wins++ }) })
-      m[strat1][strat2] = total > 0 ? (wins / total * 100) : 50
-    })})
+    O.forEach(strat1 => {
+      m[strat1] = {}; O.forEach(strat2 => {
+        if (strat1 === strat2) { m[strat1][strat2] = null; return }
+        let wins = 0, total = 0
+        all.forEach(({ det }) => { det?.rounds?.forEach(r => { const r1 = r.round_results?.returns_pct?.[strat1] || 0, r2 = r.round_results?.returns_pct?.[strat2] || 0; total++; if (r1 > r2) wins++ }) })
+        m[strat1][strat2] = total > 0 ? (wins / total * 100) : 50
+      })
+    })
     return m
   }, [all])
 

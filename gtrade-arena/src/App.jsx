@@ -5,7 +5,8 @@ import { Routes, Route } from 'react-router-dom'
 import ArenaPage from './pages/ArenaPage'
 import MarketPage from './pages/MarketPage'
 import PipelinePage from './pages/PipelinePage'
-import PipelineHistoryPage from './pages/PipelineHistoryPage'  // <-- ADD THIS
+import LiveArenaPage from './pages/LiveArenaPage'
+import PipelineHistoryPage from './pages/PipelineHistoryPage'
 import AgentsPage from './pages/AgentsPage'
 import DocsPage from './pages/DocsPage'
 
@@ -128,6 +129,23 @@ const PHASES = [
   { num: 5, name: 'Final Decision', icon: '✅', color: '#8b5cf6', agents: ['Risk Manager'], duration: '~10s', output: 'risk_decision.json' },
 ]
 
+// Add this right after the TICKERS array in PipelinePage.jsx
+
+const TICKER_DATA = {
+  NVDA: { name: 'NVIDIA', sector: 'Semiconductors', price: 142.50, pe: 65.2, growth: 125.8, catalyst: 'AI chip demand surge', risk: 'Valuation concerns at 65x PE' },
+  AAPL: { name: 'Apple', sector: 'Consumer Tech', price: 178.20, pe: 28.5, growth: 8.2, catalyst: 'iPhone 16 cycle + Vision Pro', risk: 'China market weakness' },
+  MSFT: { name: 'Microsoft', sector: 'Enterprise Tech', price: 378.90, pe: 35.1, growth: 18.4, catalyst: 'Azure AI integration', risk: 'Enterprise spending slowdown' },
+  GOOGL: { name: 'Alphabet', sector: 'Internet/AI', price: 141.80, pe: 24.2, growth: 15.1, catalyst: 'Gemini AI monetization', risk: 'Search market share erosion' },
+  META: { name: 'Meta', sector: 'Social/AI', price: 505.75, pe: 27.8, growth: 22.3, catalyst: 'Reels monetization + AI ads', risk: 'Reality Labs losses' },
+  AMZN: { name: 'Amazon', sector: 'E-Commerce/Cloud', price: 178.25, pe: 42.1, growth: 12.5, catalyst: 'AWS AI services growth', risk: 'Retail margin pressure' },
+  TSLA: { name: 'Tesla', sector: 'EV/Energy', price: 248.50, pe: 78.3, growth: -8.2, catalyst: 'FSD licensing + Robotaxi', risk: 'EV price war, margin compression' },
+  JPM: { name: 'JPMorgan', sector: 'Banking', price: 198.40, pe: 11.2, growth: 6.8, catalyst: 'Higher-for-longer rates', risk: 'Commercial real estate exposure' },
+  V: { name: 'Visa', sector: 'Payments', price: 279.30, pe: 29.8, growth: 10.5, catalyst: 'Cross-border travel recovery', risk: 'Regulatory scrutiny on fees' },
+  JNJ: { name: 'J&J', sector: 'Healthcare', price: 156.80, pe: 15.4, growth: 4.2, catalyst: 'Pharma pipeline', risk: 'Talc litigation overhang' },
+  LLY: { name: 'Eli Lilly', sector: 'Pharma', price: 752.40, pe: 118.5, growth: 58.3, catalyst: 'GLP-1 obesity drugs', risk: 'Extreme valuation' },
+}
+
+
 function PipelineProvider({ children }) {
   const [ticker, setTicker] = useState('NVDA')
   const [researchMode, setResearchMode] = useState('deep')
@@ -148,23 +166,155 @@ function PipelineProvider({ children }) {
     setLogs(prev => [...prev, { time, message, type }])
   }, [])
 
-  const generateAgentOutput = useCallback((agentName, tickerSymbol) => {
-    const outputs = {
-      'Technical Analyst': { signal: ['BULLISH', 'BEARISH', 'NEUTRAL'][Math.floor(Math.random() * 3)], rsi: (30 + Math.random() * 40).toFixed(1), macd: Math.random() > 0.5 ? 'Bullish Crossover' : 'Bearish Divergence', trend: Math.random() > 0.4 ? 'Uptrend' : 'Consolidation', support: '$' + (100 + Math.random() * 50).toFixed(2), resistance: '$' + (150 + Math.random() * 50).toFixed(2) },
-      'News Analyst': { sentiment: ['Positive', 'Negative', 'Mixed'][Math.floor(Math.random() * 3)], articles_analyzed: Math.floor(10 + Math.random() * 20), key_catalyst: `${tickerSymbol} earnings beat expectations`, sentiment_score: (Math.random() * 2 - 1).toFixed(2) },
-      'Fundamental Analyst': { pe_ratio: (15 + Math.random() * 30).toFixed(1), revenue_growth: (5 + Math.random() * 25).toFixed(1) + '%', profit_margin: (10 + Math.random() * 20).toFixed(1) + '%', valuation: ['Undervalued', 'Fair Value', 'Overvalued'][Math.floor(Math.random() * 3)] },
-      'Macro Analyst': { regime: ['Bull Market', 'Bear Market', 'Sideways'][Math.floor(Math.random() * 3)], sector_outlook: 'Favorable', fed_impact: 'Neutral', recommendation: ['Overweight', 'Neutral', 'Underweight'][Math.floor(Math.random() * 3)] },
-      'Bull Researcher': { thesis: `Strong growth catalysts for ${tickerSymbol} including market expansion`, upside_target: '+' + (15 + Math.random() * 25).toFixed(0) + '%', catalysts: ['Earnings beat', 'New product launch', 'Market share gains'], confidence: ['HIGH', 'MEDIUM'][Math.floor(Math.random() * 2)] },
-      'Bear Researcher': { thesis: `Key risks include valuation concerns and competitive pressures`, downside_risk: '-' + (10 + Math.random() * 20).toFixed(0) + '%', risks: ['Valuation stretched', 'Margin compression', 'Competition'], confidence: ['HIGH', 'MEDIUM', 'LOW'][Math.floor(Math.random() * 3)] },
-      'Research Manager': { winner: Math.random() > 0.4 ? 'BULL' : 'BEAR', probability_bull: (40 + Math.random() * 30).toFixed(0) + '%', probability_bear: (20 + Math.random() * 25).toFixed(0) + '%', synthesis: `After debate, ${Math.random() > 0.4 ? 'bullish' : 'bearish'} thesis prevails` },
-      'Aggressive Evaluator': { stance: ['STRONG BUY', 'BUY', 'HOLD'][Math.floor(Math.random() * 3)], position_pct: (50 + Math.random() * 40).toFixed(0) + '%', reasoning: 'High conviction on growth catalysts' },
-      'Neutral Evaluator': { stance: ['BUY', 'HOLD', 'AVOID'][Math.floor(Math.random() * 3)], position_pct: (25 + Math.random() * 30).toFixed(0) + '%', reasoning: 'Balanced view considering risks and rewards' },
-      'Conservative Evaluator': { stance: ['HOLD', 'AVOID', 'STRONG AVOID'][Math.floor(Math.random() * 3)], position_pct: (5 + Math.random() * 20).toFixed(0) + '%', reasoning: 'Prefer capital preservation' },
-      'Risk Manager': { verdict: ['BUY', 'HOLD', 'REJECT'][Math.floor(Math.random() * 3)], position_dollars: '$' + (Math.floor(Math.random() * 15000) + 5000).toLocaleString(), confidence: ['HIGH', 'MEDIUM', 'LOW'][Math.floor(Math.random() * 3)], stop_loss: '-8%', target: '+15%', reasoning: 'Final decision based on evaluator consensus and risk parameters' },
-    }
-    return outputs[agentName] || { status: 'Complete' }
-  }, [])
+  const generateAgentOutput = (agentName, ticker, mode = 'deep', prevOutputs = {}) => {
+    const data = TICKER_DATA[ticker] || TICKER_DATA.NVDA
+    const isDeep = mode === 'deep' || mode === 'research'
+    const isFull = mode === 'research'
+    const bullish = data.growth > 15
+    const rsi = 30 + Math.random() * 40
 
+    const outputs = {
+      'Technical Analyst': {
+        signal: rsi > 55 ? 'BULLISH' : rsi < 45 ? 'BEARISH' : 'NEUTRAL',
+        rsi: rsi.toFixed(1),
+        rsi_interpretation: rsi > 70 ? 'Overbought' : rsi < 30 ? 'Oversold' : 'Neutral zone',
+        macd: bullish ? 'Bullish Crossover' : 'Bearish Divergence',
+        trend: data.growth > 10 ? 'Strong Uptrend' : data.growth > 0 ? 'Consolidation' : 'Downtrend',
+        support: `$${(data.price * 0.92).toFixed(2)}`,
+        resistance: `$${(data.price * 1.08).toFixed(2)}`,
+        ...(isDeep && { volume: 'Above 20-day average', sma_50: `$${(data.price * 0.95).toFixed(2)}`, sma_200: `$${(data.price * 0.88).toFixed(2)}` }),
+        ...(isFull && { fibonacci_618: `$${(data.price * 0.91).toFixed(2)}`, options_flow: 'Heavy call buying detected' })
+      },
+
+      'News Analyst': {
+        sentiment: bullish ? 'Positive' : data.growth < 0 ? 'Negative' : 'Mixed',
+        sentiment_score: (bullish ? 0.6 + Math.random() * 0.3 : -0.2 + Math.random() * 0.4).toFixed(2),
+        articles_analyzed: isDeep ? 45 : 15,
+        key_catalyst: data.catalyst,
+        key_risk: data.risk,
+        ...(isDeep && { sources: 'Reuters, Bloomberg, WSJ, CNBC', social_sentiment: bullish ? 'Positive' : 'Mixed' }),
+        ...(isFull && { insider_activity: 'No significant recent trades', institutional_moves: 'Net accumulation last quarter' })
+      },
+
+      'Fundamental Analyst': {
+        pe_ratio: data.pe.toFixed(1),
+        pe_vs_sector: data.pe > 35 ? 'Premium' : data.pe < 20 ? 'Discount' : 'In-line',
+        revenue_growth: `${data.growth.toFixed(1)}%`,
+        valuation: data.pe > 50 ? 'Overvalued' : data.pe < 20 ? 'Undervalued' : 'Fair Value',
+        ...(isDeep && { peg_ratio: (data.pe / Math.max(data.growth, 1)).toFixed(2), gross_margin: `${(45 + Math.random() * 15).toFixed(1)}%`, fcf_yield: `${(1 + Math.random() * 3).toFixed(1)}%` }),
+        ...(isFull && { dcf_fair_value: `$${(data.price * (0.9 + Math.random() * 0.3)).toFixed(2)}`, moat: data.growth > 20 ? 'Strong' : 'Moderate' })
+      },
+
+      'Macro Analyst': {
+        regime: data.growth > 10 ? 'Risk-On / Bull Market' : 'Defensive',
+        sector_outlook: bullish ? 'Overweight' : 'Neutral',
+        fed_impact: 'Higher for longer rates',
+        recommendation: bullish ? 'Overweight' : data.growth < 0 ? 'Underweight' : 'Neutral',
+        ...(isDeep && { gdp_outlook: 'Soft landing expected', inflation: 'Trending toward 2.5%' }),
+        ...(isFull && { scenario_bull: 'AI productivity boom', scenario_bear: 'Recession + multiple compression' })
+      },
+
+      'Bull Researcher': {
+        thesis: `${data.name} presents compelling upside driven by ${data.catalyst}. Growth of ${data.growth.toFixed(1)}% supports premium valuation.`,
+        upside_target: `+${(15 + Math.random() * 20).toFixed(0)}%`,
+        price_target: `$${(data.price * 1.2).toFixed(2)}`,
+        catalysts: [data.catalyst, 'Earnings beat potential', 'Market share gains'],
+        confidence: data.growth > 20 ? 'HIGH' : 'MEDIUM',
+        ...(isDeep && { 
+          counter_to_bears: `While bears cite ${data.risk.toLowerCase()}, we believe growth runway is underappreciated.`,
+          competitive_edge: 'Market leadership and innovation pipeline'
+        }),
+        ...(isFull && { 
+          historical_analog: 'Similar setup to AMZN 2015 - growth investment phase',
+          institutional_support: 'Top funds increasing positions'
+        })
+      },
+
+      'Bear Researcher': {
+        thesis: `${data.name} faces headwinds from ${data.risk}. At ${data.pe.toFixed(1)}x PE, risk/reward skews negative.`,
+        downside_target: `-${(12 + Math.random() * 15).toFixed(0)}%`,
+        price_target: `$${(data.price * 0.82).toFixed(2)}`,
+        risks: [data.risk, 'Valuation compression risk', 'Competitive pressure'],
+        confidence: data.pe > 50 ? 'HIGH' : 'MEDIUM',
+        ...(isDeep && { 
+          counter_to_bulls: `Bulls cite ${data.catalyst.toLowerCase()}, but this is priced in at current multiples.`,
+          structural_concerns: 'TAM may be overstated'
+        }),
+        ...(isFull && { 
+          historical_warning: data.pe > 60 ? 'Echoes of dot-com valuations' : 'Cyclical risk elevated',
+          short_interest: `${(3 + Math.random() * 8).toFixed(1)}% of float`
+        })
+      },
+
+      'Research Manager': {
+        winner: bullish && data.pe < 60 ? 'BULL' : 'BEAR',
+        probability_bull: `${(bullish ? (55 + Math.random() * 20) : (30 + Math.random() * 15)).toFixed(0)}%`,
+        probability_bear: `${(bullish ? (20 + Math.random() * 15) : (40 + Math.random() * 20)).toFixed(0)}%`,
+        synthesis: bullish && data.pe < 60
+          ? `Bull thesis prevails. ${data.catalyst} and ${data.growth.toFixed(1)}% growth outweigh valuation concerns.`
+          : `Bear thesis prevails. ${data.risk} at ${data.pe.toFixed(1)}x PE creates unfavorable risk/reward.`,
+        ...(isDeep && { 
+          debate_rounds: isFull ? 3 : 2,
+          key_contention: data.pe > 40 ? 'Valuation sustainability' : 'Growth durability',
+          dissent: bullish ? 'Bears raise valid concerns on valuation' : 'Bulls note potential catalysts ahead'
+        })
+      },
+
+      'Aggressive Evaluator': {
+        stance: data.growth > 15 ? 'STRONG BUY' : data.growth > 5 ? 'BUY' : 'HOLD',
+        position_pct: `${(45 + Math.random() * 25).toFixed(0)}%`,
+        reasoning: `High conviction on ${data.catalyst}. Growth justifies aggressive positioning.`,
+        ...(isDeep && { risk_tolerance: 'Willing to accept 25%+ drawdown for asymmetric upside' })
+      },
+
+      'Neutral Evaluator': {
+        stance: data.growth > 10 ? 'BUY' : data.growth > 0 ? 'HOLD' : 'REDUCE',
+        position_pct: `${(25 + Math.random() * 20).toFixed(0)}%`,
+        reasoning: `Balanced view: ${data.catalyst} compelling but ${data.risk.toLowerCase()} warrants measured approach.`,
+        ...(isDeep && { risk_tolerance: 'Targeting 12-15% annualized with controlled drawdowns' })
+      },
+
+      'Conservative Evaluator': {
+        stance: data.pe > 45 ? 'AVOID' : data.growth < 5 ? 'AVOID' : 'HOLD',
+        position_pct: `${(8 + Math.random() * 12).toFixed(0)}%`,
+        reasoning: `Capital preservation focus. ${data.pe > 35 ? 'Valuation offers insufficient margin of safety.' : 'Prefer to wait for better entry.'}`,
+        ...(isDeep && { risk_tolerance: 'Prioritizing downside protection' })
+      },
+
+      'Risk Manager': {
+        verdict: data.growth > 15 && data.pe < 55 ? 'BUY' : data.pe > 70 || data.growth < 0 ? 'REJECT' : 'HOLD',
+        position_dollars: data.growth > 15 && data.pe < 55 
+          ? `$${(12000 + Math.floor(Math.random() * 6000)).toLocaleString()}`
+          : data.pe > 70 || data.growth < 0 ? '$0' : `$${(5000 + Math.floor(Math.random() * 4000)).toLocaleString()}`,
+        confidence: data.growth > 20 || data.pe > 70 ? 'HIGH' : 'MEDIUM',
+        stop_loss: '-8%',
+        target: '+15%',
+        reasoning: data.growth > 15 && data.pe < 55
+          ? `Evaluator consensus supports entry. ${data.catalyst} provides catalyst with ${data.growth.toFixed(1)}% growth.`
+          : data.pe > 70 || data.growth < 0
+            ? `Risk/reward unfavorable. ${data.risk} at ${data.pe.toFixed(1)}x PE. Preserving capital.`
+            : `Mixed signals warrant caution. Small position to participate while limiting risk.`,
+        ...(isDeep && { 
+          evaluator_consensus: {
+            aggressive: data.growth > 15 ? 'STRONG BUY' : 'BUY',
+            neutral: data.growth > 10 ? 'BUY' : 'HOLD', 
+            conservative: data.pe > 45 ? 'AVOID' : 'HOLD'
+          }
+        }),
+        ...(isFull && {
+          scenario_outcomes: {
+            bull: `+${(18 + Math.random() * 12).toFixed(0)}%`,
+            base: `+${(5 + Math.random() * 8).toFixed(0)}%`,
+            bear: `-${(10 + Math.random() * 8).toFixed(0)}%`
+          },
+          next_review: 'Post earnings or on 10% price move'
+        })
+      },
+    }
+
+    return outputs[agentName] || { status: 'Complete' }
+  }
+  
   const runPipeline = useCallback(async () => {
     if (isRunning) return
     
@@ -204,8 +354,7 @@ function PipelineProvider({ children }) {
         await new Promise(r => setTimeout(r, delay + Math.random() * 300))
 
         if (pipelineRef.current?.cancelled) break
-
-        const output = generateAgentOutput(agentName, ticker)
+        const output = generateAgentOutput(agentName, ticker, researchMode)
         setAgentOutputs(prev => ({ ...prev, [agentName]: output }))
         setAgentStatuses(prev => ({ ...prev, [agentName]: 'complete' }))
         
@@ -257,13 +406,22 @@ function PipelineProvider({ children }) {
 
   return (
     <PipelineContext.Provider value={{
+      // State
       ticker, setTicker,
       researchMode, setResearchMode,
-      isRunning, currentPhase, currentAgent, progress, logs,
-      agentStatuses, agentOutputs, result,
+      isRunning, setIsRunning,
+      currentPhase, setCurrentPhase,
+      currentAgent, setCurrentAgent,
+      progress, setProgress,
+      logs,
+      agentStatuses, setAgentStatuses,
+      agentOutputs, setAgentOutputs,
+      result, setResult,
       selectedPhase, setSelectedPhase,
-      runPipeline, resetPipeline, addLog,
-      PHASES,
+      // Actions
+      addLog,
+      runPipeline,
+      resetPipeline,
     }}>
       {children}
     </PipelineContext.Provider>
@@ -291,6 +449,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<ArenaPage />} />
           <Route path="/market" element={<MarketPage />} />
+          <Route path="/llm-arena" element={<LiveArenaPage />} />
           <Route path="/pipeline" element={<PipelinePage />} />
           <Route path="/history" element={<PipelineHistoryPage />} />  {/* <-- ADD THIS */}
           <Route path="/agents" element={<AgentsPage />} />
