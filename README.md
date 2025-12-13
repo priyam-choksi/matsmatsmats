@@ -933,7 +933,7 @@ python master_orchestrator.py AAPL
 
 - **Live Demo:** [tradearena.site](https://www.tradearena.site)
 - **Weekly Updates:** [Google Doc](https://docs.google.com/document/d/1QnFzBTIzh1E66WQDzSUWXoSTA05o-UJ19tS519vi9Es/)
-- **Documentation:** [TradingAgents Docs](https://docs.google.com/document/d/1LmyGEkRfH9ssQLZDCqSbk1XKH7hVgTTuaZsufn0In9g/)
+- **Documentation:** [TradingAgents Docs](https://docs.google.com/document/d/1d9FgFhVWgNFLGxWV4FUEBxVFI-o2CQwXx448cnnNlvI)
 
 ---
 
