@@ -2,13 +2,23 @@
 
 A comprehensive AI-driven trading analysis system that coordinates 11+ specialized LLM agents working collaboratively to analyze stocks, debate investment theses, and produce risk-adjusted trading decisions—with game-theoretic validation to test strategy performance across market regimes.
 
+## Architecture Overview
 
+<p align="center">
+  <img src="./diagrams/architecture.png" alt="Architecture" width="800"/>
+</p>
+
+## User Flow
+
+<p align="center">
+  <img src="./diagrams/userflow.png" alt="User Flow" width="800"/>
+</p>
 
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-tradearena.site-10b981?style=flat-square)](https://tradearena.site)
 
 **Authors:** Priyam Choksi & Vishodhan Krishnan  
-**Course:** DAMG 7374 - Intelligent Analytics | Northeastern University | Fall 2025
+**Course:** DAMG 7374 | Northeastern University | Fall 2025
 
 ---
 
@@ -929,7 +939,7 @@ python master_orchestrator.py AAPL
 
 ## Inspiration
 
-This architecture is inspired by [Stanford Virtual Labs' nanobody research](https://arxiv.org/abs/2404.11341), which uses multi-agent LLM systems for molecular biology. We adapted the approach to financial markets, demonstrating that domain-agnostic multi-agent architectures transfer across fields.
+This architecture is inspired by [Stanford Virtual Labs' nanobody research](https://www.nature.com/articles/s41586-025-09442-9), which uses multi-agent LLM systems for molecular biology. We adapted the approach to financial markets, demonstrating that domain-agnostic multi-agent architectures transfer across fields.
 
 The game-theoretic validation draws from Robert Axelrod's tournaments on cooperation and defection.
 
@@ -943,7 +953,6 @@ MIT License — See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- **Northeastern University** — Khoury College of Computer Sciences
 - **Stanford Virtual Labs** — Architectural inspiration
 - **Robert Axelrod** — Game theory foundations
 
