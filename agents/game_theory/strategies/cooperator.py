@@ -1,416 +1,446 @@
+# """
+# cooperator.py - Cooperator Strategy (Follow the Pack)
+
+# Location: agents/game_theory/strategies/cooperator.py
+
+# The Cooperator takes positions SIMILAR to what other strategies are doing.
+# This is actual cooperation in game theory terms - aligning with the group.
+
+# Philosophy:
+#     "Safety in numbers. Don't rock the boat."
+
+# Game Theory Role:
+#     - COOPERATES by taking similar positions to others
+#     - Reduces variance in outcomes (everyone wins/loses together)
+#     - Won't steal capital, but won't lose it to defectors either
+#     - Stable, defensive strategy
+
+# Behavior:
+#     - Round 1: Use LLM consensus (no history yet)
+#     - Round 2+: Blend group average with LLM signal
+#     - Weight: 70% group, 30% LLM
+
+# When It Wins:
+#     - When the group is right (trending markets)
+#     - When defectors are wrong
+#     - In stable, predictable markets
+
+# When It Loses:
+#     - When the group is wrong
+#     - At turning points (slow to adapt)
+#     - When defectors correctly call reversals
+
+# Usage:
+#     from game_theory.strategies.cooperator import CooperatorStrategy
+    
+#     strategy = CooperatorStrategy()
+#     position = strategy.decide_position(market, game)
+# """
+
+# from typing import TYPE_CHECKING
+# import numpy as np
+# from .base import Strategy
+
+# if TYPE_CHECKING:
+#     from ..market_context import MarketContext
+#     from ..game_state import GameState
+
+
+# class CooperatorStrategy(Strategy):
+#     """
+#     Cooperator - Follow the Pack
+    
+#     Takes positions similar to other strategies, creating stability.
+    
+#     Position Logic:
+#         1. First round: Use LLM consensus position
+#         2. Later rounds: 70% group average + 30% LLM signal
+#         3. Gradually adapt to group movements
+    
+#     In capital allocation game:
+#         - Low variance strategy (similar returns to group)
+#         - Allocation stays relatively stable
+#         - Protects against being "wrong alone"
+#         - Can't outperform much, but won't underperform much either
+#     """
+    
+#     name = "Cooperator"
+#     description = "Follows the pack - takes similar positions to others"
+    
+#     # Configuration
+#     GROUP_WEIGHT = 0.70     # How much to follow group
+#     LLM_WEIGHT = 0.30       # How much to follow LLM
+#     SCALE_FACTOR = 3.0      # Scale up LLM signals
+#     MIN_POSITION = 10.0     # Minimum position
+#     MAX_POSITION = 85.0     # Maximum position
+    
+#     def decide_position(
+#         self,
+#         market: 'MarketContext',
+#         game: 'GameState'
+#     ) -> float:
+#         """
+#         Decide position by following the group.
+        
+#         Blends group average position with LLM signal.
+#         """
+#         signals = self._get_llm_signals(market)
+#         consensus = self._get_llm_consensus(market)
+        
+#         # Calculate LLM-based position
+#         llm_position = self._calculate_llm_position(market)
+        
+#         # First round: just use LLM (no history)
+#         if game.round_num <= 1 or not game.last_positions:
+#             position = llm_position
+#             blend_info = f"Round 1, using LLM only"
+#         else:
+#             # Get group average (excluding self)
+#             group_avg = self._get_group_position(game)
+            
+#             # Blend: group + LLM
+#             position = (group_avg * self.GROUP_WEIGHT) + (llm_position * self.LLM_WEIGHT)
+#             blend_info = f"Group={group_avg:.1f}%×{self.GROUP_WEIGHT} + LLM={llm_position:.1f}%×{self.LLM_WEIGHT}"
+        
+#         # Adjust based on consensus
+#         # High consensus among LLM agents → more confident
+#         if consensus > 0.7:
+#             position *= 1.1
+#             consensus_adj = "+10% (high LLM consensus)"
+#         elif consensus < 0.3:
+#             position *= 0.9
+#             consensus_adj = "-10% (low LLM consensus)"
+#         else:
+#             consensus_adj = "none"
+        
+#         # Clamp to valid range
+#         position = self._clamp_position(position, self.MIN_POSITION, self.MAX_POSITION)
+        
+#         # Build reasoning
+#         reasoning = (
+#             f"Cooperator: {blend_info} | "
+#             f"LLM consensus={consensus:.0%} (adj: {consensus_adj}) | "
+#             f"Final={position:.1f}%"
+#         )
+        
+#         self.record_decision(position, reasoning)
+#         return position
+    
+#     def _calculate_llm_position(self, market: 'MarketContext') -> float:
+#         """Calculate position based on LLM signals."""
+#         avg_signal = np.mean([
+#             market.aggressive_position,
+#             market.neutral_position,
+#             market.conservative_position
+#         ])
+        
+#         # Scale up
+#         position = avg_signal * 100 * self.SCALE_FACTOR
+        
+#         # Clamp
+#         return self._clamp_position(position, self.MIN_POSITION, self.MAX_POSITION)
+    
+#     def _get_group_position(self, game: 'GameState') -> float:
+#         """Get average position of OTHER strategies."""
+#         if not game.last_positions:
+#             return 50.0
+        
+#         others = [v for k, v in game.last_positions.items() if k != self.name]
+#         return np.mean(others) if others else 50.0
+
+
+# # === Test ===
+# if __name__ == "__main__":
+#     print("Testing CooperatorStrategy...")
+#     print("=" * 60)
+    
+#     class MockMarket:
+#         aggressive_position = 0.15
+#         neutral_position = 0.10
+#         conservative_position = 0.05
+#         regime = "bull"
+    
+#     class MockGame:
+#         round_num = 1
+#         last_positions = {}
+#         allocations = {}
+    
+#     strategy = CooperatorStrategy()
+#     market = MockMarket()
+#     game = MockGame()
+    
+#     # Test 1: First round (no history)
+#     print("\nTest 1: First round (no group history)")
+#     position = strategy.decide_position(market, game)
+#     print(f"  Position: {position:.1f}%")
+#     print(f"  Reasoning: {strategy.get_reasoning()}")
+    
+#     # Test 2: With group history - group is bullish
+#     print("\nTest 2: Group is bullish (avg 70%)")
+#     game.round_num = 5
+#     game.last_positions = {
+#         "Buy-and-Hold": 100,
+#         "Defector": 30,
+#         "Tit-for-Tat": 65,
+#         "Signal Follower": 55,
+#         "Cooperator": 60  # Self (should be excluded)
+#     }
+    
+#     position = strategy.decide_position(market, game)
+#     print(f"  Group avg (excl self): {strategy._get_group_position(game):.1f}%")
+#     print(f"  Position: {position:.1f}%")
+#     print(f"  Reasoning: {strategy.get_reasoning()}")
+    
+#     # Test 3: Group is bearish
+#     print("\nTest 3: Group is bearish (avg 25%)")
+#     game.last_positions = {
+#         "Buy-and-Hold": 100,
+#         "Defector": 10,
+#         "Tit-for-Tat": 20,
+#         "Signal Follower": 15,
+#         "Cooperator": 30
+#     }
+    
+#     # LLM also cautious
+#     market.aggressive_position = 0.05
+#     market.neutral_position = 0.03
+#     market.conservative_position = 0.02
+    
+#     position = strategy.decide_position(market, game)
+#     print(f"  Group avg (excl self): {strategy._get_group_position(game):.1f}%")
+#     print(f"  Position: {position:.1f}%")
+#     print(f"  Reasoning: {strategy.get_reasoning()}")
+    
+#     # Test 4: Group is mixed
+#     print("\nTest 4: Group is mixed (high variance)")
+#     game.last_positions = {
+#         "Buy-and-Hold": 100,
+#         "Defector": 10,
+#         "Tit-for-Tat": 50,
+#         "Signal Follower": 40,
+#         "Cooperator": 45
+#     }
+    
+#     position = strategy.decide_position(market, game)
+#     print(f"  Group avg (excl self): {strategy._get_group_position(game):.1f}%")
+#     print(f"  Position: {position:.1f}%")
+#     print(f"  Reasoning: {strategy.get_reasoning()}")
+    
+#     print("\n" + "=" * 60)
+#     print("TEST COMPLETE")
+
+
 """
-cooperator.py - Consensus Follower Strategy
+cooperator.py - Cooperator Strategy (MOMENTUM)
 
 Location: agents/game_theory/strategies/cooperator.py
 
-This strategy trusts collective wisdom and scales position
-with how much the agents agree (consensus).
+UPDATED: Now implements MOMENTUM trading logic while keeping game theory name.
+
+Game Theory Concept: "Cooperate with market direction"
+Trading Logic: MOMENTUM - ride the trend, if market going up stay long
 
 Philosophy:
-    "When agents agree, amplify. When uncertain, reduce."
+    "The trend is your friend. What's been going up keeps going up."
 
-Score Behavior:
-    Score DIRECTLY multiplies position size
-    - High score (+5 to +10): Multiplier = 1.2 to 1.5 (scale up)
-    - Neutral (-2 to +5):     Multiplier = 1.0 (normal)
-    - Low score (-10 to -2):  Multiplier = 0.5 to 0.8 (protect capital)
+When It Wins:
+    - Trending markets (sustained up or down moves)
+    - When momentum persists across multiple rounds
+    - Strong directional markets
 
-Position Logic:
-    1. Calculate consensus (how much agents agree) from position std
-    2. Base position = average * (0.5 + 0.5 * consensus)
-    3. Apply 4x position scaling for meaningful trades
-    4. Apply score multiplier
-    5. Check if hot/cold and adjust
-    6. Cap at 85%
+When It Loses:
+    - At market turning points (slow to reverse)
+    - In choppy, mean-reverting markets
+    - When trends suddenly reverse
 
-Why This Matters:
-    - Tests if consensus is a useful signal
-    - When all agents agree, there's likely something there
-    - When agents disagree, uncertainty is high - reduce exposure
-
-ENHANCED with:
-    - 4x position scaling for meaningful trades
-    - Starting score bias of +2 (optimistic)
-    - Consensus success tracking
-    - Hot/cold streak awareness
+Usage:
+    from game_theory.strategies.cooperator import CooperatorStrategy
+    
+    strategy = CooperatorStrategy()
+    position = strategy.decide_position(market, game)
 """
 
-from typing import List, Tuple
+from typing import TYPE_CHECKING
 import numpy as np
+from .base import Strategy
 
-from ..base_strategy import TradingStrategy, TradeResult
-from ..market_context import MarketContext
+if TYPE_CHECKING:
+    from ..market_context import MarketContext
+    from ..game_state import GameState
 
 
-class CooperatorStrategy(TradingStrategy):
+class CooperatorStrategy(Strategy):
     """
-    CONSENSUS FOLLOWER - Trust Collective Wisdom, Scale with Momentum
+    Cooperator - MOMENTUM Strategy
     
-    This strategy believes that when multiple independent agents
-    reach similar conclusions, the signal is stronger.
+    Game Theory: Cooperates with market direction (follows the trend)
+    Trading Logic: If recent returns positive, stay long. Chase winners.
     
-    Core Idea:
-        - High consensus (agents agree) = amplify the signal
-        - Low consensus (agents disagree) = reduce exposure
-        - Score provides momentum overlay
-        - Learn from whether consensus has been working
+    Position Logic:
+        1. Look at last N rounds of market returns
+        2. If average return positive → bullish (high position)
+        3. If average return negative → bearish (low position)
+        4. Scale position based on momentum strength
     
-    Consensus Calculation:
-        consensus = 1.0 - (std of positions / 0.10)
-        
-        If std = 0 (all same): consensus = 1.0
-        If std = 0.10 (spread out): consensus = 0.0
-    
-    Score Interpretation:
-        Score directly scales position size:
-        
-        | Score Range | Multiplier | Effect |
-        |-------------|------------|--------|
-        | +5 to +10   | 1.2 - 1.5  | "Hot hand, scale up" |
-        | -2 to +5    | 1.0        | "Normal" |
-        | -10 to -2   | 0.5 - 0.8  | "Cold streak, protect" |
-    
-    When It Wins:
-        - When consensus actually predicts outcomes
-        - Trending markets where agents align
-        - When protecting capital during losing streaks helps
-    
-    When It Loses:
-        - When agents agree but are wrong together
-        - Choppy markets with false consensus
-        - When scaling up on winning streaks leads to overexposure
+    In capital allocation game:
+        - Wins in trending markets
+        - Loses at reversals
+        - Medium-high variance strategy
     """
     
-    # Maximum position size
-    MAX_POSITION = 85.0
-    # Position scaling for meaningful trades
-    POSITION_SCALE = 4.0
+    name = "Cooperator"
+    description = "MOMENTUM: Rides the trend, cooperates with market direction"
     
-    def __init__(self):
-        super().__init__(
-            name="Cooperator",
-            description="Consensus follower - scales position with agreement and score",
-            position_scale=self.POSITION_SCALE,
-            initial_score=2.0  # Optimistic starting bias
-        )
-        
-        # Track consensus success for learning
-        self.consensus_history = []  # List of (consensus_level, worked_bool)
-        self.high_consensus_wins = 0
-        self.high_consensus_trades = 0
-        self.low_consensus_wins = 0
-        self.low_consensus_trades = 0
+    # Configuration
+    LOOKBACK = 3           # How many rounds to look back
+    MIN_POSITION = 15.0    # Minimum position
+    MAX_POSITION = 90.0    # Maximum position
+    SCALE_FACTOR = 3.5     # Scale up LLM signals for first rounds
     
-    def reset(self):
-        """Reset strategy state including consensus tracking."""
-        super().reset()
-        self.consensus_history = []
-        self.high_consensus_wins = 0
-        self.high_consensus_trades = 0
-        self.low_consensus_wins = 0
-        self.low_consensus_trades = 0
-    
-    def _get_score_multiplier(self) -> float:
-        """
-        Get position multiplier based on current score.
-        
-        High score = scale up (momentum)
-        Low score = scale down (protect capital)
-        
-        Returns:
-            Multiplier for position size (0.5 to 1.5)
-        """
-        if self.score >= 5:
-            # High score: 1.2 to 1.5
-            # Linear interpolation from score 5->10 maps to 1.2->1.5
-            return 1.2 + (self.score - 5) * 0.06
-        
-        elif self.score >= -2:
-            # Neutral: 1.0
-            return 1.0
-        
-        else:
-            # Low score: 0.5 to 0.8
-            # Linear interpolation from score -10->-2 maps to 0.5->0.8
-            # At -10: 0.5, at -2: 0.8
-            return 0.5 + (self.score + 10) * 0.0375
-    
-    def _calculate_consensus(self, positions: List[float]) -> float:
-        """
-        Calculate consensus level from position recommendations.
-        
-        High consensus = agents agree (low std)
-        Low consensus = agents disagree (high std)
-        
-        Args:
-            positions: List of position recommendations (decimals)
-            
-        Returns:
-            Consensus level (0.0 to 1.0)
-        """
-        if len(positions) < 2:
-            return 1.0
-        
-        # If all positions are the same
-        if len(set(positions)) == 1:
-            return 1.0
-        
-        std_position = np.std(positions)
-        
-        # Normalize: assume max reasonable std is ~0.10 (10% spread)
-        # std of 0 = consensus 1.0
-        # std of 0.10+ = consensus 0.0
-        consensus = max(0.0, 1.0 - std_position / 0.10)
-        
-        return consensus
-    
-    def _get_consensus_adjustment(self) -> float:
-        """
-        Adjust position based on whether consensus has been working.
-        
-        Returns:
-            Adjustment factor (0.8 to 1.2)
-        """
-        # Need enough history
-        if len(self.consensus_history) < 10:
-            return 1.0
-        
-        # Look at recent high consensus trades
-        recent_high = [(c, w) for c, w in self.consensus_history[-20:] if c > 0.7]
-        if len(recent_high) >= 5:
-            success_rate = sum(w for _, w in recent_high) / len(recent_high)
-            if success_rate > 0.7:
-                return 1.2  # Consensus working great
-            elif success_rate < 0.3:
-                return 0.8  # Consensus failing
-        
-        return 1.0
+    # Momentum thresholds (as decimals, e.g., 0.01 = 1%)
+    STRONG_UP = 0.015      # Strong uptrend threshold
+    MILD_UP = 0.005        # Mild uptrend threshold
+    MILD_DOWN = -0.005     # Mild downtrend threshold
+    STRONG_DOWN = -0.015   # Strong downtrend threshold
     
     def decide_position(
-        self, 
-        ctx: MarketContext, 
-        history: List[TradeResult]
-    ) -> Tuple[float, str]:
+        self,
+        market: 'MarketContext',
+        game: 'GameState'
+    ) -> float:
         """
-        Decide position based on consensus and score.
+        Decide position based on recent momentum.
         
-        Formula:
-            base_position = avg_position * (0.5 + 0.5 * consensus)
-            scaled_position = base_position * position_scale
-            final_position = scaled_position * score_multiplier * adjustments
-        
-        Args:
-            ctx: MarketContext with agent evaluations
-            history: Past trades (for context)
-            
-        Returns:
-            Tuple of (position_pct, reasoning)
+        Looks at recent market returns and follows the trend.
         """
-        # Get all three position recommendations
-        positions = [
-            ctx.aggressive_position,
-            ctx.neutral_position,
-            ctx.conservative_position
-        ]
+        # First few rounds: not enough history, use LLM signal
+        if len(game.rounds) < self.LOOKBACK:
+            position = self._use_llm_signal(market)
+            reasoning = (
+                f"MOMENTUM (warmup): Only {len(game.rounds)} rounds, need {self.LOOKBACK} | "
+                f"Using LLM signal → {position:.1f}%"
+            )
+            self.record_decision(position, reasoning)
+            return position
         
-        # Calculate average and consensus
-        avg_position = np.mean(positions)
-        consensus = self._calculate_consensus(positions)
+        # Calculate recent momentum (average of last N returns)
+        recent_returns = [r.market_return for r in game.rounds[-self.LOOKBACK:]]
+        avg_momentum = sum(recent_returns) / len(recent_returns)
         
-        # Base position scales with consensus
-        # Low consensus (0.0) -> 50% of avg
-        # High consensus (1.0) -> 100% of avg
-        base_position_pct = avg_position * 100.0 * (0.5 + 0.5 * consensus)
+        # Also get last round's return for recency weighting
+        last_return = game.rounds[-1].market_return
         
-        # Apply position scaling for meaningful trades
-        scaled_position = base_position_pct * self.position_scale
+        # Momentum-based position sizing
+        if avg_momentum > self.STRONG_UP:
+            # Strong uptrend - go heavy
+            position = 85.0
+            trend = "STRONG UP"
+        elif avg_momentum > self.MILD_UP:
+            # Mild uptrend - moderately bullish
+            position = 70.0
+            trend = "MILD UP"
+        elif avg_momentum > self.MILD_DOWN:
+            # Sideways/neutral - moderate position
+            position = 50.0
+            trend = "NEUTRAL"
+        elif avg_momentum > self.STRONG_DOWN:
+            # Mild downtrend - reduce exposure
+            position = 35.0
+            trend = "MILD DOWN"
+        else:
+            # Strong downtrend - defensive
+            position = 20.0
+            trend = "STRONG DOWN"
         
-        # Apply score multiplier
-        score_mult = self._get_score_multiplier()
-        position_pct = scaled_position * score_mult
+        # Adjust based on last round's return (recency boost)
+        if last_return > 0.02:  # Last round was very positive
+            position = min(self.MAX_POSITION, position + 10)
+        elif last_return < -0.02:  # Last round was very negative
+            position = max(self.MIN_POSITION, position - 10)
         
-        # Apply consensus success adjustment
-        consensus_adj = self._get_consensus_adjustment()
-        position_pct = position_pct * consensus_adj
-        
-        # Apply hot/cold adjustment
-        if self.is_hot:
-            position_pct *= 1.1
-        elif self.is_cold:
-            position_pct *= 0.9
-        
-        # Cap at maximum
-        position_pct = min(self.MAX_POSITION, position_pct)
+        # Clamp to valid range
+        position = self._clamp_position(position, self.MIN_POSITION, self.MAX_POSITION)
         
         # Build reasoning
         reasoning = (
-            f"Cooperator: consensus={consensus:.0%}, "
-            f"avg={avg_position:.1%}, "
-            f"base={base_position_pct:.1f}%, "
-            f"scaled={scaled_position:.1f}%, "
-            f"mult={score_mult:.2f}x "
+            f"MOMENTUM: {trend} | "
+            f"Avg({self.LOOKBACK}d): {avg_momentum*100:+.2f}% | "
+            f"Last: {last_return*100:+.2f}% | "
+            f"Position: {position:.1f}%"
         )
         
-        if consensus_adj != 1.0:
-            reasoning += f"cons_adj={consensus_adj:.1f}x "
-        
-        if self.is_hot:
-            reasoning += "[HOT] "
-        elif self.is_cold:
-            reasoning += "[COLD] "
-            
-        reasoning += f"[score={self.score:+.0f}] -> {position_pct:.1f}%"
-        
-        return position_pct, reasoning
+        self.record_decision(position, reasoning)
+        return position
     
-    def execute_trade(self, ctx: MarketContext) -> TradeResult:
-        """
-        Override to track consensus success.
-        """
-        # Calculate consensus before trade
-        positions = [
-            ctx.aggressive_position,
-            ctx.neutral_position,
-            ctx.conservative_position
-        ]
-        consensus = self._calculate_consensus(positions)
-        
-        # Execute the trade
-        result = super().execute_trade(ctx)
-        
-        # Track consensus success
-        won = result.trade_return > 0
-        self.consensus_history.append((consensus, won))
-        
-        # Track high/low consensus separately
-        if consensus > 0.7:
-            self.high_consensus_trades += 1
-            if won:
-                self.high_consensus_wins += 1
-        elif consensus < 0.3:
-            self.low_consensus_trades += 1
-            if won:
-                self.low_consensus_wins += 1
-        
-        # Keep history manageable
-        if len(self.consensus_history) > 50:
-            self.consensus_history.pop(0)
-        
-        # Store in strategy memory for reference
-        self.strategy_memory['last_consensus'] = consensus
-        self.strategy_memory['consensus_win_rate'] = (
-            self.high_consensus_wins / self.high_consensus_trades 
-            if self.high_consensus_trades > 0 else 0.5
-        )
-        
-        return result
-    
-    def get_consensus_stats(self) -> dict:
-        """Get statistics about consensus from trade history."""
-        
-        stats = {
-            "high_consensus_win_rate": (
-                self.high_consensus_wins / self.high_consensus_trades * 100
-                if self.high_consensus_trades > 0 else 0
-            ),
-            "low_consensus_win_rate": (
-                self.low_consensus_wins / self.low_consensus_trades * 100
-                if self.low_consensus_trades > 0 else 0
-            ),
-            "high_consensus_trades": self.high_consensus_trades,
-            "low_consensus_trades": self.low_consensus_trades,
-        }
-        
-        # Add recent consensus performance
-        if len(self.consensus_history) >= 10:
-            recent = self.consensus_history[-10:]
-            recent_high = [(c, w) for c, w in recent if c > 0.7]
-            recent_low = [(c, w) for c, w in recent if c < 0.3]
-            
-            if recent_high:
-                stats["recent_high_consensus_win_rate"] = sum(w for _, w in recent_high) / len(recent_high) * 100
-            if recent_low:
-                stats["recent_low_consensus_win_rate"] = sum(w for _, w in recent_low) / len(recent_low) * 100
-        
-        return stats
+    def _use_llm_signal(self, market: 'MarketContext') -> float:
+        """Fallback: use LLM signal when not enough history."""
+        avg_signal = np.mean([
+            market.aggressive_position,
+            market.neutral_position,
+            market.conservative_position
+        ])
+        position = avg_signal * 100 * self.SCALE_FACTOR
+        return self._clamp_position(position, self.MIN_POSITION, self.MAX_POSITION)
 
 
-# === Quick test when run directly ===
-
+# === Test ===
 if __name__ == "__main__":
-    print("Testing CooperatorStrategy...")
-    print("=" * 50)
+    print("Testing CooperatorStrategy (MOMENTUM)...")
+    print("=" * 60)
+    
+    class MockMarket:
+        aggressive_position = 0.15
+        neutral_position = 0.10
+        conservative_position = 0.05
+        regime = "bull"
+    
+    class MockRound:
+        def __init__(self, market_return):
+            self.market_return = market_return
+    
+    class MockGame:
+        round_num = 1
+        rounds = []
+        last_positions = {}
+        allocations = {}
     
     strategy = CooperatorStrategy()
-    print(f"Initial score: {strategy.score} (optimistic bias)")
-    print(f"Position scale: {strategy.POSITION_SCALE}x")
+    market = MockMarket()
+    game = MockGame()
     
-    # Test Case 1: High consensus (agents agree)
-    print("\nTest 1: High Consensus (agents agree)")
-    ctx1 = MarketContext(
-        date="2024-03-15",
-        ticker="AAPL",
-        sample_num=1,
-        daily_return=0.02,
-        aggressive_position=0.15,    # 15%
-        aggressive_stance="BUY",
-        aggressive_confidence="HIGH",
-        neutral_position=0.12,       # 12%
-        neutral_stance="BUY",
-        neutral_confidence="MEDIUM",
-        conservative_position=0.10,  # 10%
-        conservative_stance="HOLD",
-        conservative_confidence="LOW",
-        regime="bull"
-    )
+    # Test 1: First round (no history)
+    print("\nTest 1: First round (uses LLM)")
+    position = strategy.decide_position(market, game)
+    print(f"  Position: {position:.1f}%")
+    print(f"  Reasoning: {strategy.get_reasoning()}")
     
-    positions = [ctx1.aggressive_position, ctx1.neutral_position, ctx1.conservative_position]
-    consensus = strategy._calculate_consensus(positions)
-    position, reasoning = strategy.decide_position(ctx1, [])
+    # Test 2: Strong uptrend
+    print("\nTest 2: Strong uptrend (+2% avg)")
+    game.rounds = [MockRound(0.02), MockRound(0.025), MockRound(0.015)]
+    position = strategy.decide_position(market, game)
+    print(f"  Position: {position:.1f}% (should be ~85-90%)")
+    print(f"  Reasoning: {strategy.get_reasoning()}")
     
-    print(f"  Positions: {[f'{p:.0%}' for p in positions]}")
-    print(f"  Average: {np.mean(positions):.1%}")
-    print(f"  Consensus: {consensus:.0%}")
-    print(f"  Decision: {position:.1f}%")
-    print(f"  {reasoning}")
+    # Test 3: Mild uptrend
+    print("\nTest 3: Mild uptrend (+0.8% avg)")
+    game.rounds = [MockRound(0.01), MockRound(0.005), MockRound(0.009)]
+    position = strategy.decide_position(market, game)
+    print(f"  Position: {position:.1f}% (should be ~70%)")
+    print(f"  Reasoning: {strategy.get_reasoning()}")
     
-    # Test Case 2: Low consensus (agents disagree)
-    print("\nTest 2: Low Consensus (agents disagree)")
-    ctx2 = MarketContext(
-        date="2024-03-16",
-        ticker="AAPL",
-        sample_num=2,
-        daily_return=-0.01,
-        aggressive_position=0.25,    # 25%
-        aggressive_stance="BUY",
-        aggressive_confidence="HIGH",
-        neutral_position=0.08,       # 8%
-        neutral_stance="HOLD",
-        neutral_confidence="LOW",
-        conservative_position=0.00,  # 0%
-        conservative_stance="AVOID",
-        conservative_confidence="LOW",
-        regime="sideways"
-    )
+    # Test 4: Strong downtrend
+    print("\nTest 4: Strong downtrend (-2% avg)")
+    game.rounds = [MockRound(-0.02), MockRound(-0.025), MockRound(-0.015)]
+    position = strategy.decide_position(market, game)
+    print(f"  Position: {position:.1f}% (should be ~15-20%)")
+    print(f"  Reasoning: {strategy.get_reasoning()}")
     
-    positions = [ctx2.aggressive_position, ctx2.neutral_position, ctx2.conservative_position]
-    consensus = strategy._calculate_consensus(positions)
-    position, reasoning = strategy.decide_position(ctx2, [])
+    # Test 5: Choppy/sideways
+    print("\nTest 5: Choppy market (0% avg)")
+    game.rounds = [MockRound(0.01), MockRound(-0.01), MockRound(0.005)]
+    position = strategy.decide_position(market, game)
+    print(f"  Position: {position:.1f}% (should be ~50%)")
+    print(f"  Reasoning: {strategy.get_reasoning()}")
     
-    print(f"  Positions: {[f'{p:.0%}' for p in positions]}")
-    print(f"  Average: {np.mean(positions):.1%}")
-    print(f"  Consensus: {consensus:.0%}")
-    print(f"  Decision: {position:.1f}%")
-    print(f"  {reasoning}")
-    
-    # Test Case 3: Score effect on multiplier
-    print("\nTest 3: Score Effect on Multiplier")
-    
-    test_scores = [-8, -5, -2, 0, 3, 5, 8, 10]
-    for score in test_scores:
-        strategy.score = score
-        mult = strategy._get_score_multiplier()
-        print(f"  Score {score:+3d} -> Multiplier: {mult:.2f}x")
-    
-    print("\n" + "=" * 50)
-    print("CooperatorStrategy test complete!")
+    print("\n" + "=" * 60)
+    print("TEST COMPLETE")

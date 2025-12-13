@@ -1,0 +1,150 @@
+{
+  "ticker": "KO",
+  "timestamp": "2025-12-01T12:46:07.638580",
+  "analysis_date": "2025-07-09",
+  "historical_mode": true,
+  "debate_rounds": 1,
+  "debate_conducted": true,
+  "probabilities": {
+    "bull_case": 33,
+    "bear_case": 33,
+    "base_case": 34,
+    "rationale": "Fallback - equal weighting due to synthesis failure"
+  },
+  "debate_winner": {
+    "winner": "tie",
+    "reasoning": "Unable to determine - synthesis failed"
+  },
+  "thesis_quality": {
+    "bull_quality": "unknown",
+    "bear_quality": "unknown",
+    "better_thesis": "equal"
+  },
+  "conclusion": {
+    "recommendation": "HOLD",
+    "confidence": "LOW",
+    "position_size": "0%",
+    "rationale": "Synthesis failed - defaulting to HOLD"
+  },
+  "key_factors": [],
+  "risks_to_monitor": [
+    "Synthesis failed - manual review required"
+  ],
+  "full_synthesis": "Unable to complete synthesis. Please retry.",
+  "bull_thesis": {
+    "ticker": "KO",
+    "timestamp": "2025-12-01T12:44:53.489757",
+    "analysis_date": "2025-07-09",
+    "historical_mode": true,
+    "model": "gpt-4o-mini",
+    "core_thesis": "Unable to generate full analysis for KO. LLM analysis failed.",
+    "key_bullish_signals": [],
+    "catalysts": [],
+    "risk_reward": {
+      "upside_pct": null,
+      "downside_pct": null,
+      "reward_risk_ratio": null,
+      "rationale": "Analysis failed - no data available"
+    },
+    "conviction": {
+      "level": "LOW",
+      "reasoning": "Fallback due to analysis failure",
+      "data_quality": "weak"
+    },
+    "recommendation": {
+      "action": "HOLD",
+      "position_size": "0%",
+      "entry_strategy": "Wait for proper analysis",
+      "time_horizon": "N/A"
+    },
+    "counter_bear_arguments": [],
+    "full_analysis": "Analysis could not be completed. Please retry or check input data.",
+    "guardrail_corrections": [],
+    "is_fallback": true
+  },
+  "bear_thesis": {
+    "ticker": "KO",
+    "timestamp": "2025-12-01T12:45:30.135431",
+    "analysis_date": "2025-07-09",
+    "historical_mode": true,
+    "model": "gpt-4o-mini",
+    "core_thesis": "The Coca-Cola Company (KO) is currently facing significant downside risks due to a strong downtrend in its stock price, high valuation metrics, and increasing debt levels, which could hinder future growth and profitability.",
+    "key_risk_signals": [
+      {
+        "source": "technical",
+        "signal": "Strong downtrend with price below key moving averages",
+        "severity": "high"
+      },
+      {
+        "source": "fundamental",
+        "signal": "High P/E ratio of 24.35 indicating overvaluation",
+        "severity": "medium"
+      },
+      {
+        "source": "fundamental",
+        "signal": "Debt/Equity ratio of 144.77 indicating high leverage",
+        "severity": "high"
+      },
+      {
+        "source": "macro",
+        "signal": "Consumer Staples sector underperforming with only 0.72% growth",
+        "severity": "medium"
+      }
+    ],
+    "downside_triggers": [
+      {
+        "trigger": "Continued decline in consumer demand or market share",
+        "timeline": "next 6-12 months",
+        "probability": "high",
+        "impact": "Could lead to further price declines, potentially breaching key support levels."
+      },
+      {
+        "trigger": "Negative earnings surprises or guidance",
+        "timeline": "next earnings report",
+        "probability": "medium",
+        "impact": "Could trigger sell-offs and further erosion of investor confidence."
+      }
+    ],
+    "risk_assessment": {
+      "current_price": 68.95,
+      "downside_target": 60.62,
+      "upside_resistance": 71.9,
+      "downside_pct": 0,
+      "limited_upside_pct": 4.5,
+      "risk_score": 75,
+      "rationale": "The current price is near the 52-week low of $60.62, indicating significant downside potential if support levels are breached. The limited upside is capped by resistance at $71.90."
+    },
+    "conviction": {
+      "level": "HIGH",
+      "reasoning": "The combination of technical indicators, high valuation metrics, and significant debt levels presents a compelling bear case.",
+      "data_quality": "moderate"
+    },
+    "recommendation": {
+      "action": "SELL",
+      "risk_level": "HIGH",
+      "hedging_strategy": "Consider options strategies to protect against further declines.",
+      "time_horizon": "Risks are likely to materialize in the next 6-12 months as market conditions evolve."
+    },
+    "counter_bull_arguments": [
+      {
+        "bull_argument": "Strong earnings growth of 30.1% indicates robust performance.",
+        "bear_response": "Earnings growth may not sustain given high debt levels and market competition."
+      },
+      {
+        "bull_argument": "Analyst recommendations are predominantly 'BUY' with a target price of $79.13.",
+        "bear_response": "Analyst targets may not account for current market conditions and technical downtrends."
+      }
+    ],
+    "full_analysis": "As of July 9, 2025, Coca-Cola (KO) is exhibiting a strong downtrend, with its price consistently positioned below key moving averages, indicating a bearish sentiment in the market. The technical analysis highlights a significant risk, with the current price of $68.95 nearing critical support at $68.26. This downtrend is compounded by high valuation metrics, including a P/E ratio of 24.35 and a Price/Book ratio of 10.38, suggesting that the stock is overvalued relative to its earnings potential. Furthermore, the company's debt levels are concerning, with a Debt/Equity ratio of 144.77, indicating high leverage that could impact financial stability and growth prospects.\n\nThe macroeconomic environment also poses risks, particularly as the Consumer Staples sector has underperformed, growing only 0.72% compared to other sectors. This could indicate a shift in consumer spending patterns that may adversely affect Coca-Cola's sales. Additionally, the absence of recent positive news or bullish signals further supports a bearish outlook, as market sentiment appears neutral at best.\n\nGiven these factors, the downside potential appears significant, with realistic targets suggesting a drop to the 52-week low of $60.62. The limited upside potential, capped at $71.90, further reinforces the bearish case, as the risk of breaching key support levels could lead to accelerated declines. Therefore, a recommendation to sell is warranted, with a high conviction level based on the strength of the evidence presented.",
+    "guardrail_corrections": [
+      "Downside -12.5% cannot be negative - setting to 0",
+      "Invalid data_quality 'strong - based on specific metrics and trends from technical and fundamental analyses' → moderate"
+    ],
+    "is_fallback": false
+  },
+  "debate_history": [],
+  "guardrail_corrections": [],
+  "guardrail_warnings": [],
+  "validation_score": 0,
+  "is_fallback": true
+}

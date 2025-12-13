@@ -1,0 +1,86 @@
+{
+  "ticker": "SPY",
+  "timestamp": "2025-12-01T09:11:14.805003",
+  "analysis_date": "2024-07-05",
+  "historical_mode": true,
+  "portfolio_value": 100000.0,
+  "verdict": "MODIFY",
+  "final_position_pct": 0.019968,
+  "final_position_dollars": 1996.85,
+  "confidence": "LOW",
+  "reasoning": "Based on split consensus among evaluators.",
+  "key_factors": [
+    "Consensus: SPLIT"
+  ],
+  "conditions": [
+    "Monitor weekly"
+  ],
+  "stop_loss_pct": 15,
+  "profit_targets": [
+    12.5,
+    18.8,
+    25
+  ],
+  "guardrail_corrections": [],
+  "is_llm_decision": true,
+  "risk_controls": {
+    "stop_loss": {
+      "percentage": 15,
+      "dollar_amount": 299.53
+    },
+    "take_profit": {
+      "targets": [
+        12.5,
+        18.8,
+        25
+      ],
+      "scale_out": [
+        0.33,
+        0.33,
+        0.34
+      ]
+    },
+    "time_limit": {
+      "max_holding_period": "90 days",
+      "review_frequency": "weekly"
+    }
+  },
+  "risk_consensus": {
+    "stances": {
+      "aggressive": "BUY",
+      "neutral": "HOLD",
+      "conservative": "HOLD"
+    },
+    "position_sizes": {
+      "aggressive": 7.000000000000001,
+      "neutral": 0,
+      "conservative": 0
+    },
+    "agreements": [],
+    "conflicts": [
+      "Mixed views: 1 buy, 0 avoid"
+    ],
+    "avg_position_size": 0.023333333333333334,
+    "red_flags": [
+      {
+        "flag": "Synthesis failed - manual review required",
+        "severity": "LOW",
+        "source": "Data quality assessment"
+      }
+    ]
+  },
+  "position_sizing": {
+    "range_min_pct": 1.5,
+    "range_max_pct": 3.0,
+    "final_pct": 1.9968,
+    "final_dollars": 1996.85
+  },
+  "agent_votes": {
+    "bullish": 1,
+    "bearish": 0,
+    "neutral": 3,
+    "consensus": "SPLIT"
+  },
+  "research_recommendation": "HOLD",
+  "report": "\n======================================================================\nRISK MANAGER FINAL DECISION: SPY\n======================================================================\n**Analysis Date:** 2024-07-05 (HISTORICAL)\n**Portfolio:** $100,000\n\n## VERDICT: MODIFY\n**Position:** 2.00% ($1,996.85)\n**Confidence:** LOW\n\n## REASONING\nBased on split consensus among evaluators.\n\n## KEY FACTORS\n\u2022 Consensus: SPLIT\n\n## EVALUATOR SUMMARY\n- Aggressive: BUY @ 7.0%\n- Neutral: HOLD @ 0%\n- Conservative: HOLD @ 0%\n\n## AGENT CONSENSUS\n- Bullish Votes: 1/4\n- Bearish Votes: 0/4\n- Neutral Votes: 3/4\n- Overall: Split\n\n## POSITION SIZING\n- Range: 1.5% - 3.0%\n- Final: 2.00% ($1,996.85)\n\n## RISK CONTROLS\n- Stop Loss: -15%\n- Profit Targets: +12.5%, +18.8%, +25%\n\n## CONDITIONS\n\u2022 Monitor weekly\n\n======================================================================\n"
+}
