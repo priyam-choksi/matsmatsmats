@@ -347,8 +347,8 @@ ALPHAVANTAGE_KEY=...
 ## Demo & Weekly Updates
 
 - **Live Demo UI**: [TradeArena](https://www.tradearena.site)
-- **Weekly Updates**: [Weekly Updates](https://docs.google.com/document/d/1QnFzBTIzh1E66WQDzSUWXoSTA05o-UJ19tS519vi9Es)
-- **Documentation**: [TradingAgents Documentation](docs.google.com/document/d/1LmyGEkRfH9ssQLZDCqSbk1XKH7hVTTuaZsufn0In9g/)
+- **Weekly Updates**: [Weekly Updates](https://docs.google.com/document/d/1QnFzBTIzh1E66WQDzSUWXoSTA05o-UJ19tS519vi9Es/)
+- **Documentation**: [TradingAgents Documentation](https://docs.google.com/document/d/1LmyGEkRfH9ssQLZDCqSbk1XKH7hVgTTuaZsufn0In9g/)
 
 ---
 
